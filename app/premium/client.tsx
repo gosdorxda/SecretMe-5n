@@ -9,23 +9,34 @@ import { createTransaction } from "./actions"
 
 export function PremiumClient() {
   const [isLoading, setIsLoading] = useState(false)
-  const [premiumPrice, setPremiumPrice] = useState("499.000")
-  const [regularPrice, setRegularPrice] = useState("799.000")
+  const [premiumPrice, setPremiumPrice] = useState("49.000")
+  const [regularPrice, setRegularPrice] = useState("79.000")
   const [discountPercentage, setDiscountPercentage] = useState(38)
   const { toast } = useToast()
 
   useEffect(() => {
     // Ambil harga dari environment variable
     const envPrice = process.env.NEXT_PUBLIC_PREMIUM_PRICE
-    if (envPrice) {
-      // Format harga dengan pemisah ribuan
-      const formattedPrice = new Intl.NumberFormat("id-ID").format(Number.parseInt(envPrice))
-      setPremiumPrice(formattedPrice)
+    console.log("NEXT_PUBLIC_PREMIUM_PRICE:", envPrice)
 
-      // Hitung harga reguler (harga premium / (1 - diskon))
-      const priceNum = Number.parseInt(envPrice)
-      const regularPriceNum = Math.round(priceNum / (1 - discountPercentage / 100))
-      setRegularPrice(new Intl.NumberFormat("id-ID").format(regularPriceNum))
+    if (envPrice) {
+      try {
+        // Pastikan envPrice adalah string angka tanpa karakter khusus
+        const cleanPrice = envPrice.replace(/\D/g, "")
+        const priceNum = Number.parseInt(cleanPrice, 10)
+
+        if (!isNaN(priceNum)) {
+          // Format harga dengan pemisah ribuan
+          const formattedPrice = new Intl.NumberFormat("id-ID").format(priceNum)
+          setPremiumPrice(formattedPrice)
+
+          // Hitung harga reguler (harga premium / (1 - diskon))
+          const regularPriceNum = Math.round(priceNum / (1 - discountPercentage / 100))
+          setRegularPrice(new Intl.NumberFormat("id-ID").format(regularPriceNum))
+        }
+      } catch (error) {
+        console.error("Error parsing premium price:", error)
+      }
     }
   }, [discountPercentage])
 
