@@ -1,8 +1,7 @@
 // Konfigurasi Midtrans
 export const MIDTRANS_CONFIG = {
-  isProduction: true,
+  isProduction: true, // Ubah ke false jika menggunakan sandbox
   serverKey: process.env.MIDTRANS_SERVER_KEY || "",
-  // Hapus referensi langsung ke client key
   premiumPrice: Number.parseInt(process.env.PREMIUM_PRICE || "49000"),
 }
 
@@ -34,7 +33,7 @@ export function getMidtransCoreApiUrl(): string {
 
 // Fungsi untuk membuat Basic Auth header
 export function getMidtransAuthHeader(): string {
-  // Pastikan server key diakhiri dengan ':'
+  // Pastikan server key diisi dengan benar
   const authString = `${MIDTRANS_CONFIG.serverKey}:`
   return `Basic ${Buffer.from(authString).toString("base64")}`
 }
