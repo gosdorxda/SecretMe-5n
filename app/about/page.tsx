@@ -1,7 +1,4 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Heart } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "About Us - SecretMe",
@@ -10,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="container max-w-4xl mx-auto py-12 px-4">
+    <div className="container mx-auto py-12 px-4">
       <div className="space-y-8">
         <div className="border-b pb-8">
           <h1 className="text-3xl font-bold">About SecretMe</h1>
@@ -34,20 +31,6 @@ export default function AboutPage() {
             responsibility. While we enable anonymous messaging, we also implement measures to prevent misuse and ensure
             a positive experience for all users.
           </p>
-
-          <div className="flex justify-center pt-6">
-            <Button asChild className="bg-red-500 hover:bg-red-600 text-white">
-              <Link
-                href="https://www.paypal.com/donate/?hosted_button_id=S5X44J2TD57NJ"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                <Heart className="h-4 w-4" />
-                Donate
-              </Link>
-            </Button>
-          </div>
         </div>
       </div>
     </div>

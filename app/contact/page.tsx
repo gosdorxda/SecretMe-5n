@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="container max-w-4xl mx-auto py-12 px-4">
+    <div className="container mx-auto py-12 px-4">
       <div className="space-y-8">
         <div className="border-b pb-8">
           <h1 className="text-3xl font-bold">Contact Us</h1>
@@ -47,13 +47,13 @@ export default function ContactPage() {
               </h2>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">IDNteam Setiawan Group.</p>
+                  <p className="text-sm font-medium">PT Liquid Setiawan Group.</p>
                   <p className="text-sm">Jl. Jelapan Sidorejo RT003/RW004</p>
                   <p className="text-sm">Bandongan, Magelang, Indonesia 56151</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Business Hours:</p>
-                  <p className="text-sm">Monday - Friday: 24/7</p>
+                  <p className="text-sm font-medium">Business Registration Number:</p>
+                  <p className="text-sm">0220002789696 </p>
                 </div>
               </div>
             </div>
