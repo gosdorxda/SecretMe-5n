@@ -28,28 +28,24 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
       title: "Pembayaran Berhasil",
       description: "Terima kasih! Pembayaran Anda telah berhasil diproses.",
       icon: <CheckCircle className="h-12 w-12 text-green-500" />,
-      color: "border-green-200",
       badge: <Badge className="bg-green-500 hover:bg-green-600">Sukses</Badge>,
     },
     pending: {
       title: "Pembayaran Tertunda",
       description: "Pembayaran Anda sedang diproses. Silakan cek kembali nanti.",
       icon: <Clock className="h-12 w-12 text-amber-500" />,
-      color: "border-amber-200",
       badge: <Badge className="bg-amber-500 hover:bg-amber-600">Tertunda</Badge>,
     },
     failed: {
       title: "Pembayaran Gagal",
       description: "Maaf, pembayaran Anda tidak dapat diproses. Silakan coba lagi.",
       icon: <XCircle className="h-12 w-12 text-red-500" />,
-      color: "border-red-200",
       badge: <Badge className="bg-red-500 hover:bg-red-600">Gagal</Badge>,
     },
     default: {
       title: "Status Pembayaran",
       description: "Detail transaksi Anda.",
       icon: <AlertCircle className="h-12 w-12 text-gray-500" />,
-      color: "border-gray-200",
       badge: <Badge>{transaction.status}</Badge>,
     },
   }
@@ -106,7 +102,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
 
     if (vaNumbers.length > 0) {
       return (
-        <div className="mt-4 p-4 bg-blue-50 rounded-neo border border-blue-200">
+        <div className="mt-4 p-4 bg-blue-50 rounded-md border border-blue-100">
           <h3 className="font-medium text-blue-800 mb-2">Instruksi Pembayaran:</h3>
           {vaNumbers.map((va: any, index: number) => (
             <div key={index} className="mb-2">
@@ -122,7 +118,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
 
     if (billKey && billCode) {
       return (
-        <div className="mt-4 p-4 bg-blue-50 rounded-neo border border-blue-200">
+        <div className="mt-4 p-4 bg-blue-50 rounded-md border border-blue-100">
           <h3 className="font-medium text-blue-800 mb-2">Instruksi Pembayaran Mandiri Bill:</h3>
           <p className="text-sm font-mono bg-white px-2 py-1 rounded border border-blue-100 mt-1">
             Bill Key: {billKey}
@@ -138,11 +134,11 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
   }
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-8">
+    <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="relative">
         {isRefreshing && (
           <div
-            className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-neo"
+            className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-md"
             aria-live="polite"
             aria-busy="true"
           >
@@ -151,19 +147,17 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
           </div>
         )}
         <Card
-          className={`neo-card bg-white border-2 ${config.color} transition-all duration-200 ${
+          className={`bg-white border border-gray-200 transition-all duration-200 ${
             isRefreshing ? "opacity-60" : "opacity-100"
-          } shadow-neo`}
+          }`}
         >
           <CardHeader className="text-center pb-2 sm:pb-4">
-            <div className="mx-auto mb-2 sm:mb-4 bg-white p-3 rounded-full border-2 border-[var(--border)] shadow-neo-sm inline-flex">
-              {config.icon}
-            </div>
+            <div className="mx-auto mb-2 sm:mb-4 inline-flex">{config.icon}</div>
             <CardTitle className="text-xl sm:text-2xl">{config.title}</CardTitle>
             <CardDescription className="text-sm sm:text-base">{config.description}</CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4 p-4">
+          <CardContent className="space-y-4 p-4 sm:p-6">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Status</span>
               {config.badge}
@@ -172,43 +166,41 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
             <Separator className="bg-gray-200" />
 
             <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">ID Pesanan</span>
-                <span className="font-mono text-sm bg-gray-50 px-2 py-1 rounded-md border border-gray-100 w-full sm:w-auto text-right">
-                  {transaction.plan_id}
-                </span>
+                <span className="font-mono text-sm">{transaction.plan_id}</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Tanggal</span>
-                <span className="text-sm text-right">{createdAt}</span>
+                <span className="text-sm">{createdAt}</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Terakhir Diperbarui</span>
-                <span className="text-sm text-right">{updatedAt}</span>
+                <span className="text-sm">{updatedAt}</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Jumlah</span>
-                <span className="font-medium text-right">Rp {transaction.amount.toLocaleString("id-ID")}</span>
+                <span className="font-medium">Rp {transaction.amount.toLocaleString("id-ID")}</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Metode Pembayaran</span>
-                <span className="text-sm text-right">{paymentMethodFormatted}</span>
+                <span className="text-sm">{paymentMethodFormatted}</span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+              <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Produk</span>
-                <span className="text-sm text-right">SecretMe Premium Lifetime</span>
+                <span className="text-sm">SecretMe Premium Lifetime</span>
               </div>
             </div>
 
             {getPaymentInstructions()}
 
             {status === "success" && (
-              <div className="mt-4 p-4 bg-green-50 rounded-neo border-2 border-green-200">
+              <div className="mt-4 p-4 bg-green-50 rounded-md border border-green-100">
                 <h3 className="font-medium text-green-800 mb-2">Akun Premium Aktif!</h3>
                 <p className="text-sm text-green-700">
                   Selamat! Akun Anda telah diupgrade ke Premium. Nikmati semua fitur eksklusif yang tersedia.
@@ -217,7 +209,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
             )}
 
             {status === "pending" && (
-              <div className="mt-4 p-4 bg-amber-50 rounded-neo border-2 border-amber-200">
+              <div className="mt-4 p-4 bg-amber-50 rounded-md border border-amber-100">
                 <h3 className="font-medium text-amber-800 mb-2">Menunggu Pembayaran</h3>
                 <p className="text-sm text-amber-700">
                   Silakan selesaikan pembayaran Anda sesuai instruksi. Status akan diperbarui secara otomatis setelah
@@ -227,7 +219,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
             )}
 
             {status === "failed" && (
-              <div className="mt-4 p-4 bg-red-50 rounded-neo border-2 border-red-200">
+              <div className="mt-4 p-4 bg-red-50 rounded-md border border-red-100">
                 <h3 className="font-medium text-red-800 mb-2">Pembayaran Gagal</h3>
                 <p className="text-sm text-red-700">
                   Pembayaran Anda tidak berhasil diproses. Silakan coba lagi atau gunakan metode pembayaran lain.
@@ -236,7 +228,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
             )}
           </CardContent>
 
-          <CardFooter className="flex flex-col sm:flex-row gap-3 pt-0 p-4">
+          <CardFooter className="flex flex-col sm:flex-row gap-3 pt-0 p-4 sm:p-6">
             {status === "pending" && (
               <Button
                 className="w-full sm:w-auto"
