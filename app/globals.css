@@ -982,3 +982,8 @@ footer nav a:focus {
 .single-message-card:hover .timestamp-fade {
   opacity: 1;
 }
+
+/* Tambahkan kelas berikut ke file globals.css jika belum ada */
+.rounded-neo {
+  border-radius: var(--border-radius);
+}
