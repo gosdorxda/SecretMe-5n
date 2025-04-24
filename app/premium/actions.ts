@@ -1,66 +1,58 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { generateOrderId, getMidtransSnapApiUrl, getMidtransAuthHeader, MIDTRANS_CONFIG } from "@/lib/midtrans"
-import { revalidatePath } from "next/cache"
+import { generateOrderId, getMidtransSnapApiUrl, MIDTRANS_CONFIG, getMidtransAuthHeader } from "@/lib/midtrans"
 
-// Tipe untuk hasil transaksi
-type TransactionResult = {
-  success: boolean
-  redirectUrl?: string
-  error?: string
-}
-
-// Server action untuk membuat transaksi
-export async function createTransaction(): Promise<TransactionResult> {
+export async function createTransaction() {
   try {
-    // Dapatkan user yang sedang login
+    // Verifikasi user
     const supabase = createClient()
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser()
 
-    if (!user) {
-      return { success: false, error: "User not authenticated" }
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized" }
+    }
+
+    // Ambil data user
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("name, email, is_premium")
+      .eq("id", user.id)
+      .single()
+
+    if (userError || !userData) {
+      return { success: false, error: "User not found" }
+    }
+
+    // Cek apakah user sudah premium
+    if (userData.is_premium) {
+      return { success: false, error: "User already premium" }
     }
 
     // Generate order ID
     const orderId = generateOrderId(user.id)
 
-    // Dapatkan data user
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("name, email")
-      .eq("id", user.id)
-      .single()
-
-    if (userError) {
-      console.error("Error getting user data:", userError)
-      return { success: false, error: "Failed to get user data" }
-    }
-
     // Buat transaksi di database
-    const { data: transaction, error: transactionError } = await supabase
-      .from("premium_transactions")
-      .insert({
-        user_id: user.id,
-        plan_id: orderId,
-        amount: MIDTRANS_CONFIG.premiumPrice,
-        status: "pending",
-      })
-      .select()
-      .single()
+    const { error: transactionError } = await supabase.from("premium_transactions").insert({
+      user_id: user.id,
+      plan_id: orderId,
+      amount: MIDTRANS_CONFIG.premiumPrice,
+      status: "pending",
+    })
 
     if (transactionError) {
       console.error("Error creating transaction:", transactionError)
-      return { success: false, error: `Failed to create transaction: ${transactionError.message}` }
+      return { success: false, error: "Failed to create transaction" }
     }
 
-    // Buat request ke Midtrans
-    const midtransUrl = getMidtransSnapApiUrl()
-    const authHeader = getMidtransAuthHeader()
+    // Buat transaksi di Midtrans menggunakan Snap API
+    const snapApiUrl = getMidtransSnapApiUrl()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
 
-    const requestBody = {
+    const transactionDetails = {
       transaction_details: {
         order_id: orderId,
         gross_amount: MIDTRANS_CONFIG.premiumPrice,
@@ -69,67 +61,63 @@ export async function createTransaction(): Promise<TransactionResult> {
         secure: true,
       },
       customer_details: {
-        first_name: userData.name || user.email?.split("@")[0] || "User",
-        email: userData.email || user.email,
+        first_name: userData.name || "User",
+        email: userData.email,
       },
+      item_details: [
+        {
+          id: "premium-lifetime",
+          price: MIDTRANS_CONFIG.premiumPrice,
+          quantity: 1,
+          name: "SecretMe Premium Lifetime",
+        },
+      ],
       callbacks: {
-        finish: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
-        error: `${process.env.NEXT_PUBLIC_APP_URL}/premium?payment=error`,
-        pending: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=pending`,
+        finish: `${appUrl}/payment/status?order_id=${orderId}&status=success`,
+        error: `${appUrl}/payment/status?order_id=${orderId}&status=failed`,
+        pending: `${appUrl}/payment/status?order_id=${orderId}&status=pending`,
+        notification: `${appUrl}/api/payment/notification`,
       },
     }
 
-    console.log("Sending request to Midtrans:", midtransUrl)
-    console.log("Request body:", JSON.stringify(requestBody))
+    // Dapatkan header auth yang benar
+    const authHeader = getMidtransAuthHeader()
 
-    const response = await fetch(midtransUrl, {
+    const midtransResponse = await fetch(snapApiUrl, {
       method: "POST",
       headers: {
-        Accept: "application/json",
         "Content-Type": "application/json",
+        Accept: "application/json",
         Authorization: authHeader,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(transactionDetails),
     })
 
-    const responseData = await response.json()
+    if (!midtransResponse.ok) {
+      const errorData = (await midtransResponse.json().catch(() => null)) || (await midtransResponse.text())
+      console.error("Midtrans error:", errorData)
 
-    if (!response.ok) {
-      console.error("Midtrans error:", responseData)
-
-      // Hapus transaksi dari database jika gagal
-      await supabase.from("premium_transactions").delete().eq("id", transaction.id)
+      // Hapus transaksi dari database karena gagal
+      await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
 
       return {
         success: false,
-        error: `Midtrans error: ${JSON.stringify(responseData)}`,
+        error: "Failed to create Midtrans transaction",
       }
     }
 
-    console.log("Midtrans response:", responseData)
-
-    // Update transaksi dengan token dari Midtrans
-    await supabase
-      .from("premium_transactions")
-      .update({
-        payment_method: "midtrans",
-        payment_details: responseData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", transaction.id)
-
-    revalidatePath("/premium")
-    revalidatePath("/dashboard")
+    const midtransData = await midtransResponse.json()
 
     return {
       success: true,
-      redirectUrl: responseData.redirect_url,
+      redirectUrl: midtransData.redirect_url,
+      token: midtransData.token,
     }
-  } catch (error) {
-    console.error("Transaction error:", error)
+  } catch (error: any) {
+    console.error("Error in create transaction:", error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
+      error: error.message || "Internal server error",
     }
   }
 }
