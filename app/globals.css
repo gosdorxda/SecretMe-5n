@@ -1,0 +1,984 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --main: #fd9745;
+    --overlay: rgba(0, 0, 0, 0.8); /* background color overlay for alert dialogs, modals, etc. */
+
+    --bg: #fff4e0;
+    --bw: #fff; /* white and secondary black e.g. utility class variant would be: bg-[#fff] dark:bg-[#212121] */
+    --blank: #000; /* blank black and white */
+    --border: #000;
+    --text: #000;
+    --mtext: #000; /* text that is placed on background with main color e.g. text color of default button */
+    --ring: #000;
+    --ring-offset: #fff;
+
+    --border-radius: 7px;
+    --box-shadow-x: 4px;
+    --box-shadow-y: 4px;
+    --reverse-box-shadow-x: -4px;
+    --reverse-box-shadow-y: -4px;
+    --base-font-weight: 400;
+    --heading-font-weight: 700;
+
+    --shadow: var(--box-shadow-x) var(--box-shadow-y) 0px 0px var(--border);
+
+    /* shadcn variables */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --bg: #272933;
+    --bw: #212121;
+    --blank: #fff;
+    --border: #000;
+    --text: #e6e6e6;
+    --mtext: #000;
+    --ring: #fff;
+    --ring-offset: #000;
+
+    --shadow: var(--box-shadow-x) var(--box-shadow-y) 0px 0px var(--border);
+
+    /* shadcn variables */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  html {
+    font-size: 16px;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: 1rem; /* 16px */
+    line-height: 1.5;
+    font-weight: var(--base-font-weight);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: var(--heading-font-weight);
+  }
+}
+
+@layer components {
+  .neo-btn {
+    background-color: var(--main);
+    color: var(--mtext);
+    border: 2px solid var(--border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+  }
+  .neo-btn:hover {
+    box-shadow: none;
+    transform: translate(2px, 2px);
+  }
+
+  .neo-btn-outline {
+    background-color: var(--bw);
+    color: var(--text);
+    border: 2px solid var(--border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+  }
+  .neo-btn-outline:hover {
+    box-shadow: none;
+    transform: translate(2px, 2px);
+  }
+
+  .neo-card {
+    background-color: var(--bw);
+    border: 2px solid var(--border);
+    border-radius: var(--border-radius);
+    /* Hapus box-shadow dan transition */
+  }
+
+  /* Hapus hover effect pada neo-card */
+  .neo-card:hover {
+    /* Hapus transform dan box-shadow */
+    transform: none;
+    box-shadow: none;
+  }
+
+  .neo-badge {
+    background-color: var(--main);
+    color: var(--mtext);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+  }
+
+  .neo-input {
+    background-color: var(--bw);
+    border: 2px solid var(--border);
+    border-radius: var(--border-radius);
+    /* Hapus box-shadow */
+    box-shadow: none;
+    padding: 0.5rem 0.75rem;
+    height: 2.5rem;
+    width: 100%;
+  }
+  .neo-input:focus {
+    outline: none;
+    box-shadow: none;
+    /* Hapus transform */
+    transform: none;
+  }
+}
+
+/* Text Utility Classes */
+.text-heading-1 {
+  font-size: 2.5rem; /* 40px */
+  line-height: 1.2;
+  font-weight: var(--heading-font-weight);
+}
+
+.text-heading-2 {
+  font-size: 2rem; /* 32px */
+  line-height: 1.2;
+  font-weight: var(--heading-font-weight);
+}
+
+.text-heading-3 {
+  font-size: 1.5rem; /* 24px */
+  line-height: 1.3;
+  font-weight: var(--heading-font-weight);
+}
+
+.text-heading-4 {
+  font-size: 1.25rem; /* 20px */
+  line-height: 1.4;
+  font-weight: var(--heading-font-weight);
+}
+
+.text-body-large {
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.5;
+}
+
+.text-body {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5;
+}
+
+.text-body-small {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.5;
+}
+
+.text-primary {
+  color: var(--text);
+}
+
+.text-secondary {
+  color: var(--text-secondary, rgba(0, 0, 0, 0.7));
+}
+
+.text-muted {
+  color: var(--text-muted, rgba(0, 0, 0, 0.5));
+}
+
+.text-accent {
+  color: var(--main);
+}
+
+.text-white {
+  color: white;
+}
+
+.text-black {
+  color: black;
+}
+
+.font-normal {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-justify {
+  text-align: justify;
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+.text-lowercase {
+  text-transform: lowercase;
+}
+
+.text-capitalize {
+  text-transform: capitalize;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-wrap {
+  white-space: normal;
+}
+
+.text-nowrap {
+  white-space: nowrap;
+}
+
+.text-break {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.letter-spacing-tight {
+  letter-spacing: -0.025em;
+}
+
+.letter-spacing-normal {
+  letter-spacing: 0;
+}
+
+.letter-spacing-wide {
+  letter-spacing: 0.025em;
+}
+
+.letter-spacing-wider {
+  letter-spacing: 0.05em;
+}
+
+.letter-spacing-widest {
+  letter-spacing: 0.1em;
+}
+
+/* Responsive text classes */
+@media (max-width: 640px) {
+  .text-heading-1 {
+    font-size: 2rem; /* 32px */
+  }
+
+  .text-heading-2 {
+    font-size: 1.75rem; /* 28px */
+  }
+
+  .text-heading-3 {
+    font-size: 1.375rem; /* 22px */
+  }
+
+  .text-heading-4 {
+    font-size: 1.125rem; /* 18px */
+  }
+}
+
+/* Utility classes */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(to right, #4f46e5, #7c3aed);
+}
+
+/* Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float-alt {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float-alt {
+  animation: float-alt 7s ease-in-out infinite;
+}
+
+/* Add these animation definitions after the existing animations in the file */
+
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 155, 80, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 155, 80, 0.6);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.shadow-glow {
+  box-shadow: 0 0 5px rgba(255, 155, 80, 0.5);
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+/* Fix for v0 preview */
+.v0-preview-container {
+  background-color: var(--bg);
+}
+
+/* Additional animations */
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 4s ease-in-out infinite;
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 20s linear infinite;
+}
+
+@keyframes pulse-custom {
+  0% {
+    transform: scale(1);
+    box-shadow: 2px 2px 0px 0px var(--border);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 4px 4px 0px 0px var(--border);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 2px 2px 0px 0px var(--border);
+  }
+}
+
+.animate-pulse-custom {
+  animation: pulse-custom 1.5s infinite;
+}
+
+/* Responsive container */
+.container {
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 1rem;
+  padding-left: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+    padding-right: 1.5rem;
+    padding-left: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  h1,
+  h2,
+  h3 {
+    word-break: break-word;
+  }
+
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+
+  .neo-btn,
+  .neo-btn-outline {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Tambahkan atau perbarui animasi toast di bagian bawah file CSS */
+/* Fix untuk toast yang bertumpuk */
+[role="status"] {
+  backdrop-filter: none !important;
+  background-color: var(--bw) !important;
+}
+
+[role="status"] + [role="status"] {
+  margin-top: 8px !important;
+}
+
+.radix-toast-swipe-end-animation {
+  animation: none !important;
+}
+
+/* Pastikan viewport toast tidak memiliki backdrop filter */
+[data-radix-toast-viewport] {
+  backdrop-filter: none !important;
+  background: transparent !important;
+}
+
+/* Toast Animation - Tambahan untuk toast neobrutalism */
+@keyframes toast-enter {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-exit {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+[data-state="open"].Toaster_ToastRoot {
+  animation: toast-enter 0.3s ease-out;
+}
+
+[data-state="closed"].Toaster_ToastRoot {
+  animation: toast-exit 0.3s ease-in;
+}
+
+/* Toast hover effect for neobrutalism */
+[data-radix-toast-root] {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 1rem !important;
+  border-width: 2px !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+[data-radix-toast-root]:hover {
+  transform: translate(2px, 2px) !important;
+  box-shadow: none !important;
+}
+
+/* Styling untuk toast title dan description */
+[data-radix-toast-title] {
+  font-weight: bold !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+[data-radix-toast-description] {
+  font-size: 0.75rem !important;
+  opacity: 0.9 !important;
+}
+
+/* Styling khusus untuk badge dalam hasil capture */
+.capture-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  border-radius: 6px !important;
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  white-space: nowrap !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.capture-reply-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  border-radius: 6px !important;
+  background-color: #ffedd5 !important;
+  color: #9a3412 !important;
+  border: 1px solid #fdba74 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  white-space: nowrap !important;
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    height: 20%;
+  }
+  50% {
+    height: 60%;
+  }
+}
+
+.animate-wave {
+  animation: wave 1.2s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% {
+    width: 0%;
+    margin-left: 0;
+  }
+  50% {
+    width: 100%;
+    margin-left: 0;
+  }
+  100% {
+    width: 0%;
+    margin-left: 100%;
+  }
+}
+
+/* Footer responsive styles */
+footer {
+  position: relative;
+  z-index: 10;
+  border-top-width: 3px;
+  border-top-color: var(--border);
+}
+
+footer .container {
+  max-width: 1280px; /* Match navbar width */
+}
+
+footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+footer nav a {
+  position: relative;
+  padding: 0.5rem;
+  margin: 0 0.25rem;
+}
+
+/* Social media icons hover effect */
+footer .social-icon {
+  transition: all 0.2s ease;
+}
+
+footer .social-icon:hover {
+  transform: translateY(-3px);
+}
+
+@media (max-width: 768px) {
+  footer .container > div {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  footer .slogan {
+    margin: 1rem 0;
+  }
+
+  footer .social-links {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  footer nav {
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  footer nav a {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  footer .container {
+    padding: 0 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  footer {
+    padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+  }
+
+  footer .container > div {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  footer nav {
+    justify-content: space-around;
+  }
+}
+
+/* Add active state for footer links */
+footer nav a:active,
+footer nav a:focus {
+  outline: none;
+  text-decoration: underline;
+}
+
+/* Add touch target size for better mobile experience */
+@media (max-width: 640px) {
+  footer nav a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Shadow utilities */
+.shadow-neo-xs {
+  box-shadow: 2px 2px 0px 0px var(--border);
+}
+
+.shadow-neo-sm {
+  box-shadow: 3px 3px 0px 0px var(--border);
+}
+
+.shadow-neo {
+  box-shadow: var(--shadow);
+}
+
+.shadow-neo-lg {
+  box-shadow: 6px 6px 0px 0px var(--border);
+}
+
+/* Add a subtle hover effect to testimonial cards */
+.testimonial-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.testimonial-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 6px 6px 0px 0px var(--border);
+}
+
+/* Tambahkan kode berikut di bagian bawah file, sebelum bagian terakhir */
+
+/* Single Message Card Animations */
+.single-message-card {
+  background-color: var(--bw);
+  border: 2px solid var(--border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateY(0);
+  opacity: 0;
+  animation: card-fade-in 0.8s ease-out forwards;
+}
+
+.single-message-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 6px 6px 0px 0px var(--border);
+}
+
+@keyframes card-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-content {
+  position: relative;
+  overflow: hidden;
+}
+
+.message-content::after {
+  content: "";
+  position: absolute;
+  left: -100%;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: message-shine 3s infinite;
+}
+
+@keyframes message-shine {
+  0% {
+    left: -100%;
+  }
+  20% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.avatar-pulse {
+  position: relative;
+}
+
+.avatar-pulse::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  background: var(--main);
+  z-index: -1;
+  opacity: 0.5;
+  animation: avatar-pulse 2s infinite;
+}
+
+@keyframes avatar-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+}
+
+.btn-bounce {
+  transition: all 0.2s ease;
+}
+
+.btn-bounce:hover {
+  animation: btn-bounce 0.5s ease;
+}
+
+@keyframes btn-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Animasi untuk badge */
+.badge-pop {
+  animation: badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0);
+  }
+  80% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Animasi untuk timestamp */
+.timestamp-fade {
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+.single-message-card:hover .timestamp-fade {
+  opacity: 1;
+}
