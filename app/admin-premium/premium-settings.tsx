@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { AlertCircle, CheckCircle2, CreditCard, DollarSign, FileText, RefreshCw, Settings } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface PremiumSettings {
   price: number
@@ -31,6 +32,34 @@ interface Transaction {
   user_name?: string
 }
 
+interface TransactionDetails {
+  payment_details?: {
+    payment_type?: string
+    transaction_time?: string
+    transaction_status?: string
+    transaction_id?: string
+    status_message?: string
+    status_code?: string
+    settlement_time?: string
+    payment_code?: string
+    order_id?: string
+    merchant_id?: string
+    gross_amount?: string
+    fraud_status?: string
+    currency?: string
+    va_numbers?: Array<{
+      bank: string
+      va_number: string
+    }>
+    qr_string?: string
+    acquirer?: string
+    expiry_time?: string
+    bill_key?: string
+    biller_code?: string
+    permata_va_number?: string
+  }
+}
+
 export default function PremiumSettings() {
   const [settings, setSettings] = useState<PremiumSettings>({
     price: 49000,
@@ -43,7 +72,11 @@ export default function PremiumSettings() {
   const [isSaving, setIsSaving] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
-  const [activeTab, setActiveTab] = useState("settings")
+  const [activeTab, setActiveTab] = useState("transactions")
+  const [selectedTransaction, setSelectedTransaction] = useState<(Transaction & TransactionDetails) | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [revenue, setRevenue] = useState(0)
+  const [transactionCount, setTransactionCount] = useState(0)
 
   const supabase = createClient()
   const { toast } = useToast()
@@ -121,15 +154,20 @@ export default function PremiumSettings() {
   const loadTransactions = async () => {
     setIsLoadingTransactions(true)
     try {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("premium_transactions")
-        .select(`
+        .select(
+          `
           *,
           users:user_id (
             email,
-            name
-          )
-        `)
+            name,
+            username
+          ),
+          payment_details
+        `,
+          { count: "exact" },
+        )
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -142,6 +180,16 @@ export default function PremiumSettings() {
       }))
 
       setTransactions(transformedData)
+      setTransactionCount(count || 0)
+
+      // Calculate total revenue
+      const totalRevenue = transformedData.reduce((acc, curr) => {
+        if (curr.status === "success") {
+          return acc + curr.amount
+        }
+        return acc
+      }, 0)
+      setRevenue(totalRevenue)
     } catch (error: any) {
       console.error("Error loading transactions:", error)
       toast({
@@ -236,6 +284,29 @@ export default function PremiumSettings() {
     }).format(amount)
   }
 
+  const openTransactionDetails = async (transaction: Transaction) => {
+    try {
+      // Ambil detail lengkap transaksi dari database
+      const { data, error } = await supabase
+        .from("premium_transactions")
+        .select("*, users:user_id(email, name, username)")
+        .eq("id", transaction.id)
+        .single()
+
+      if (error) throw error
+
+      setSelectedTransaction(data)
+      setIsDialogOpen(true)
+    } catch (error: any) {
+      console.error("Error loading transaction details:", error)
+      toast({
+        title: "Gagal memuat detail",
+        description: error.message || "Terjadi kesalahan saat memuat detail transaksi",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Fungsi untuk menambah fitur baru
   const addFeature = () => {
     setSettings((prev) => ({
@@ -283,138 +354,137 @@ export default function PremiumSettings() {
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Pengaturan Premium</h1>
 
-      <Tabs defaultValue="settings" value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="settings">
-            <Settings className="h-4 w-4 mr-2" />
-            Pengaturan
-          </TabsTrigger>
           <TabsTrigger value="transactions">
             <FileText className="h-4 w-4 mr-2" />
             Transaksi
+          </TabsTrigger>
+          <TabsTrigger value="settings">
+            <Settings className="h-4 w-4 mr-2" />
+            Pengaturan
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="settings">
           <Card>
-            <CardHeader>
-              <CardTitle>Pengaturan Premium</CardTitle>
-              <CardDescription>Konfigurasi harga dan fitur premium</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="premium-enabled">Aktifkan Fitur Premium</Label>
-                  <Switch
-                    id="premium-enabled"
-                    checked={settings.enabled}
-                    onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, enabled: checked }))}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Jika dinonaktifkan, pengguna tidak akan dapat membeli paket premium
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="premium-price">Harga Premium (Rp)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="premium-price"
-                    type="number"
-                    value={settings.price}
-                    onChange={(e) => setSettings((prev) => ({ ...prev, price: Number.parseInt(e.target.value) }))}
-                    className="pl-10"
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Harga dalam Rupiah, tanpa titik atau koma (contoh: 49000 untuk Rp 49.000)
-                </p>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="premium-description">Deskripsi Premium</Label>
-                <Input
-                  id="premium-description"
-                  value={settings.description}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>Fitur Premium</Label>
-                <div className="space-y-2">
-                  {settings.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        value={feature}
-                        onChange={(e) => updateFeature(index, e.target.value)}
-                        placeholder="Deskripsi fitur"
-                      />
-                      <Button variant="outline" size="icon" onClick={() => removeFeature(index)} className="shrink-0">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M18 6 6 18"></path>
-                          <path d="m6 6 12 12"></path>
-                        </svg>
-                        <span className="sr-only">Hapus fitur</span>
-                      </Button>
-                    </div>
-                  ))}
-                  <Button variant="outline" onClick={addFeature} className="w-full">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2"
-                    >
-                      <path d="M5 12h14"></path>
-                      <path d="M12 5v14"></path>
-                    </svg>
-                    Tambah Fitur
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-amber-500 mt-0.5"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="12"></line>
-                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-                <div className="text-sm text-amber-800">
-                  <p className="font-medium">Pengaturan Premium</p>
-                  <p className="text-xs mt-1">
-                    Perubahan pada pengaturan premium akan memengaruhi tampilan halaman premium dan proses pembayaran.
-                    Perubahan harga hanya akan memengaruhi transaksi baru.
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="premium-enabled">Aktifkan Premium</Label>
+                  <div className="space-y-1">
+                    <Switch
+                      id="premium-enabled"
+                      checked={settings.enabled}
+                      onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, enabled: checked }))}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Jika dinonaktifkan, pengguna tidak akan dapat membeli paket premium
                   </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="premium-price">Harga Premium (Rp)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="premium-price"
+                      type="number"
+                      value={settings.price}
+                      onChange={(e) => setSettings((prev) => ({ ...prev, price: Number.parseInt(e.target.value) }))}
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Harga dalam Rupiah, tanpa titik atau koma (contoh: 49000 untuk Rp 49.000)
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="premium-description">Deskripsi Premium</Label>
+                  <Input
+                    id="premium-description"
+                    value={settings.description}
+                    onChange={(e) => setSettings((prev) => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Fitur Premium</Label>
+                  <div className="space-y-2">
+                    {settings.features.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          value={feature}
+                          onChange={(e) => updateFeature(index, e.target.value)}
+                          placeholder="Deskripsi fitur"
+                        />
+                        <Button variant="outline" size="icon" onClick={() => removeFeature(index)} className="shrink-0">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="mr-2"
+                          >
+                            <path d="M5 12h14"></path>
+                            <path d="M12 5v14"></path>
+                          </svg>
+                          Hapus
+                        </Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" onClick={addFeature} className="w-full">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-2"
+                      >
+                        <path d="M5 12h14"></path>
+                        <path d="M12 5v14"></path>
+                      </svg>
+                      Tambah Fitur
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-amber-500 mt-0.5"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium">Pengaturan Premium</p>
+                    <p className="text-xs mt-1">
+                      Perubahan pada pengaturan premium akan memengaruhi tampilan halaman premium dan proses pembayaran.
+                      Perubahan harga hanya akan memengaruhi transaksi baru.
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -477,22 +547,50 @@ export default function PremiumSettings() {
               </div>
             </CardHeader>
             <CardContent>
+              <div className="mb-4">
+                <h3 className="text-lg font-medium">Informasi Sekilas</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium text-green-700">Total Pendapatan</p>
+                          <p className="text-xl font-bold">{formatCurrency(revenue)}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <p className="text-sm font-medium text-blue-700">Total Transaksi</p>
+                          <p className="text-xl font-bold">{transactionCount}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
               <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader className="bg-gray-50">
                     <TableRow>
                       <TableHead>ID Transaksi</TableHead>
-                      <TableHead>Pengguna</TableHead>
+                      <TableHead className="min-w-[150px]">Pengguna</TableHead>
                       <TableHead>Jumlah</TableHead>
                       <TableHead>Metode</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Tanggal</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoadingTransactions ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           <div className="flex justify-center">
                             <svg
                               className="animate-spin h-6 w-6 text-gray-400"
@@ -520,7 +618,7 @@ export default function PremiumSettings() {
                       </TableRow>
                     ) : transactions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           <div className="flex justify-center">
                             <CreditCard className="h-8 w-8 text-gray-400" />
                           </div>
@@ -539,6 +637,31 @@ export default function PremiumSettings() {
                           <TableCell>{formatPaymentMethod(transaction.payment_method)}</TableCell>
                           <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                           <TableCell className="text-xs">{formatDate(transaction.created_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openTransactionDetails(transaction)}
+                              className="h-8 px-2"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-1"
+                              >
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.3-4.3"></path>
+                              </svg>
+                              Detail
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -549,6 +672,232 @@ export default function PremiumSettings() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog Detail Transaksi */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detail Transaksi</DialogTitle>
+            <DialogDescription>Informasi lengkap tentang transaksi premium</DialogDescription>
+          </DialogHeader>
+
+          {selectedTransaction && (
+            <div className="space-y-6 py-4">
+              {/* Informasi Dasar */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">ID Transaksi</h3>
+                    <p className="font-mono text-sm">{selectedTransaction.id}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Order ID</h3>
+                    <p className="font-mono text-sm">{selectedTransaction.plan_id}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Jumlah</h3>
+                    <p className="font-medium">{formatCurrency(selectedTransaction.amount)}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                    <div className="mt-1">{getStatusBadge(selectedTransaction.status)}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Pengguna</h3>
+                    <p>{selectedTransaction.users?.name || "Tidak diketahui"}</p>
+                    <p className="text-sm text-muted-foreground">{selectedTransaction.users?.email}</p>
+                    {selectedTransaction.users?.username && (
+                      <p className="text-sm text-muted-foreground">@{selectedTransaction.users.username}</p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Metode Pembayaran</h3>
+                    <p>{formatPaymentMethod(selectedTransaction.payment_method)}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Tanggal Transaksi</h3>
+                    <p>{formatDate(selectedTransaction.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detail Pembayaran */}
+              {selectedTransaction.payment_details && (
+                <>
+                  <div className="border-t pt-4">
+                    <h3 className="font-medium mb-3">Detail Pembayaran</h3>
+                    <div className="bg-gray-50 rounded-md p-4 overflow-x-auto">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Payment Type */}
+                        {selectedTransaction.payment_details.payment_type && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Tipe Pembayaran</h4>
+                            <p className="text-sm">{selectedTransaction.payment_details.payment_type}</p>
+                          </div>
+                        )}
+
+                        {/* Transaction Time */}
+                        {selectedTransaction.payment_details.transaction_time && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Waktu Transaksi</h4>
+                            <p className="text-sm">
+                              {new Date(selectedTransaction.payment_details.transaction_time).toLocaleString("id-ID")}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Settlement Time */}
+                        {selectedTransaction.payment_details.settlement_time && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Waktu Settlement</h4>
+                            <p className="text-sm">
+                              {new Date(selectedTransaction.payment_details.settlement_time).toLocaleString("id-ID")}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Expiry Time */}
+                        {selectedTransaction.payment_details.expiry_time && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Waktu Kadaluarsa</h4>
+                            <p className="text-sm">
+                              {new Date(selectedTransaction.payment_details.expiry_time).toLocaleString("id-ID")}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Transaction Status */}
+                        {selectedTransaction.payment_details.transaction_status && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Status Transaksi</h4>
+                            <p className="text-sm">{selectedTransaction.payment_details.transaction_status}</p>
+                          </div>
+                        )}
+
+                        {/* Fraud Status */}
+                        {selectedTransaction.payment_details.fraud_status && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Status Fraud</h4>
+                            <p className="text-sm">{selectedTransaction.payment_details.fraud_status}</p>
+                          </div>
+                        )}
+
+                        {/* Status Code */}
+                        {selectedTransaction.payment_details.status_code && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Kode Status</h4>
+                            <p className="text-sm">{selectedTransaction.payment_details.status_code}</p>
+                          </div>
+                        )}
+
+                        {/* Status Message */}
+                        {selectedTransaction.payment_details.status_message && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Pesan Status</h4>
+                            <p className="text-sm">{selectedTransaction.payment_details.status_message}</p>
+                          </div>
+                        )}
+
+                        {/* Merchant ID */}
+                        {selectedTransaction.payment_details.merchant_id && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">ID Merchant</h4>
+                            <p className="text-sm font-mono">{selectedTransaction.payment_details.merchant_id}</p>
+                          </div>
+                        )}
+
+                        {/* Currency */}
+                        {selectedTransaction.payment_details.currency && (
+                          <div>
+                            <h4 className="text-xs font-medium text-muted-foreground">Mata Uang</h4>
+                            <p className="text-sm">{selectedTransaction.payment_details.currency}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Virtual Account Numbers */}
+                      {selectedTransaction.payment_details.va_numbers &&
+                        selectedTransaction.payment_details.va_numbers.length > 0 && (
+                          <div className="mt-4 border-t pt-3">
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Virtual Account</h4>
+                            {selectedTransaction.payment_details.va_numbers.map((va, index) => (
+                              <div key={index} className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium">{va.bank.toUpperCase()}:</span>
+                                <span className="text-sm font-mono">{va.va_number}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                      {/* Permata VA */}
+                      {selectedTransaction.payment_details.permata_va_number && (
+                        <div className="mt-4 border-t pt-3">
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">Permata Virtual Account</h4>
+                          <span className="text-sm font-mono">
+                            {selectedTransaction.payment_details.permata_va_number}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Bill Payment */}
+                      {selectedTransaction.payment_details.bill_key &&
+                        selectedTransaction.payment_details.biller_code && (
+                          <div className="mt-4 border-t pt-3">
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Mandiri Bill Payment</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-xs text-muted-foreground">Biller Code:</span>
+                                <span className="text-sm font-mono ml-1">
+                                  {selectedTransaction.payment_details.biller_code}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-xs text-muted-foreground">Bill Key:</span>
+                                <span className="text-sm font-mono ml-1">
+                                  {selectedTransaction.payment_details.bill_key}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Payment Code (Alfamart/Indomaret) */}
+                      {selectedTransaction.payment_details.payment_code && (
+                        <div className="mt-4 border-t pt-3">
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">Kode Pembayaran</h4>
+                          <span className="text-sm font-mono">{selectedTransaction.payment_details.payment_code}</span>
+                        </div>
+                      )}
+
+                      {/* QR String */}
+                      {selectedTransaction.payment_details.qr_string && (
+                        <div className="mt-4 border-t pt-3">
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">QRIS Data</h4>
+                          <div className="max-w-full overflow-hidden">
+                            <p className="text-xs font-mono truncate">
+                              {selectedTransaction.payment_details.qr_string}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Tombol Aksi */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
