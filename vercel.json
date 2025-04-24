@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/sitemap/regenerate?secret=${CRON_SECRET}",
-      "schedule": "0 0 * * *"
+      "path": "/api/retry-failed-notifications",
+      "schedule": "0 * * * *"
     }
   ]
 }

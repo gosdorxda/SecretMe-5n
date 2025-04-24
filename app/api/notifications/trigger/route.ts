@@ -46,18 +46,40 @@ export async function POST(request: Request) {
     }
 
     // Log notification
-    await supabase.from("notification_logs").insert({
-      user_id: user.id, // Use verified user.id
-      message_id: messageId,
-      notification_type: type,
-      channel: "email",
-      status: "sent",
-      created_at: new Date().toISOString(),
-    })
+    const { data: notificationLog, error: logError } = await supabase
+      .from("notification_logs")
+      .insert({
+        user_id: user.id, // Use verified user.id
+        message_id: messageId,
+        notification_type: type,
+        channel: "email",
+        status: "pending",
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
 
-    // In a real implementation, you would send an email here
-    // For now, we'll just log it
-    console.log(`Notification sent to ${user.email} about message ${messageId}`)
+    if (logError) {
+      console.error("Error logging notification:", logError)
+      return NextResponse.json({ error: "Failed to log notification" }, { status: 500 })
+    }
+
+    try {
+      // In a real implementation, you would send an email here
+      // For now, we'll just log it
+      console.log(`Notification sent to ${user.email} about message ${messageId}`)
+
+      // Update status menjadi sent jika berhasil
+      await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
+    } catch (sendError: any) {
+      console.error("Failed to send notification:", sendError.message)
+
+      // Catat ke tabel failed_notification_logs
+      await supabase.from("failed_notification_logs").insert({
+        notification_log_id: notificationLog.id,
+        error_message: sendError.message,
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
         finish: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?status=success`,
         error: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=error`,
         pending: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?status=pending`,
+        // Tambahkan webhook URL
+        notification: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/midtrans-webhook`,
       },
     }
 
