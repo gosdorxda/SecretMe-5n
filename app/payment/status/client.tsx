@@ -30,7 +30,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
       icon: <CheckCircle className="h-12 w-12 text-green-500" />,
       badge: <Badge className="bg-green-500 hover:bg-green-600">Sukses</Badge>,
     },
-    pending: {
+    pending: { 
       title: "Pembayaran Tertunda",
       description: "Pembayaran Anda sedang diproses. Silakan cek kembali nanti.",
       icon: <Clock className="h-12 w-12 text-amber-500" />,
@@ -147,7 +147,7 @@ export function PaymentStatusClient({ transaction }: PaymentStatusClientProps) {
           </div>
         )}
         <Card
-          className={`bg-white border border-gray-200 transition-all duration-200 ${
+          className={`bg-white border-2 border-black transition-all duration-200 ${
             isRefreshing ? "opacity-60" : "opacity-100"
           }`}
         >
