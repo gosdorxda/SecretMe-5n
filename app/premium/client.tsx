@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { LoadingDots } from "@/components/loading-dots"
-import { createTransaction, getLatestTransaction } from "./actions"
+import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle, AlertCircle, Clock, RefreshCw } from "lucide-react"
+import { CheckCircle, AlertCircle, Clock, RefreshCw, Home, X, History } from "lucide-react"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
 type Transaction = {
   id: string
@@ -47,6 +50,9 @@ export function PremiumClient({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("duitku")
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(transaction || null)
   const [checkingStatus, setCheckingStatus] = useState(false)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [cancellingTransaction, setCancellingTransaction] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -216,6 +222,110 @@ export function PremiumClient({
     }
   }
 
+  // Fungsi untuk membatalkan transaksi
+  const handleCancelTransaction = async () => {
+    if (!currentTransaction) return
+
+    try {
+      setCancellingTransaction(true)
+      const result = await cancelTransaction(currentTransaction.id)
+      setCancellingTransaction(false)
+
+      if (result.success) {
+        toast({
+          title: "Transaksi Dibatalkan",
+          description: "Transaksi Anda telah berhasil dibatalkan.",
+          variant: "default",
+        })
+        router.refresh()
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Gagal membatalkan transaksi",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error("Error cancelling transaction:", error)
+      setCancellingTransaction(false)
+      toast({
+        title: "Error",
+        description: error.message || "Gagal membatalkan transaksi",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Fungsi untuk memuat riwayat transaksi
+  const loadTransactionHistory = async () => {
+    try {
+      setLoadingHistory(true)
+      const result = await getTransactionHistory()
+      setLoadingHistory(false)
+
+      if (result.success) {
+        setTransactions(result.transactions)
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Gagal memuat riwayat transaksi",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error("Error loading transaction history:", error)
+      setLoadingHistory(false)
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memuat riwayat transaksi",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Fungsi untuk memformat tanggal
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date)
+  }
+
+  // Fungsi untuk mendapatkan warna badge berdasarkan status
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case "success":
+        return "bg-green-500"
+      case "failed":
+      case "cancelled":
+        return "bg-red-500"
+      case "pending":
+        return "bg-yellow-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
+  // Fungsi untuk mendapatkan label status
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "success":
+        return "Berhasil"
+      case "failed":
+        return "Gagal"
+      case "pending":
+        return "Tertunda"
+      case "cancelled":
+        return "Dibatalkan"
+      default:
+        return status
+    }
+  }
+
   // Render status transaksi
   const renderTransactionStatus = () => {
     if (!currentTransaction) return null
@@ -238,6 +348,12 @@ export function PremiumClient({
         statusDescription = "Silakan coba lagi atau gunakan metode pembayaran lain."
         statusColor = "border-red-200 bg-red-50"
         break
+      case "cancelled":
+        statusIcon = <X className="h-6 w-6 text-red-500" />
+        statusTitle = "Pembayaran Dibatalkan"
+        statusDescription = "Transaksi Anda telah dibatalkan."
+        statusColor = "border-red-200 bg-red-50"
+        break
       case "pending":
       default:
         statusIcon = <Clock className="h-6 w-6 text-yellow-500" />
@@ -250,7 +366,7 @@ export function PremiumClient({
       <Alert className={`mb-6 ${statusColor}`}>
         <div className="flex items-start">
           <div className="mr-3 mt-0.5">{statusIcon}</div>
-          <div>
+          <div className="flex-1">
             <AlertTitle>{statusTitle}</AlertTitle>
             <AlertDescription>
               {statusDescription}
@@ -263,26 +379,100 @@ export function PremiumClient({
                 <p>Jumlah: Rp {currentTransaction.amount.toLocaleString("id-ID")}</p>
               </div>
             </AlertDescription>
-            {currentTransaction.status === "pending" && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={checkTransactionStatus}
-                disabled={checkingStatus}
-              >
-                {checkingStatus ? (
-                  <LoadingDots />
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Periksa Status Pembayaran
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {currentTransaction.status === "pending" && (
+                <>
+                  <Button variant="outline" size="sm" onClick={checkTransactionStatus} disabled={checkingStatus}>
+                    {checkingStatus ? (
+                      <LoadingDots />
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Periksa Status
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelTransaction}
+                    disabled={cancellingTransaction}
+                  >
+                    {cancellingTransaction ? (
+                      <LoadingDots />
+                    ) : (
+                      <>
+                        <X className="mr-2 h-4 w-4" /> Batalkan
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => router.push("/")}>
+                    <Home className="mr-2 h-4 w-4" /> Kembali ke Beranda
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </Alert>
+    )
+  }
+
+  // Render riwayat transaksi
+  const renderTransactionHistory = () => {
+    return (
+      <Accordion type="single" collapsible className="mt-6">
+        <AccordionItem value="history">
+          <AccordionTrigger className="flex items-center">
+            <div className="flex items-center">
+              <History className="mr-2 h-4 w-4" />
+              Riwayat Transaksi
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            {loadingHistory ? (
+              <div className="flex justify-center py-4">
+                <LoadingDots />
+              </div>
+            ) : transactions.length === 0 ? (
+              <p className="text-center py-4 text-muted-foreground">Tidak ada riwayat transaksi</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>Jumlah</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Metode</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="whitespace-nowrap">{formatDate(tx.createdAt)}</TableCell>
+                        <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
+                        <TableCell>Rp {tx.amount.toLocaleString("id-ID")}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusBadgeColor(tx.status)}>{getStatusLabel(tx.status)}</Badge>
+                        </TableCell>
+                        <TableCell>{tx.paymentMethod || tx.gateway || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            {!loadingHistory && (
+              <div className="mt-4 flex justify-center">
+                <Button variant="outline" size="sm" onClick={loadTransactionHistory}>
+                  <RefreshCw className="mr-2 h-4 w-4" /> Muat Ulang
+                </Button>
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     )
   }
 
@@ -333,6 +523,9 @@ export function PremiumClient({
                   </li>
                 </ul>
               </div>
+
+              {/* Riwayat Transaksi untuk pengguna premium */}
+              {renderTransactionHistory()}
             </CardContent>
             <CardFooter>
               <Button onClick={() => router.push("/dashboard")} className="w-full">
@@ -441,8 +634,13 @@ export function PremiumClient({
                 </ul>
               </div>
 
+              {/* Riwayat Transaksi */}
+              {renderTransactionHistory()}
+
               {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
-              {!currentTransaction || currentTransaction.status === "failed" ? (
+              {!currentTransaction ||
+              currentTransaction.status === "failed" ||
+              currentTransaction.status === "cancelled" ? (
                 <div className="border rounded-lg p-6">
                   <div className="flex justify-between items-center mb-4">
                     <div>
@@ -647,13 +845,11 @@ export function PremiumClient({
             </div>
           </CardContent>
           <CardFooter>
-            {!currentTransaction || currentTransaction.status === "failed" ? (
+            {!currentTransaction ||
+            currentTransaction.status === "failed" ||
+            currentTransaction.status === "cancelled" ? (
               <Button onClick={handlePayment} disabled={isLoading} className="w-full">
                 {isLoading ? <LoadingDots /> : "Lanjutkan ke Pembayaran"}
-              </Button>
-            ) : currentTransaction.status === "pending" ? (
-              <Button onClick={checkTransactionStatus} disabled={checkingStatus} className="w-full">
-                {checkingStatus ? <LoadingDots /> : "Periksa Status Pembayaran"}
               </Button>
             ) : null}
           </CardFooter>
