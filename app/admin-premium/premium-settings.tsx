@@ -83,7 +83,7 @@ export default function PremiumSettings() {
       duitku: {
         merchantCode: "",
         apiKey: "",
-        isProduction: true,
+        isProduction: false, // Default ke false untuk sandbox
       },
     },
   })
@@ -622,122 +622,6 @@ export default function PremiumSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="payment-gateways">
-          <Card>
-            <CardHeader>
-              <CardTitle>Konfigurasi Payment Gateways</CardTitle>
-              <CardDescription>Atur konfigurasi untuk berbagai payment gateways</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div>Memuat konfigurasi...</div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Duitku Settings */}
-                  <div>
-                    <h3 className="text-lg font-medium">Duitku</h3>
-                    <div className="space-y-2">
-                      <Label htmlFor="duitku-merchant-code">Merchant Code</Label>
-                      <Input
-                        id="duitku-merchant-code"
-                        value={paymentConfig?.gateways?.duitku?.merchantCode || ""}
-                        onChange={(e) =>
-                          setPaymentConfig({
-                            ...paymentConfig,
-                            gateways: {
-                              ...paymentConfig?.gateways,
-                              duitku: {
-                                ...paymentConfig?.gateways?.duitku,
-                                merchantCode: e.target.value,
-                              },
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="duitku-api-key">API Key</Label>
-                      <Input
-                        id="duitku-api-key"
-                        type="password"
-                        value={paymentConfig?.gateways?.duitku?.apiKey || ""}
-                        onChange={(e) =>
-                          setPaymentConfig({
-                            ...paymentConfig,
-                            gateways: {
-                              ...paymentConfig?.gateways,
-                              duitku: {
-                                ...paymentConfig?.gateways?.duitku,
-                                apiKey: e.target.value,
-                              },
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2 mt-2">
-                      <Switch
-                        id="duitku-is-production"
-                        checked={paymentConfig?.gateways?.duitku?.isProduction !== false}
-                        onCheckedChange={(checked) =>
-                          setPaymentConfig({
-                            ...paymentConfig,
-                            gateways: {
-                              ...paymentConfig?.gateways,
-                              duitku: {
-                                ...paymentConfig?.gateways?.duitku,
-                                isProduction: checked,
-                              },
-                            },
-                          })
-                        }
-                      />
-                      <Label htmlFor="duitku-is-production">Mode Produksi</Label>
-                    </div>
-                    <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded-md">
-                      <p>
-                        <strong>Catatan:</strong> Pastikan Merchant Code dan API Key yang dimasukkan sudah benar. Untuk
-                        pengujian, gunakan mode Sandbox (nonaktifkan Mode Produksi).
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button onClick={savePaymentConfigSettings} disabled={isSavingPaymentConfig}>
-                {isSavingPaymentConfig ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Menyimpan...
-                  </>
-                ) : (
-                  "Simpan Konfigurasi"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="transactions">
           <Card>
             <CardHeader>
@@ -881,6 +765,122 @@ export default function PremiumSettings() {
                 </Table>
               </div>
             </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payment-gateways">
+          <Card>
+            <CardHeader>
+              <CardTitle>Konfigurasi Payment Gateways</CardTitle>
+              <CardDescription>Atur konfigurasi untuk berbagai payment gateways</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div>Memuat konfigurasi...</div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Duitku Settings */}
+                  <div>
+                    <h3 className="text-lg font-medium">Duitku</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="duitku-merchant-code">Merchant Code</Label>
+                      <Input
+                        id="duitku-merchant-code"
+                        value={paymentConfig?.gateways?.duitku?.merchantCode || ""}
+                        onChange={(e) =>
+                          setPaymentConfig({
+                            ...paymentConfig,
+                            gateways: {
+                              ...paymentConfig?.gateways,
+                              duitku: {
+                                ...paymentConfig?.gateways?.duitku,
+                                merchantCode: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="duitku-api-key">API Key</Label>
+                      <Input
+                        id="duitku-api-key"
+                        type="password"
+                        value={paymentConfig?.gateways?.duitku?.apiKey || ""}
+                        onChange={(e) =>
+                          setPaymentConfig({
+                            ...paymentConfig,
+                            gateways: {
+                              ...paymentConfig?.gateways,
+                              duitku: {
+                                ...paymentConfig?.gateways?.duitku,
+                                apiKey: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <Switch
+                        id="duitku-is-production"
+                        checked={paymentConfig?.gateways?.duitku?.isProduction !== false}
+                        onCheckedChange={(checked) =>
+                          setPaymentConfig({
+                            ...paymentConfig,
+                            gateways: {
+                              ...paymentConfig?.gateways,
+                              duitku: {
+                                ...paymentConfig?.gateways?.duitku,
+                                isProduction: checked,
+                              },
+                            },
+                          })
+                        }
+                      />
+                      <Label htmlFor="duitku-is-production">Mode Produksi</Label>
+                    </div>
+                    <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded-md">
+                      <p>
+                        <strong>Catatan:</strong> Pastikan Merchant Code dan API Key yang dimasukkan sudah benar. Untuk
+                        pengujian, gunakan mode Sandbox (nonaktifkan Mode Produksi).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button onClick={savePaymentConfigSettings} disabled={isSavingPaymentConfig}>
+                {isSavingPaymentConfig ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Konfigurasi"
+                )}
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

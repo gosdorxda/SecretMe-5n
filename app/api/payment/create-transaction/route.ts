@@ -94,6 +94,10 @@ export async function POST(request: NextRequest) {
       console.log("Using gateway config from database for", gatewayName)
     }
 
+    // Log the Duitku merchant code and API key being used
+    console.log("Duitku Merchant Code:", process.env.DUITKU_MERCHANT_CODE)
+    console.log("Duitku API Key:", process.env.DUITKU_API_KEY)
+
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
       userId: user.id,
