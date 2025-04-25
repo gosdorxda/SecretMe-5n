@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import type { PaymentGateway } from "@/lib/payment/types"
-import { createGateway } from "@/lib/payment/gateway-factory"
+import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 
 // Fungsi untuk membuat transaksi baru
 export async function createTransaction(gateway: string) {
@@ -65,7 +65,7 @@ export async function createTransaction(gateway: string) {
     const orderId = `ORDER-${session.user.id.substring(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
     // Buat gateway pembayaran
-    const paymentGateway: PaymentGateway = createGateway(gateway)
+    const paymentGateway: PaymentGateway = await getPaymentGateway(gateway)
 
     // URL untuk redirect setelah pembayaran
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
