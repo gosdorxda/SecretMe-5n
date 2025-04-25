@@ -71,7 +71,7 @@ export class MidtransGateway implements PaymentGateway {
           error: failureRedirectUrl,
           pending: pendingRedirectUrl,
         },
-        payment_type: "ovo", // Set payment method to OVO
+        payment_type: "qris", // Set payment method to QRIS
       }
 
       // Buat Basic Auth untuk Midtrans

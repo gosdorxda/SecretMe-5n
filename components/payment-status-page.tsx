@@ -69,7 +69,12 @@ export function PaymentStatusPage() {
     }
   }, [orderId])
 
-  // Jika tidak ada status atau order_id, jangan tampilkan apa-apa
+  // Tampilkan loading screen jika sedang memuat
+  if (isLoading) {
+    return <LoadingScreen message="Memeriksa status pembayaran..." />
+  }
+
+  // Jika tidak ada status atau order_id, tampilkan pesan kesalahan
   if (!status || !orderId) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -79,16 +84,14 @@ export function PaymentStatusPage() {
             <CardDescription>Informasi status pembayaran tidak tersedia.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p>Parameter status atau order_id tidak ditemukan.</p>
+            <p>
+              Parameter status atau order_id tidak ditemukan. Pastikan Anda mengakses halaman ini dengan benar setelah
+              melakukan pembayaran.
+            </p>
           </CardContent>
         </Card>
       </div>
     )
-  }
-
-  // Tampilkan loading screen jika sedang memuat
-  if (isLoading) {
-    return <LoadingScreen message="Memeriksa status pembayaran..." />
   }
 
   // Format jumlah uang
