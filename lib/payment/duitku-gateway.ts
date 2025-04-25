@@ -7,6 +7,7 @@ import {
   formatPaymentStatus,
 } from "./types"
 import { getPaymentConfig } from "./gateway-factory"
+import crypto from "crypto"
 
 export class DuitkuGateway implements PaymentGateway {
   name = "duitku"
@@ -50,7 +51,7 @@ export class DuitkuGateway implements PaymentGateway {
    * Membuat signature untuk request Duitku
    */
   private createSignature(merchantCode: string, amount: number, merchantOrderId: string): string {
-    const md5 = require("crypto").createHash("md5")
+    const md5 = crypto.createHash("md5")
     const signatureComponent = merchantCode + amount + merchantOrderId + this.apiKey
     return md5.update(signatureComponent).digest("hex")
   }
