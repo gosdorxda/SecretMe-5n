@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Process the notification with the gateway
+      console.log(`[${requestId}] ⚙️ Processing notification with gateway`)
       const result = await gateway.handleNotification(notificationData)
 
       // Extract important data

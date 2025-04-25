@@ -160,6 +160,14 @@ export class DuitkuGateway implements PaymentGateway {
   private generateSignature(amount: number, orderId: string): string {
     const signatureString = this.merchantCode + orderId + amount + this.apiKey
     const hash = crypto.createHash("md5").update(signatureString).digest("hex")
+    console.log("Generated Duitku signature:", {
+      merchantCode: this.merchantCode,
+      orderId: orderId,
+      amount: amount,
+      apiKey: this.apiKey,
+      signatureString: signatureString,
+      signature: hash,
+    })
     return hash
   }
 
@@ -295,7 +303,7 @@ export class DuitkuGateway implements PaymentGateway {
         return {
           orderId: merchantOrderId,
           status: verificationResult.status,
-          isSuccess: verificationResult.status === "success",
+          isSuccess: verificationResult.isSuccess,
           amount: Number(verificationResult.amount || payload.amount || 0),
           paymentMethod: verificationResult.paymentMethod || payload.paymentCode || "unknown",
           details: verificationResult.details || payload,
