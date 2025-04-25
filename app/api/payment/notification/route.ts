@@ -109,7 +109,9 @@ export async function POST(request: NextRequest) {
       console.log(`[${requestId}] 🎊 User ${transaction.user_id} is now premium!`)
     }
 
-    console.log(`[${requestId}] ✅ Notification processing completed successfully`)
+    console.log(
+      `[${requestId}] ✅ Notification processing completed successfully. Payment Method: ${result.paymentMethod}`,
+    )
     return NextResponse.json({
       success: true,
       message: `Transaction ${orderId} updated to ${newStatus}`,

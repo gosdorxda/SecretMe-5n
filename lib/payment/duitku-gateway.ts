@@ -87,7 +87,7 @@ export class DuitkuGateway implements PaymentGateway {
         returnUrl: successRedirectUrl,
         expiryPeriod: 60, // 60 menit
         signature: signature,
-        paymentMethod: "VA", // Add default payment method
+        // paymentMethod: "VA", // Remove default payment method
       }
 
       console.log("Sending request to Duitku API:", {
@@ -206,6 +206,15 @@ export class DuitkuGateway implements PaymentGateway {
         status = "failed"
       }
 
+      console.log("Duitku Verify Transaction Details:", {
+        orderId: orderId,
+        statusCode: data.statusCode,
+        statusMessage: data.statusMessage,
+        amount: data.amount,
+        paymentMethod: data.paymentCode,
+        details: data,
+      })
+
       return {
         isValid: true,
         status: formatPaymentStatus(status),
@@ -233,6 +242,15 @@ export class DuitkuGateway implements PaymentGateway {
       if (!isValid) {
         throw new Error("Invalid transaction in notification")
       }
+
+      console.log("Duitku Handle Notification Details:", {
+        orderId: payload.merchantOrderId,
+        statusCode: payload.statusCode,
+        statusMessage: payload.statusMessage,
+        amount: Number(amount),
+        paymentMethod: paymentMethod,
+        details: details,
+      })
 
       return {
         orderId: payload.merchantOrderId,

@@ -1,8 +1,10 @@
 "use client"
 
+import { CardFooter } from "@/components/ui/card"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { getClientGateway } from "@/lib/payment/client-gateway"
@@ -42,11 +44,11 @@ export function PremiumClient({ isLoggedIn, isPremium, userName, premiumPrice }:
         return
       }
 
-      // Redirect to payment page
-      if (result.redirectUrl) {
-        window.location.href = result.redirectUrl
+      // Redirect to payment status page
+      if (result.orderId) {
+        router.push(`/payment-status?order_id=${result.orderId}`)
       } else {
-        setError("No redirect URL provided")
+        setError("No order ID provided")
       }
     } catch (error: any) {
       console.error("Error purchasing premium:", error)

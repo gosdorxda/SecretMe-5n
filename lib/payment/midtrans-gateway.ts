@@ -149,6 +149,14 @@ export class MidtransGateway implements PaymentGateway {
         status = "failed"
       }
 
+      console.log("Midtrans Verify Transaction Details:", {
+        orderId: orderId,
+        transactionStatus: data.transaction_status,
+        paymentType: data.payment_type,
+        grossAmount: data.gross_amount,
+        details: data,
+      })
+
       return {
         isValid: true,
         status: formatPaymentStatus(status),
@@ -176,6 +184,14 @@ export class MidtransGateway implements PaymentGateway {
       if (!isValid) {
         throw new Error("Invalid transaction in notification")
       }
+
+      console.log("Midtrans Handle Notification Details:", {
+        orderId: payload.order_id,
+        transactionStatus: payload.transaction_status,
+        paymentType: paymentMethod,
+        grossAmount: Number(amount),
+        details: details,
+      })
 
       return {
         orderId: payload.order_id,
