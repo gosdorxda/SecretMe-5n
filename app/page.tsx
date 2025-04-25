@@ -410,8 +410,8 @@ export default function Home() {
                 <div className="bg-white p-4 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-2xl font-bold">Rp 499.000</span>
-                      <span className="text-lg line-through text-gray-500 ml-2">Rp 799.000</span>
+                      <span className="text-2xl font-bold">Rp 16.500</span>
+                      <span className="text-lg line-through text-gray-500 ml-2">Rp 49.000</span>
                     </div>
                     <div className="inline-flex items-center justify-center rounded-[var(--border-radius)] border-2 border-[var(--border)] px-2.5 py-0.5 text-xs font-semibold bg-red-500 text-white">
                       Hemat 38%
