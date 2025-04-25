@@ -1,206 +1,354 @@
 "use client"
 
-import { CardFooter } from "@/components/ui/card"
-
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { getClientGateway } from "@/lib/payment/client-gateway"
 import Image from "next/image"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
+import { LoadingDots } from "@/components/loading-dots"
+import { createTransaction } from "./actions"
 
-interface PremiumClientProps {
-  isLoggedIn: boolean
-  isPremium: boolean
-  userName: string
-  premiumPrice: number
-}
-
-export function PremiumClient({ isLoggedIn, isPremium, userName, premiumPrice }: PremiumClientProps) {
+export function PremiumClient() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("duitku")
   const router = useRouter()
+  const { toast } = useToast()
 
-  const handlePurchase = async () => {
+  // Fungsi untuk menangani pembayaran
+  const handlePayment = async () => {
     try {
       setIsLoading(true)
       setError(null)
 
-      if (!isLoggedIn) {
-        router.push("/login?redirect=/premium")
-        return
-      }
-
-      // Use the client gateway to create a transaction
-      const gateway = getClientGateway()
-      const result = await gateway.createTransaction({
-        amount: premiumPrice,
-        description: "SecretMe Premium Lifetime",
-      })
+      // Panggil server action untuk membuat transaksi
+      const result = await createTransaction(selectedPaymentMethod)
 
       if (!result.success) {
-        setError(result.error || "Failed to create payment transaction")
+        setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
+        setIsLoading(false)
         return
       }
 
-      // Redirect to payment status page
-      if (result.orderId) {
-        router.push(`/payment-status?order_id=${result.orderId}`)
+      // PENTING: Redirect ke URL pembayaran dari gateway, bukan ke halaman status
+      if (result.redirectUrl) {
+        // Redirect ke URL pembayaran dari gateway
+        window.location.href = result.redirectUrl
       } else {
-        setError("No order ID provided")
+        // Jika tidak ada redirectUrl, tampilkan pesan error
+        setError("Tidak mendapatkan URL pembayaran dari gateway")
+        setIsLoading(false)
       }
     } catch (error: any) {
-      console.error("Error purchasing premium:", error)
-      setError(error.message || "An error occurred")
-    } finally {
+      console.error("Error processing payment:", error)
+      setError(error.message || "Terjadi kesalahan saat memproses pembayaran")
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="container max-w-6xl py-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Upgrade to Premium</h1>
-        <p className="mt-2 text-muted-foreground">
-          Unlock all premium features and support the development of SecretMe
-        </p>
-      </div>
-
-      <div className="grid gap-8 md:grid-cols-2">
-        <Card>
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Free</CardTitle>
-            <CardDescription>Basic features for personal use</CardDescription>
-            <div className="mt-4 text-3xl font-bold">Rp 0</div>
+            <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
+            <CardDescription>
+              Nikmati fitur premium tanpa batasan dan tingkatkan pengalaman Anda dengan SecretMe
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Unlimited messages</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Basic profile customization</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Standard support</span>
-              </li>
-            </ul>
+            <div className="grid gap-6">
+              <div className="bg-muted/50 p-6 rounded-lg">
+                <h3 className="text-xl font-semibold mb-4">Keuntungan Premium</h3>
+                <ul className="space-y-2">
+                  <li className="flex items-start">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Tanpa iklan dan gangguan</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Akses ke semua fitur eksklusif</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Prioritas dukungan pelanggan</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Penyimpanan pesan tanpa batas</span>
+                  </li>
+                  <li className="flex items-start">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span>Fitur balasan publik</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border rounded-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold">Premium Lifetime</h3>
+                    <p className="text-muted-foreground">Akses seumur hidup, bayar sekali</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold">Rp 49.000</div>
+                    <div className="text-sm text-muted-foreground">Harga sudah termasuk pajak</div>
+                  </div>
+                </div>
+
+                <Tabs defaultValue="duitku" className="w-full">
+                  <TabsList className="grid grid-cols-2 mb-4">
+                    <TabsTrigger value="duitku" onClick={() => setSelectedPaymentMethod("duitku")}>
+                      Duitku
+                    </TabsTrigger>
+                    <TabsTrigger value="midtrans" onClick={() => setSelectedPaymentMethod("midtrans")}>
+                      Midtrans
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="duitku" className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/bca.png"
+                          alt="BCA"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/mandiri.png"
+                          alt="Mandiri"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/bni.png"
+                          alt="BNI"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/bri.png"
+                          alt="BRI"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/permata.png"
+                          alt="Permata"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/cimb.png"
+                          alt="CIMB"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/alfamart.png"
+                          alt="Alfamart"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/dana.png"
+                          alt="DANA"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/linkaja.png"
+                          alt="LinkAja"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/ovo.png"
+                          alt="OVO"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/shopeepay.png"
+                          alt="ShopeePay"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/qris.png"
+                          alt="QRIS"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="midtrans" className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/visa.png"
+                          alt="Visa"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/bca.png"
+                          alt="BCA"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/mandiri.png"
+                          alt="Mandiri"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/bni.png"
+                          alt="BNI"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/bri.png"
+                          alt="BRI"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                      <div className="border rounded p-2 flex justify-center items-center">
+                        <Image
+                          src="/payment-icons/permata.png"
+                          alt="Permata"
+                          width={60}
+                          height={30}
+                          className="h-8 w-auto object-contain"
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+              </div>
+            </div>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full" disabled>
-              Current Plan
+            <Button onClick={handlePayment} disabled={isLoading} className="w-full">
+              {isLoading ? <LoadingDots /> : "Lanjutkan ke Pembayaran"}
             </Button>
           </CardFooter>
         </Card>
-
-        <Card className="border-primary">
-          <CardHeader>
-            <CardTitle className="text-primary">Premium</CardTitle>
-            <CardDescription>Enhanced features for power users</CardDescription>
-            <div className="mt-4 text-3xl font-bold">Rp {premiumPrice.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">One-time payment, lifetime access</div>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>All Free features</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Advanced profile customization</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Priority support</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>No ads</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Premium badge</span>
-              </li>
-              <li className="flex items-center">
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Early access to new features</span>
-              </li>
-            </ul>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            {isPremium ? (
-              <Button className="w-full" disabled>
-                You are Premium
-              </Button>
-            ) : (
-              <Button className="w-full" onClick={handlePurchase} disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  "Upgrade Now"
-                )}
-              </Button>
-            )}
-
-            {error && <div className="text-sm text-red-500">{error}</div>}
-
-            <div className="mt-4 grid grid-cols-5 gap-2">
-              <Image
-                src="/payment-icons/bca.png"
-                alt="BCA"
-                width={40}
-                height={20}
-                className="h-6 w-auto object-contain"
-              />
-              <Image
-                src="/payment-icons/mandiri.png"
-                alt="Mandiri"
-                width={40}
-                height={20}
-                className="h-6 w-auto object-contain"
-              />
-              <Image
-                src="/payment-icons/bni.png"
-                alt="BNI"
-                width={40}
-                height={20}
-                className="h-6 w-auto object-contain"
-              />
-              <Image
-                src="/payment-icons/qris.png"
-                alt="QRIS"
-                width={40}
-                height={20}
-                className="h-6 w-auto object-contain"
-              />
-              <Image
-                src="/payment-icons/dana.png"
-                alt="DANA"
-                width={40}
-                height={20}
-                className="h-6 w-auto object-contain"
-              />
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
-
-      <div className="mt-8">
-        <div className="rounded-lg bg-muted p-4">
-          <h3 className="text-lg font-medium">Secure Payment</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            All payments are processed securely through our payment partners. Your payment information is never stored
-            on our servers.
-          </p>
-        </div>
       </div>
     </div>
   )
