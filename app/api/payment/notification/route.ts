@@ -103,6 +103,19 @@ export async function POST(request: NextRequest) {
         console.log(`[${requestId}] ⏳ Payment pending. Status remains 'pending'`)
       }
 
+      // Ensure payment details is not null or undefined
+      const paymentDetailsToSave = result.details || {}
+      console.log(
+        `[${requestId}] 🔍 Payment details type:`,
+        typeof paymentDetailsToSave,
+        "Is array:",
+        Array.isArray(paymentDetailsToSave),
+        "Is null:",
+        paymentDetailsToSave === null,
+        "Keys:",
+        Object.keys(paymentDetailsToSave || {}).length,
+      )
+
       // Update transaction in database
       console.log(
         `[${requestId}] 📝 Updating transaction ${transaction.id} status from '${transaction.status}' to '${newStatus}'`,
@@ -116,6 +129,8 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", transaction.id)
+
+      console.log(`[${requestId}] 📊 Payment details being saved:`, JSON.stringify(result.details))
 
       if (updateError) {
         console.error(`[${requestId}] ❌ Failed to update transaction:`, updateError)
@@ -186,6 +201,19 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Transaction not found", order_id: orderId }, { status: 404 })
         }
 
+        // Ensure notification data is not null or undefined
+        const paymentDetailsToSave = notificationData || {}
+        console.log(
+          `[${requestId}] 🔍 Fallback payment details type:`,
+          typeof paymentDetailsToSave,
+          "Is array:",
+          Array.isArray(paymentDetailsToSave),
+          "Is null:",
+          paymentDetailsToSave === null,
+          "Keys:",
+          Object.keys(paymentDetailsToSave || {}).length,
+        )
+
         // Update transaction in database
         console.log(`[${requestId}] 📝 Updating transaction ${transaction.id} status to '${status}'`)
         const { error: updateError } = await supabase
@@ -197,6 +225,8 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", transaction.id)
+
+        console.log(`[${requestId}] 📊 Fallback payment details being saved:`, JSON.stringify(notificationData))
 
         if (updateError) {
           console.error(`[${requestId}] ❌ Failed to update transaction:`, updateError)

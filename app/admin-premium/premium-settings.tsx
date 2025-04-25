@@ -229,6 +229,22 @@ export default function PremiumSettings() {
         user_name: item.users?.name,
       }))
 
+      // Tambahkan logging untuk memeriksa data yang diambil:
+      console.log("Fetched transactions:", transformedData)
+      // Periksa apakah payment_details ada dan valid
+      transformedData.forEach((transaction, index) => {
+        console.log(
+          `Transaction ${index} payment_details:`,
+          transaction.payment_details,
+          "Type:",
+          typeof transaction.payment_details,
+          "Is null:",
+          transaction.payment_details === null,
+          "Is empty object:",
+          Object.keys(transaction.payment_details || {}).length === 0,
+        )
+      })
+
       setTransactions(transformedData)
       setFilteredTransactions(transformedData)
       setTransactionCount(count || 0)
@@ -575,7 +591,19 @@ export default function PremiumSettings() {
 
       if (error) throw error
 
-      console.log("Transaction details:", data) // Untuk debugging
+      // Tambahkan di fungsi openTransactionDetails atau fungsi serupa
+      console.log("Selected transaction:", data)
+      console.log(
+        "Payment details:",
+        data.payment_details,
+        "Type:",
+        typeof data.payment_details,
+        "Is null:",
+        data.payment_details === null,
+        "Is empty object:",
+        Object.keys(data.payment_details || {}).length === 0,
+      )
+
       setSelectedTransaction(data)
       setIsDialogOpen(true)
     } catch (error: any) {
@@ -1484,190 +1512,200 @@ export default function PremiumSettings() {
                   <div className="border-t pt-4">
                     <h3 className="font-medium mb-3">Detail Pembayaran</h3>
                     <div className="bg-gray-50 rounded-md p-4 overflow-x-auto">
-                      {Object.keys(selectedTransaction.payment_details).length > 0 ? (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Payment Type */}
-                            {selectedTransaction.payment_details.payment_type && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Tipe Pembayaran</h4>
-                                <p className="text-sm">{selectedTransaction.payment_details.payment_type}</p>
-                              </div>
-                            )}
-
-                            {/* Transaction Time */}
-                            {selectedTransaction.payment_details.transaction_time && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Waktu Transaksi</h4>
-                                <p className="text-sm">
-                                  {new Date(selectedTransaction.payment_details.transaction_time).toLocaleString(
-                                    "id-ID",
-                                  )}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Settlement Time */}
-                            {selectedTransaction.payment_details.settlement_time && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Waktu Settlement</h4>
-                                <p className="text-sm">
-                                  {new Date(selectedTransaction.payment_details.settlement_time).toLocaleString(
-                                    "id-ID",
-                                  )}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Expiry Time */}
-                            {selectedTransaction.payment_details.expiry_time && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Waktu Kadaluarsa</h4>
-                                <p className="text-sm">
-                                  {new Date(selectedTransaction.payment_details.expiry_time).toLocaleString("id-ID")}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Transaction Status */}
-                            {selectedTransaction.payment_details.transaction_status && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Status Transaksi</h4>
-                                <p className="text-sm">{selectedTransaction.payment_details.transaction_status}</p>
-                              </div>
-                            )}
-
-                            {/* Fraud Status */}
-                            {selectedTransaction.payment_details.fraud_status && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Status Fraud</h4>
-                                <p className="text-sm">{selectedTransaction.payment_details.fraud_status}</p>
-                              </div>
-                            )}
-
-                            {/* Status Code */}
-                            {selectedTransaction.payment_details.status_code && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Kode Status</h4>
-                                <p className="text-sm">{selectedTransaction.payment_details.status_code}</p>
-                              </div>
-                            )}
-
-                            {/* Status Message */}
-                            {selectedTransaction.payment_details.status_message && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Pesan Status</h4>
-                                <p className="text-sm">{selectedTransaction.payment_details.status_message}</p>
-                              </div>
-                            )}
-
-                            {/* Merchant ID */}
-                            {selectedTransaction.payment_details.merchant_id && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">ID Merchant</h4>
-                                <p className="text-sm font-mono">{selectedTransaction.payment_details.merchant_id}</p>
-                              </div>
-                            )}
-
-                            {/* Currency */}
-                            {selectedTransaction.payment_details.currency && (
-                              <div>
-                                <h4 className="text-xs font-medium text-muted-foreground">Mata Uang</h4>
-                                <p className="text-sm">{selectedTransaction.payment_details.currency}</p>
-                              </div>
-                            )}
+                      {!selectedTransaction.payment_details ||
+                      Object.keys(selectedTransaction.payment_details).length === 0 ? (
+                        <div className="text-center py-4 text-gray-500">
+                          <p>Detail pembayaran tidak tersedia.</p>
+                          <p className="text-sm mt-2">Kemungkinan penyebab:</p>
+                          <ul className="text-sm list-disc list-inside mt-1">
+                            <li>Callback dari payment gateway belum diterima</li>
+                            <li>Terjadi error saat menyimpan detail pembayaran</li>
+                            <li>Format data tidak sesuai</li>
+                          </ul>
+                          <div className="mt-4">
+                            <details className="text-left">
+                              <summary className="cursor-pointer text-blue-500 hover:text-blue-700">Debug Info</summary>
+                              <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                                {JSON.stringify(
+                                  {
+                                    transaction_id: selectedTransaction.id,
+                                    payment_details: selectedTransaction.payment_details,
+                                    payment_details_type: typeof selectedTransaction.payment_details,
+                                    is_null: selectedTransaction.payment_details === null,
+                                    is_undefined: selectedTransaction.payment_details === undefined,
+                                  },
+                                  null,
+                                  2,
+                                )}
+                              </pre>
+                            </details>
                           </div>
-
-                          {/* Virtual Account Numbers */}
-                          {selectedTransaction.payment_details.va_numbers &&
-                            selectedTransaction.payment_details.va_numbers.length > 0 && (
-                              <div className="mt-4 border-t pt-3">
-                                <h4 className="text-xs font-medium text-muted-foreground mb-2">Virtual Account</h4>
-                                {selectedTransaction.payment_details.va_numbers.map((va, index) => (
-                                  <div key={index} className="flex items-center gap-2 mb-1">
-                                    <span className="text-sm font-medium">{va.bank.toUpperCase()}:</span>
-                                    <span className="text-sm font-mono">{va.va_number}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                          {/* Permata VA */}
-                          {selectedTransaction.payment_details.permata_va_number && (
-                            <div className="mt-4 border-t pt-3">
-                              <h4 className="text-xs font-medium text-muted-foreground mb-2">
-                                Permata Virtual Account
-                              </h4>
-                              <span className="text-sm font-mono">
-                                {selectedTransaction.payment_details.permata_va_number}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Bill Payment */}
-                          {selectedTransaction.payment_details.bill_key &&
-                            selectedTransaction.payment_details.biller_code && (
-                              <div className="mt-4 border-t pt-3">
-                                <h4 className="text-xs font-medium text-muted-foreground mb-2">Mandiri Bill Payment</h4>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <span className="text-xs text-muted-foreground">Biller Code:</span>
-                                    <span className="text-sm font-mono ml-1">
-                                      {selectedTransaction.payment_details.biller_code}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-xs text-muted-foreground">Bill Key:</span>
-                                    <span className="text-sm font-mono ml-1">
-                                      {selectedTransaction.payment_details.bill_key}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                          {/* Payment Code (Alfamart/Indomaret) */}
-                          {selectedTransaction.payment_details.payment_code && (
-                            <div className="mt-4 border-t pt-3">
-                              <h4 className="text-xs font-medium text-muted-foreground mb-2">Kode Pembayaran</h4>
-                              <span className="text-sm font-mono">
-                                {selectedTransaction.payment_details.payment_code}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* QR String */}
-                          {selectedTransaction.payment_details.qr_string && (
-                            <div className="mt-4 border-t pt-3">
-                              <h4 className="text-xs font-medium text-muted-foreground mb-2">QRIS Data</h4>
-                              <div className="max-w-full overflow-hidden">
-                                <p className="text-xs font-mono truncate">
-                                  {selectedTransaction.payment_details.qr_string}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </>
+                        </div>
                       ) : (
-                        <div className="text-center py-4">
-                          <div className="text-amber-600 mb-2">
-                            <AlertCircle className="h-8 w-8 mx-auto" />
-                          </div>
-                          <p className="text-muted-foreground">Detail pembayaran kosong</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Ini mungkin terjadi karena callback dari payment gateway belum diterima atau data tidak
-                            tersimpan dengan benar
-                          </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Payment Type */}
+                          {selectedTransaction.payment_details.payment_type && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Tipe Pembayaran</p>
+                              <p>{selectedTransaction.payment_details.payment_type}</p>
+                            </div>
+                          )}
+
+                          {/* Transaction Time */}
+                          {selectedTransaction.payment_details.transaction_time && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Waktu Transaksi</h4>
+                              <p className="text-sm">
+                                {new Date(selectedTransaction.payment_details.transaction_time).toLocaleString("id-ID")}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Settlement Time */}
+                          {selectedTransaction.payment_details.settlement_time && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Waktu Settlement</h4>
+                              <p className="text-sm">
+                                {new Date(selectedTransaction.payment_details.settlement_time).toLocaleString("id-ID")}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Expiry Time */}
+                          {selectedTransaction.payment_details.expiry_time && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Waktu Kadaluarsa</h4>
+                              <p className="text-sm">
+                                {new Date(selectedTransaction.payment_details.expiry_time).toLocaleString("id-ID")}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Transaction Status */}
+                          {selectedTransaction.payment_details.transaction_status && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Status Transaksi</h4>
+                              <p className="text-sm">{selectedTransaction.payment_details.transaction_status}</p>
+                            </div>
+                          )}
+
+                          {/* Fraud Status */}
+                          {selectedTransaction.payment_details.fraud_status && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Status Fraud</h4>
+                              <p className="text-sm">{selectedTransaction.payment_details.fraud_status}</p>
+                            </div>
+                          )}
+
+                          {/* Status Code */}
+                          {selectedTransaction.payment_details.status_code && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Kode Status</h4>
+                              <p className="text-sm">{selectedTransaction.payment_details.status_code}</p>
+                            </div>
+                          )}
+
+                          {/* Status Message */}
+                          {selectedTransaction.payment_details.status_message && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Pesan Status</h4>
+                              <p className="text-sm">{selectedTransaction.payment_details.status_message}</p>
+                            </div>
+                          )}
+
+                          {/* Merchant ID */}
+                          {selectedTransaction.payment_details.merchant_id && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">ID Merchant</h4>
+                              <p className="text-sm font-mono">{selectedTransaction.payment_details.merchant_id}</p>
+                            </div>
+                          )}
+
+                          {/* Currency */}
+                          {selectedTransaction.payment_details.currency && (
+                            <div>
+                              <h4 className="text-xs font-medium text-muted-foreground">Mata Uang</h4>
+                              <p className="text-sm">{selectedTransaction.payment_details.currency}</p>
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {/* Debug Info */}
-                      <div className="mt-6 pt-4 border-t">
-                        <details className="text-xs">
-                          <summary className="font-medium text-muted-foreground cursor-pointer">Debug Info</summary>
-                          <div className="mt-2 p-2 bg-gray-100 rounded overflow-auto max-h-40">
-                            <pre>{JSON.stringify(selectedTransaction.payment_details, null, 2)}</pre>
+                      {/* Virtual Account Numbers */}
+                      {selectedTransaction.payment_details?.va_numbers &&
+                        selectedTransaction.payment_details.va_numbers.length > 0 && (
+                          <div className="mt-4 border-t pt-3">
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Virtual Account</h4>
+                            {selectedTransaction.payment_details.va_numbers.map((va, index) => (
+                              <div key={index} className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium">{va.bank.toUpperCase()}:</span>
+                                <span className="text-sm font-mono">{va.va_number}</span>
+                              </div>
+                            ))}
                           </div>
+                        )}
+
+                      {/* Permata VA */}
+                      {selectedTransaction.payment_details?.permata_va_number && (
+                        <div className="mt-4 border-t pt-3">
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">Permata Virtual Account</h4>
+                          <span className="text-sm font-mono">
+                            {selectedTransaction.payment_details.permata_va_number}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Bill Payment */}
+                      {selectedTransaction.payment_details?.bill_key &&
+                        selectedTransaction.payment_details?.biller_code && (
+                          <div className="mt-4 border-t pt-3">
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">Mandiri Bill Payment</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-xs text-muted-foreground">Biller Code:</span>
+                                <span className="text-sm font-mono ml-1">
+                                  {selectedTransaction.payment_details.biller_code}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-xs text-muted-foreground">Bill Key:</span>
+                                <span className="text-sm font-mono ml-1">
+                                  {selectedTransaction.payment_details.bill_key}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* Payment Code (Alfamart/Indomaret) */}
+                      {selectedTransaction.payment_details?.payment_code && (
+                        <div className="mt-4 border-t pt-3">
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">Kode Pembayaran</h4>
+                          <span className="text-sm font-mono">{selectedTransaction.payment_details.payment_code}</span>
+                        </div>
+                      )}
+
+                      {/* QR String */}
+                      {selectedTransaction.payment_details?.qr_string && (
+                        <div className="mt-4 border-t pt-3">
+                          <h4 className="text-xs font-medium text-muted-foreground mb-2">QRIS Data</h4>
+                          <div className="max-w-full overflow-hidden">
+                            <p className="text-xs font-mono truncate">
+                              {selectedTransaction.payment_details.qr_string}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add a debug section */}
+                      <div className="col-span-1 md:col-span-2 mt-4">
+                        <details>
+                          <summary className="cursor-pointer text-blue-500 hover:text-blue-700 text-sm">
+                            Lihat Data Mentah
+                          </summary>
+                          <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-60">
+                            {JSON.stringify(selectedTransaction.payment_details, null, 2)}
+                          </pre>
                         </details>
                       </div>
                     </div>
