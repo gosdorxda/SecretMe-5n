@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react"
+import { LoadingScreen } from "@/components/loading-screen"
 
 interface Transaction {
   id: string
@@ -70,7 +71,24 @@ export function PaymentStatusPage() {
 
   // Jika tidak ada status atau order_id, jangan tampilkan apa-apa
   if (!status || !orderId) {
-    return null
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Status Pembayaran</CardTitle>
+            <CardDescription>Informasi status pembayaran tidak tersedia.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Parameter status atau order_id tidak ditemukan.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Tampilkan loading screen jika sedang memuat
+  if (isLoading) {
+    return <LoadingScreen message="Memeriksa status pembayaran..." />
   }
 
   // Format jumlah uang
