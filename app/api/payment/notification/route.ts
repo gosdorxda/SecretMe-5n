@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const gateway = await getPaymentGateway(gatewayName)
 
     // Extract order ID for error handling
-    const orderId = notificationData.merchantOrderId || "unknown"
+    const orderId = notificationData.merchantOrderId || notificationData.order_id || "unknown"
 
     try {
       // Process the notification with the gateway

@@ -268,7 +268,7 @@ export class DuitkuGateway implements PaymentGateway {
       console.log("Handling Duitku notification:", JSON.stringify(payload))
 
       // Extract merchantOrderId from payload
-      const merchantOrderId = payload.merchantOrderId
+      const merchantOrderId = payload.merchantOrderId || payload.order_id
 
       if (!merchantOrderId) {
         console.error("Missing merchantOrderId in notification payload")
@@ -276,6 +276,9 @@ export class DuitkuGateway implements PaymentGateway {
       }
 
       console.log(`Processing notification for order ID: ${merchantOrderId}`)
+
+      // Log the payload
+      console.log("Duitku notification payload:", JSON.stringify(payload, null, 2))
 
       // Attempt to verify transaction with Duitku
       const verificationResult = await this.verifyTransaction(merchantOrderId)
