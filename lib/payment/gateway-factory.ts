@@ -83,11 +83,14 @@ export async function getPaymentConfig() {
 export async function savePaymentConfig(config: any) {
   const supabase = createClient()
 
-  const { error } = await supabase.from("site_config").upsert({
-    type: "payment_gateway_config",
-    config: config,
-    updated_at: new Date().toISOString(),
-  })
+  const { error } = await supabase.from("site_config").upsert(
+    {
+      type: "payment_gateway_config",
+      config: config,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "type" },
+  )
 
   if (error) {
     console.error("Error saving payment config:", error)
