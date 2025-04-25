@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { getMidtransCoreApiUrl, getMidtransAuthHeader } from "@/lib/midtrans"
+import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 
 export async function POST(request: NextRequest) {
   // Generate unique request ID for tracking this notification
-  const requestId = `midtrans-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
-  console.log(`[${requestId}] 🔔 MIDTRANS NOTIFICATION RECEIVED`)
+  const requestId = `payment-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
+  console.log(`[${requestId}] 🔔 PAYMENT NOTIFICATION RECEIVED`)
 
   try {
     // Log request headers
@@ -16,48 +16,24 @@ export async function POST(request: NextRequest) {
     const notificationData = await request.json()
     console.log(`[${requestId}] 📦 Payload:`, JSON.stringify(notificationData))
 
+    // Determine which gateway to use based on the notification data
+    // This could be determined by headers, payload structure, or a query parameter
+    const gatewayName = "duitku" // Default to Duitku
+
+    // Get the appropriate payment gateway
+    const gateway = await getPaymentGateway(gatewayName)
+
+    // Process the notification with the gateway
+    const result = await gateway.handleNotification(notificationData)
+
     // Extract important data
-    const orderId = notificationData.order_id || "unknown"
-    const transactionStatus = notificationData.transaction_status
-    const fraudStatus = notificationData.fraud_status
-    const paymentType = notificationData.payment_type
-    const grossAmount = notificationData.gross_amount
+    const orderId = result.orderId
+    const paymentStatus = result.status
+    const isSuccess = result.isSuccess
 
     console.log(
-      `[${requestId}] 🧾 Transaction details - OrderID: ${orderId}, Status: ${transactionStatus}, Payment: ${paymentType}, Amount: ${grossAmount}`,
+      `[${requestId}] 🧾 Transaction details - OrderID: ${orderId}, Status: ${paymentStatus}, Success: ${isSuccess}`,
     )
-
-    // Skip processing for test notifications
-    if (orderId.includes("payment_notif_test")) {
-      console.log(`[${requestId}] ⚠️ Skipping test notification: ${orderId}`)
-      return NextResponse.json({ success: true, message: "Test notification received" })
-    }
-
-    // Verify transaction with Midtrans
-    try {
-      const statusUrl = `${getMidtransCoreApiUrl()}/v2/${orderId}/status`
-      console.log(`[${requestId}] 🔍 Verifying transaction with Midtrans - URL: ${statusUrl}`)
-
-      const response = await fetch(statusUrl, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: getMidtransAuthHeader(),
-        },
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`[${requestId}] ❌ Failed to verify transaction with Midtrans: ${response.status} - ${errorText}`)
-        return NextResponse.json({ error: "Failed to verify transaction with Midtrans" }, { status: 500 })
-      }
-
-      const transactionData = await response.json()
-      console.log(`[${requestId}] ✅ Transaction verified with Midtrans:`, JSON.stringify(transactionData))
-    } catch (error) {
-      console.error(`[${requestId}] ❌ Error verifying transaction with Midtrans:`, error)
-      // Continue processing even if verification fails
-    }
 
     // Find transaction in database
     console.log(`[${requestId}] 🔍 Looking up transaction in database for order_id: ${orderId}`)
@@ -81,16 +57,14 @@ export async function POST(request: NextRequest) {
     let newStatus = transaction.status
     let isPremium = false
 
-    if (transactionStatus === "capture" || transactionStatus === "settlement") {
-      if (fraudStatus === "accept" || fraudStatus === undefined) {
-        newStatus = "success"
-        isPremium = true
-        console.log(`[${requestId}] 🎉 Payment successful! Setting status to 'success'`)
-      }
-    } else if (transactionStatus === "cancel" || transactionStatus === "deny" || transactionStatus === "expire") {
+    if (paymentStatus === "success") {
+      newStatus = "success"
+      isPremium = true
+      console.log(`[${requestId}] 🎉 Payment successful! Setting status to 'success'`)
+    } else if (paymentStatus === "failed" || paymentStatus === "expired") {
       newStatus = "failed"
-      console.log(`[${requestId}] ❌ Payment failed or cancelled. Setting status to 'failed'`)
-    } else if (transactionStatus === "pending") {
+      console.log(`[${requestId}] ❌ Payment failed or expired. Setting status to 'failed'`)
+    } else if (paymentStatus === "pending") {
       newStatus = "pending"
       console.log(`[${requestId}] ⏳ Payment pending. Status remains 'pending'`)
     }
@@ -103,8 +77,8 @@ export async function POST(request: NextRequest) {
       .from("premium_transactions")
       .update({
         status: newStatus,
-        payment_method: paymentType,
-        payment_details: notificationData,
+        payment_method: result.paymentMethod,
+        payment_details: result.details,
         updated_at: new Date().toISOString(),
       })
       .eq("id", transaction.id)
@@ -142,7 +116,7 @@ export async function POST(request: NextRequest) {
       requestId: requestId,
     })
   } catch (error) {
-    console.error(`[${requestId}] 💥 Unhandled error processing Midtrans notification:`, error)
+    console.error(`[${requestId}] 💥 Unhandled error processing payment notification:`, error)
     return NextResponse.json({ error: "Internal server error", requestId: requestId }, { status: 500 })
   }
 }

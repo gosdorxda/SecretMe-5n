@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { generateOrderId, getMidtransSnapApiUrl, MIDTRANS_CONFIG, getMidtransAuthHeader } from "@/lib/midtrans"
+import { getPaymentGateway } from "@/lib/payment/gateway-factory"
+import { generateOrderId } from "@/lib/payment/types"
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +32,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User already premium" }, { status: 400 })
     }
 
+    // Ambil data dari request
+    const requestData = await request.json()
+    const gatewayName = requestData.gateway || "duitku" // Default ke Duitku jika tidak ada
+
+    // Ambil konfigurasi harga premium
+    const { data: configData } = await supabase
+      .from("site_config")
+      .select("config")
+      .eq("type", "premium_settings")
+      .single()
+
+    const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+
     // Generate order ID
     const orderId = generateOrderId(user.id)
 
@@ -38,8 +52,9 @@ export async function POST(request: NextRequest) {
     const { error: transactionError } = await supabase.from("premium_transactions").insert({
       user_id: user.id,
       plan_id: orderId,
-      amount: MIDTRANS_CONFIG.premiumPrice,
+      amount: premiumPrice,
       status: "pending",
+      payment_gateway: gatewayName,
     })
 
     if (transactionError) {
@@ -47,90 +62,53 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create transaction" }, { status: 500 })
     }
 
-    // Buat transaksi di Midtrans menggunakan Snap API
-    const snapApiUrl = getMidtransSnapApiUrl()
-    console.log("Using Midtrans Snap API URL:", snapApiUrl)
-    console.log("Server Key (first 4 chars):", MIDTRANS_CONFIG.serverKey.substring(0, 4))
+    // Dapatkan gateway pembayaran
+    const gateway = await getPaymentGateway(gatewayName)
 
-    const transactionDetails = {
-      transaction_details: {
-        order_id: orderId,
-        gross_amount: MIDTRANS_CONFIG.premiumPrice,
-      },
-      credit_card: {
-        secure: true,
-      },
-      customer_details: {
-        first_name: userData.name || "User",
-        email: userData.email,
-      },
-      item_details: [
-        {
-          id: "premium-lifetime",
-          price: MIDTRANS_CONFIG.premiumPrice,
-          quantity: 1,
-          name: "SecretMe Premium Lifetime",
-        },
-      ],
-      callbacks: {
-        finish: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?status=success`,
-        error: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=error`,
-        pending: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?status=pending`,
-        // Tambahkan webhook URL
-        notification: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-      },
-    }
+    // Siapkan URL callback
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
 
-    // Dapatkan header auth yang benar
-    const authHeader = getMidtransAuthHeader()
-
-    // Log request untuk debugging
-    console.log("Sending request to Midtrans:", {
-      url: snapApiUrl,
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: authHeader.substring(0, 20) + "...", // Log partial auth for security
-      },
+    // Buat transaksi di gateway pembayaran
+    const result = await gateway.createTransaction({
+      userId: user.id,
+      userEmail: userData.email,
+      userName: userData.name || "User",
+      amount: premiumPrice,
+      orderId: orderId,
+      description: "SecretMe Premium Lifetime",
+      successRedirectUrl: `${appUrl}/dashboard?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${appUrl}/premium?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
+      notificationUrl: `${appUrl}/api/payment/notification`,
     })
 
-    const midtransResponse = await fetch(snapApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: authHeader,
-      },
-      body: JSON.stringify(transactionDetails),
-    })
-
-    // Log response status untuk debugging
-    console.log("Midtrans response status:", midtransResponse.status)
-
-    if (!midtransResponse.ok) {
-      const errorData = (await midtransResponse.json().catch(() => null)) || (await midtransResponse.text())
-      console.error("Midtrans error:", errorData)
-
+    if (!result.success) {
       // Hapus transaksi dari database karena gagal
       await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
 
       return NextResponse.json(
         {
-          error: "Failed to create Midtrans transaction",
-          details: typeof errorData === "string" ? errorData.substring(0, 200) : errorData,
+          error: result.error || "Failed to create payment transaction",
         },
         { status: 500 },
       )
     }
 
-    const midtransData = await midtransResponse.json()
-    console.log("Midtrans response data:", midtransData)
+    // Update transaksi dengan referensi dari gateway
+    if (result.gatewayReference) {
+      await supabase
+        .from("premium_transactions")
+        .update({
+          gateway_reference: result.gatewayReference,
+        })
+        .eq("plan_id", orderId)
+    }
 
     return NextResponse.json({
       success: true,
-      token: midtransData.token,
-      redirect_url: midtransData.redirect_url,
+      redirectUrl: result.redirectUrl,
+      token: result.token,
+      orderId: orderId,
     })
   } catch (error: any) {
     console.error("Error in create transaction:", error)

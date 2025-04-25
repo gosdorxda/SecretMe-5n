@@ -38,13 +38,14 @@ export function PremiumClient() {
       })
 
       // Gunakan server action untuk membuat transaksi
-      const result = await createTransaction()
+      // Default ke Duitku sebagai gateway
+      const result = await createTransaction("duitku")
 
       if (!result.success) {
         throw new Error(result.error || "Failed to create transaction")
       }
 
-      // Redirect ke halaman pembayaran Midtrans
+      // Redirect ke halaman pembayaran
       window.location.href = result.redirectUrl
     } catch (error: any) {
       console.error("Payment error:", error)
