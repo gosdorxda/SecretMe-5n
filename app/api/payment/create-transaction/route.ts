@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const gatewayName = body.gatewayName || "duitku"
 
-    // Verify user
+    // Verify user - SECURITY FIX: Use getUser() instead of getSession()
     const supabase = createClient()
     const {
       data: { user },
@@ -122,12 +122,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update transaction with gateway reference
+    // Update transaction with gateway reference - FIXED: Store in payment_details instead
     if (result.gatewayReference) {
       await supabase
         .from("premium_transactions")
         .update({
-          gateway_reference: result.gatewayReference,
+          payment_details: {
+            gateway_reference: result.gatewayReference,
+            redirect_url: result.redirectUrl,
+            token: result.token,
+          },
         })
         .eq("plan_id", orderId)
     }

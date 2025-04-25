@@ -1,51 +1,41 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
-import type { PaymentGateway } from "@/lib/payment/types"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
+import { generateOrderId } from "@/lib/payment/types"
+import { revalidatePath } from "next/cache"
 
 // Fungsi untuk membuat transaksi baru
-export async function createTransaction(gateway: string) {
+export async function createTransaction(gatewayName: string) {
   try {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
-    // Dapatkan sesi pengguna
+    // Verifikasi user
+    const supabase = createClient()
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    if (!session) {
-      return { success: false, error: "Anda harus login terlebih dahulu" }
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized" }
     }
 
-    // Periksa apakah pengguna sudah premium
-    const { data: userData } = await supabase.from("users").select("is_premium").eq("id", session.user.id).single()
-
-    if (userData?.is_premium) {
-      return { success: false, error: "Anda sudah menjadi pengguna premium" }
-    }
-
-    // Periksa apakah pengguna memiliki transaksi pending
-    const { data: pendingTransaction } = await supabase
-      .from("premium_transactions")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false })
-      .limit(1)
+    // Dapatkan data user
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("name, email, is_premium")
+      .eq("id", user.id)
       .single()
 
-    if (pendingTransaction) {
-      return {
-        success: false,
-        error:
-          "Anda memiliki transaksi yang sedang diproses. Silakan selesaikan pembayaran atau batalkan transaksi tersebut.",
-      }
+    if (userError || !userData) {
+      return { success: false, error: "User not found" }
     }
 
-    // Dapatkan harga premium dari konfigurasi
+    // Periksa apakah user sudah premium
+    if (userData.is_premium) {
+      return { success: false, error: "User already premium" }
+    }
+
+    // Dapatkan harga premium dari config
     const { data: configData } = await supabase
       .from("site_config")
       .select("config")
@@ -54,217 +44,229 @@ export async function createTransaction(gateway: string) {
 
     const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
 
-    // Dapatkan data pengguna
-    const { data: user } = await supabase.from("users").select("email, name").eq("id", session.user.id).single()
+    // Generate order ID
+    const orderId = generateOrderId(user.id)
 
-    if (!user) {
-      return { success: false, error: "Data pengguna tidak ditemukan" }
-    }
-
-    // Buat ID pesanan unik
-    const orderId = `ORDER-${session.user.id.substring(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-
-    // Buat gateway pembayaran
-    const paymentGateway: PaymentGateway = await getPaymentGateway(gateway)
-
-    // URL untuk redirect setelah pembayaran
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const successUrl = `${baseUrl}/premium?status=success&order_id=${orderId}`
-    const failureUrl = `${baseUrl}/premium?status=failed&order_id=${orderId}`
-    const pendingUrl = `${baseUrl}/premium?status=pending&order_id=${orderId}`
-    const notificationUrl = `${baseUrl}/api/payment/notification`
-
-    // Buat transaksi di gateway pembayaran
-    const transactionResult = await paymentGateway.createTransaction({
-      userId: session.user.id,
-      userEmail: user.email || session.user.email,
-      userName: user.name || "User",
-      amount: premiumPrice,
-      orderId: orderId,
-      description: "SecretMe Premium Lifetime",
-      successRedirectUrl: successUrl,
-      failureRedirectUrl: failureUrl,
-      pendingRedirectUrl: pendingUrl,
-      notificationUrl: notificationUrl,
-    })
-
-    if (!transactionResult.success) {
-      return { success: false, error: transactionResult.error || "Gagal membuat transaksi" }
-    }
-
-    // Simpan transaksi ke database
-    const { error: insertError } = await supabase.from("premium_transactions").insert({
-      user_id: session.user.id,
+    // Buat transaksi di database
+    const { error: transactionError } = await supabase.from("premium_transactions").insert({
+      user_id: user.id,
       plan_id: orderId,
       amount: premiumPrice,
       status: "pending",
-      payment_gateway: gateway,
-      gateway_reference: transactionResult.gatewayReference || null,
-      redirect_url: transactionResult.redirectUrl || null,
+      payment_gateway: gatewayName,
     })
 
-    if (insertError) {
-      console.error("Error inserting transaction:", insertError)
-      return { success: false, error: "Gagal menyimpan transaksi ke database" }
+    if (transactionError) {
+      console.error("Error creating transaction:", transactionError)
+      return { success: false, error: "Failed to create transaction" }
     }
 
-    // Kembalikan URL redirect ke halaman pembayaran
+    // Dapatkan payment gateway
+    const gateway = await getPaymentGateway(gatewayName)
+
+    // Siapkan callback URLs
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
+
+    // Buat transaksi di payment gateway
+    const result = await gateway.createTransaction({
+      userId: user.id,
+      userEmail: userData.email,
+      userName: userData.name || "User",
+      amount: premiumPrice,
+      orderId: orderId,
+      description: "SecretMe Premium Lifetime",
+      successRedirectUrl: `${appUrl}/dashboard?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${appUrl}/premium?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
+      notificationUrl: `${appUrl}/api/payment/notification`,
+    })
+
+    if (!result.success) {
+      // Hapus transaksi dari database karena gagal
+      await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
+
+      return { success: false, error: result.error || "Failed to create payment transaction" }
+    }
+
+    // Update transaksi dengan gateway reference
+    if (result.gatewayReference) {
+      await supabase
+        .from("premium_transactions")
+        .update({
+          payment_details: {
+            gateway_reference: result.gatewayReference,
+            redirect_url: result.redirectUrl,
+            token: result.token,
+          },
+        })
+        .eq("plan_id", orderId)
+    }
+
     return {
       success: true,
-      redirectUrl: transactionResult.redirectUrl,
+      redirectUrl: result.redirectUrl,
+      token: result.token,
+      orderId: orderId,
     }
   } catch (error: any) {
-    console.error("Error creating transaction:", error)
-    return { success: false, error: error.message || "Terjadi kesalahan saat membuat transaksi" }
+    console.error("Error in create transaction:", error)
+    return { success: false, error: error.message || "Internal server error" }
   }
 }
 
 // Fungsi untuk mendapatkan transaksi terbaru
 export async function getLatestTransaction() {
   try {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
-    // Dapatkan sesi pengguna
+    // Verifikasi user
+    const supabase = createClient()
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    if (!session) {
-      return { success: false, error: "Anda harus login terlebih dahulu" }
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized", isPremium: false, hasTransaction: false }
     }
 
-    // Periksa apakah pengguna sudah premium
-    const { data: userData } = await supabase.from("users").select("is_premium").eq("id", session.user.id).single()
+    // Periksa apakah user sudah premium
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("is_premium")
+      .eq("id", user.id)
+      .single()
 
-    if (userData?.is_premium) {
-      return { success: true, isPremium: true }
+    if (userError) {
+      return { success: false, error: "User not found", isPremium: false, hasTransaction: false }
+    }
+
+    if (userData.is_premium) {
+      return { success: true, isPremium: true, hasTransaction: false }
     }
 
     // Dapatkan transaksi terbaru
-    const { data: transaction } = await supabase
+    const { data: transactionData, error: transactionError } = await supabase
       .from("premium_transactions")
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .single()
 
-    if (!transaction) {
-      return { success: true, hasTransaction: false }
+    if (transactionError) {
+      return { success: true, isPremium: false, hasTransaction: false }
     }
 
     // Format transaksi untuk client
-    const formattedTransaction = {
-      id: transaction.id,
-      orderId: transaction.plan_id,
-      status: transaction.status,
-      amount: transaction.amount,
-      paymentMethod: transaction.payment_method || "",
-      createdAt: transaction.created_at,
-      updatedAt: transaction.updated_at,
-      gateway: transaction.payment_gateway,
+    const transaction = {
+      id: transactionData.id,
+      orderId: transactionData.plan_id,
+      status: transactionData.status,
+      amount: transactionData.amount,
+      paymentMethod: transactionData.payment_method || "",
+      createdAt: transactionData.created_at,
+      updatedAt: transactionData.updated_at,
+      gateway: transactionData.payment_gateway,
     }
 
-    return { success: true, hasTransaction: true, transaction: formattedTransaction }
+    return { success: true, isPremium: false, hasTransaction: true, transaction }
   } catch (error: any) {
-    console.error("Error getting latest transaction:", error)
-    return { success: false, error: error.message || "Terjadi kesalahan saat mendapatkan transaksi" }
+    console.error("Error in get latest transaction:", error)
+    return { success: false, error: error.message || "Internal server error", isPremium: false, hasTransaction: false }
   }
 }
 
 // Fungsi untuk mendapatkan riwayat transaksi
 export async function getTransactionHistory() {
   try {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
-    // Dapatkan sesi pengguna
+    // Verifikasi user
+    const supabase = createClient()
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    if (!session) {
-      return { success: false, error: "Anda harus login terlebih dahulu" }
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized", transactions: [] }
     }
 
-    // Dapatkan semua transaksi pengguna
-    const { data: transactions, error } = await supabase
+    // Dapatkan transaksi
+    const { data: transactionsData, error: transactionsError } = await supabase
       .from("premium_transactions")
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error fetching transactions:", error)
-      return { success: false, error: "Gagal mendapatkan riwayat transaksi" }
+    if (transactionsError) {
+      return { success: false, error: "Failed to get transactions", transactions: [] }
     }
 
     // Format transaksi untuk client
-    const formattedTransactions = transactions.map((transaction) => ({
-      id: transaction.id,
-      orderId: transaction.plan_id,
-      status: transaction.status,
-      amount: transaction.amount,
-      paymentMethod: transaction.payment_method || "",
-      createdAt: transaction.created_at,
-      updatedAt: transaction.updated_at,
-      gateway: transaction.payment_gateway,
+    const transactions = transactionsData.map((tx) => ({
+      id: tx.id,
+      orderId: tx.plan_id,
+      status: tx.status,
+      amount: tx.amount,
+      paymentMethod: tx.payment_method || "",
+      createdAt: tx.created_at,
+      updatedAt: tx.updated_at,
+      gateway: tx.payment_gateway,
     }))
 
-    return { success: true, transactions: formattedTransactions }
+    return { success: true, transactions }
   } catch (error: any) {
-    console.error("Error getting transaction history:", error)
-    return { success: false, error: error.message || "Terjadi kesalahan saat mendapatkan riwayat transaksi" }
+    console.error("Error in get transaction history:", error)
+    return { success: false, error: error.message || "Internal server error", transactions: [] }
   }
 }
 
 // Fungsi untuk membatalkan transaksi
 export async function cancelTransaction(transactionId: string) {
   try {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
-    // Dapatkan sesi pengguna
+    // Verifikasi user
+    const supabase = createClient()
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    if (!session) {
-      return { success: false, error: "Anda harus login terlebih dahulu" }
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized" }
     }
 
-    // Periksa apakah transaksi milik pengguna
-    const { data: transaction } = await supabase
+    // Dapatkan transaksi
+    const { data: transactionData, error: transactionError } = await supabase
       .from("premium_transactions")
       .select("*")
       .eq("id", transactionId)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single()
 
-    if (!transaction) {
-      return { success: false, error: "Transaksi tidak ditemukan" }
+    if (transactionError) {
+      return { success: false, error: "Transaction not found" }
     }
 
-    // Hanya transaksi dengan status pending yang bisa dibatalkan
-    if (transaction.status !== "pending") {
-      return { success: false, error: "Hanya transaksi dengan status pending yang dapat dibatalkan" }
+    // Periksa apakah transaksi bisa dibatalkan
+    if (transactionData.status !== "pending") {
+      return { success: false, error: "Only pending transactions can be cancelled" }
     }
 
-    // Update status transaksi menjadi cancelled
+    // Update status transaksi
     const { error: updateError } = await supabase
       .from("premium_transactions")
       .update({ status: "cancelled" })
       .eq("id", transactionId)
 
     if (updateError) {
-      console.error("Error updating transaction:", updateError)
-      return { success: false, error: "Gagal membatalkan transaksi" }
+      return { success: false, error: "Failed to cancel transaction" }
     }
+
+    // Revalidasi path
+    revalidatePath("/premium")
+    revalidatePath("/dashboard")
 
     return { success: true }
   } catch (error: any) {
-    console.error("Error cancelling transaction:", error)
-    return { success: false, error: error.message || "Terjadi kesalahan saat membatalkan transaksi" }
+    console.error("Error in cancel transaction:", error)
+    return { success: false, error: error.message || "Internal server error" }
   }
 }
