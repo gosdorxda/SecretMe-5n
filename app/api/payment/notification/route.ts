@@ -12,9 +12,39 @@ export async function POST(request: NextRequest) {
     const headers = Object.fromEntries(request.headers.entries())
     console.log(`[${requestId}] 📋 Headers:`, JSON.stringify(headers))
 
-    // Parse notification data
-    const notificationData = await request.json()
-    console.log(`[${requestId}] 📦 Payload:`, JSON.stringify(notificationData))
+    // Check content type to determine how to parse the request body
+    const contentType = request.headers.get("content-type") || ""
+
+    let notificationData: any = {}
+
+    if (contentType.includes("application/json")) {
+      // Parse JSON data
+      notificationData = await request.json()
+    } else if (contentType.includes("application/x-www-form-urlencoded")) {
+      // Parse form data
+      const formData = await request.formData()
+      // Convert FormData to plain object
+      for (const [key, value] of formData.entries()) {
+        notificationData[key] = value
+      }
+    } else {
+      // Fallback: try to get text and parse it
+      const text = await request.text()
+      console.log(`[${requestId}] 📝 Raw request body:`, text)
+
+      try {
+        // Try to parse as JSON first
+        notificationData = JSON.parse(text)
+      } catch (e) {
+        // If not JSON, try to parse as URL encoded form data
+        const params = new URLSearchParams(text)
+        for (const [key, value] of params.entries()) {
+          notificationData[key] = value
+        }
+      }
+    }
+
+    console.log(`[${requestId}] 📦 Parsed payload:`, JSON.stringify(notificationData))
 
     // Determine which gateway to use based on the notification data
     // This could be determined by headers, payload structure, or a query parameter
