@@ -78,12 +78,12 @@ const Card = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "neo-card overflow-visible relative",
+          "rounded-lg border bg-card text-card-foreground shadow-sm",
+          className,
           stacked && "z-10",
           animated && "hover:translate-y-[-2px] hover:translate-x-[-2px] transition-transform duration-300",
           animated && "animate-subtle-shake",
           tilt && "rotate-[-1deg]",
-          className,
         )}
         {...props}
       >
@@ -168,7 +168,7 @@ const CardContent = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "p-4",
+        "rounded-lg border bg-card text-card-foreground shadow-sm",
         bgColorMap[colorVariant],
         // Remove any p-6 related classes and ensure p-4 is applied consistently
         filteredClassName,

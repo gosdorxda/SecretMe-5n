@@ -13,9 +13,6 @@ import { useToast } from "@/hooks/use-toast"
 import { AlertCircle, CheckCircle2, CreditCard, DollarSign, FileText, RefreshCw, Settings } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-// Tambahkan import untuk getPaymentConfig dan savePaymentConfig
-import { getPaymentConfig, savePaymentConfig } from "@/lib/payment/gateway-factory"
-
 interface PremiumSettings {
   price: number
   enabled: boolean
@@ -211,8 +208,36 @@ export default function PremiumSettings() {
   const loadPaymentConfig = async () => {
     setIsLoading(true)
     try {
-      const config = await getPaymentConfig()
-      setPaymentConfig(config)
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("site_config")
+        .select("config")
+        .eq("type", "payment_gateway_config")
+        .single()
+
+      if (error) {
+        console.error("Error loading payment config:", error)
+        toast({
+          title: "Gagal memuat konfigurasi pembayaran",
+          description: error.message || "Terjadi kesalahan saat memuat konfigurasi pembayaran",
+          variant: "destructive",
+        })
+        // Set default config jika tidak ada di database
+        setPaymentConfig({
+          activeGateway: "duitku",
+          gateways: {
+            duitku: {
+              merchantCode: "",
+              apiKey: "",
+              isProduction: true,
+            },
+          },
+        })
+        return
+      }
+
+      console.log("Loaded payment config:", data.config)
+      setPaymentConfig(data.config)
     } catch (error: any) {
       console.error("Error loading payment config:", error)
       toast({
@@ -229,7 +254,27 @@ export default function PremiumSettings() {
   const savePaymentConfigSettings = async (newConfig: any) => {
     setIsSavingPaymentConfig(true)
     try {
-      await savePaymentConfig(newConfig)
+      const supabase = createClient()
+      const { error } = await supabase.from("site_config").upsert(
+        {
+          type: "payment_gateway_config",
+          config: newConfig,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "type" },
+      )
+
+      if (error) {
+        console.error("Error saving payment config:", error)
+        toast({
+          title: "Gagal menyimpan konfigurasi pembayaran",
+          description: error.message || "Terjadi kesalahan saat menyimpan konfigurasi pembayaran",
+          variant: "destructive",
+        })
+        return
+      }
+
+      console.log("Saved payment config:", newConfig)
       setPaymentConfig(newConfig)
       toast({
         title: "Konfigurasi pembayaran disimpan",
