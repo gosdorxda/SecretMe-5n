@@ -1,106 +1,90 @@
 import type { PaymentGateway } from "./types"
 import { DuitkuGateway } from "./duitku-gateway"
-import { createClient } from "@/lib/supabase/client"
+import { MidtransGateway } from "./midtrans-gateway"
 
-// Simpan instance gateway dalam cache
-const gatewayInstances: Record<string, PaymentGateway> = {}
-
-/**
- * Factory function untuk mendapatkan gateway pembayaran
- */
-export async function getPaymentGateway(name?: string): Promise<PaymentGateway> {
-  try {
-    // Jika nama gateway tidak diberikan, ambil dari konfigurasi
-    if (!name) {
-      const config = await getPaymentConfig()
-      name = config.activeGateway
-    }
-
-    // Jika gateway sudah ada di cache, gunakan instance yang ada
-    if (gatewayInstances[name]) {
-      return gatewayInstances[name]
-    }
-
-    // Buat instance gateway baru berdasarkan nama
-    let gateway: PaymentGateway
-
-    switch (name.toLowerCase()) {
-      case "duitku": {
-        gateway = new DuitkuGateway()
-        break
-      }
-      case "xendit": {
-        const { XenditGateway } = await import("./xendit-gateway")
-        gateway = new XenditGateway()
-        break
-      }
-      default:
-        throw new Error(`Payment gateway "${name}" not supported`)
-    }
-
-    // Simpan instance di cache
-    gatewayInstances[name] = gateway
-    return gateway
-  } catch (error) {
-    console.error("Error getting payment gateway:", error)
-    throw new Error("Failed to initialize payment gateway")
-  }
-}
+// Cache for payment config
+let paymentConfigCache: any = null
+let lastFetchTime = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 /**
- * Mendapatkan konfigurasi pembayaran dari database
+ * Mendapatkan konfigurasi pembayaran
+ * Fungsi ini bekerja di server
  */
 export async function getPaymentConfig() {
-  const supabase = createClient()
+  try {
+    const now = Date.now()
 
-  const { data, error } = await supabase
-    .from("site_config")
-    .select("config")
-    .eq("type", "payment_gateway_config")
-    .single()
+    // Gunakan cache jika masih valid
+    if (paymentConfigCache && now - lastFetchTime < CACHE_TTL) {
+      return paymentConfigCache
+    }
 
-  if (error) {
-    console.error("Error loading payment config:", error)
-    // Default config jika tidak ada di database
+    // Default config - only include public values
+    const config = {
+      activeGateway: "duitku",
+      gateways: {
+        duitku: {
+          isProduction: process.env.NODE_ENV === "production",
+        },
+        midtrans: {
+          isProduction: process.env.NODE_ENV === "production",
+        },
+      },
+    }
+
+    // Update cache
+    paymentConfigCache = config
+    lastFetchTime = now
+
+    return config
+  } catch (error) {
+    console.error("Error in getPaymentConfig:", error)
     return {
       activeGateway: "duitku",
       gateways: {
         duitku: {
-          merchantCode: process.env.DUITKU_MERCHANT_CODE || "",
-          apiKey: process.env.DUITKU_API_KEY || "",
-          isProduction: true,
+          isProduction: process.env.NODE_ENV === "production",
         },
       },
     }
   }
-
-  return data.config
 }
 
 /**
- * Menyimpan konfigurasi pembayaran ke database
+ * Menyimpan konfigurasi pembayaran
+ * Catatan: Fungsi ini hanya berfungsi di server
  */
 export async function savePaymentConfig(config: any) {
-  const supabase = createClient()
+  try {
+    // Reset cache
+    paymentConfigCache = null
 
-  const { error } = await supabase.from("site_config").upsert(
-    {
-      type: "payment_gateway_config",
-      config: config,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "type" },
-  )
+    console.log("Saving payment config:", config)
 
-  if (error) {
-    console.error("Error saving payment config:", error)
+    // Return success (actual saving will be done in API route)
+    return { success: true }
+  } catch (error) {
+    console.error("Error in savePaymentConfig:", error)
     throw new Error("Failed to save payment configuration")
   }
+}
 
-  // Reset cache setelah konfigurasi diubah
-  Object.keys(gatewayInstances).forEach((key) => {
-    delete gatewayInstances[key]
-  })
+/**
+ * Factory untuk mendapatkan gateway pembayaran
+ * Catatan: Ini hanya boleh digunakan di server
+ */
+export async function getPaymentGateway(gatewayName = "duitku"): Promise<PaymentGateway> {
+  // This should only be called on the server
+  if (typeof window !== "undefined") {
+    throw new Error("getPaymentGateway should only be called on the server")
+  }
 
-  return { success: true }
+  switch (gatewayName.toLowerCase()) {
+    case "midtrans":
+      return new MidtransGateway()
+    case "duitku":
+    default:
+      return new DuitkuGateway()
+  }
 }

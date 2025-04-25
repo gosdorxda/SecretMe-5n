@@ -6,38 +6,23 @@ import {
   type NotificationResult,
   formatPaymentStatus,
 } from "./types"
-import { getPaymentConfig } from "./gateway-factory"
-import crypto from "crypto"
 
 export class DuitkuGateway implements PaymentGateway {
   name = "duitku"
   private merchantCode = ""
   private apiKey = ""
-  private isProduction = true
-  private config: any = null
+  private isProduction = false
 
   constructor() {
-    // Konfigurasi akan diinisialisasi saat diperlukan
-  }
-
-  /**
-   * Inisialisasi konfigurasi Duitku
-   */
-  private async initialize() {
-    if (this.config) return
-
-    const config = await getPaymentConfig()
-    const duitkuConfig = config.gateways?.duitku || {}
-
-    this.merchantCode = duitkuConfig.merchantCode || process.env.DUITKU_MERCHANT_CODE || ""
-    this.apiKey = duitkuConfig.apiKey || process.env.DUITKU_API_KEY || ""
-    this.isProduction = duitkuConfig.isProduction !== false
-
-    if (!this.merchantCode || !this.apiKey) {
-      throw new Error("Duitku configuration is incomplete. Please check your settings.")
+    // This class should only be instantiated on the server
+    if (typeof window !== "undefined") {
+      throw new Error("DuitkuGateway should only be instantiated on the server")
     }
 
-    this.config = duitkuConfig
+    // Initialize with environment variables
+    this.merchantCode = process.env.DUITKU_MERCHANT_CODE || ""
+    this.apiKey = process.env.DUITKU_API_KEY || ""
+    this.isProduction = process.env.NODE_ENV === "production"
   }
 
   /**
@@ -48,58 +33,31 @@ export class DuitkuGateway implements PaymentGateway {
   }
 
   /**
-   * Membuat signature untuk request Duitku
-   */
-  private createSignature(merchantCode: string, amount: number, merchantOrderId: string): string {
-    const md5 = crypto.createHash("md5")
-    const signatureComponent = merchantCode + amount + merchantOrderId + this.apiKey
-    return md5.update(signatureComponent).digest("hex")
-  }
-
-  /**
    * Membuat transaksi baru di Duitku
    */
   async createTransaction(params: CreateTransactionParams): Promise<CreateTransactionResult> {
     try {
-      await this.initialize()
+      const { userEmail, userName, amount, orderId, description, successRedirectUrl, failureRedirectUrl } = params
 
-      const {
-        userId,
-        userEmail,
-        userName,
-        amount,
-        orderId,
-        description,
-        successRedirectUrl,
-        failureRedirectUrl,
-        notificationUrl,
-      } = params
+      // Generate signature
+      const signature = this.generateSignature(amount, orderId)
 
-      // Buat signature untuk keamanan
-      const signature = this.createSignature(this.merchantCode, amount, orderId)
-
-      // Siapkan payload untuk Duitku
+      // Prepare payload
       const payload = {
         merchantCode: this.merchantCode,
         paymentAmount: amount,
+        paymentMethod: "VC",
         merchantOrderId: orderId,
         productDetails: description,
         customerVaName: userName,
         email: userEmail,
-        itemDetails: [
-          {
-            name: "SecretMe Premium Lifetime",
-            price: amount,
-            quantity: 1,
-          },
-        ],
-        callbackUrl: notificationUrl,
+        callbackUrl: params.notificationUrl,
         returnUrl: successRedirectUrl,
-        expiryPeriod: 60, // 60 menit
+        expiryPeriod: 1440, // 24 hours
         signature: signature,
       }
 
-      // Kirim request ke Duitku
+      // Send request to Duitku
       const response = await fetch(`${this.getBaseUrl()}/api/merchant/v2/inquiry`, {
         method: "POST",
         headers: {
@@ -123,7 +81,7 @@ export class DuitkuGateway implements PaymentGateway {
       if (data.statusCode !== "00") {
         return {
           success: false,
-          error: data.statusMessage || "Failed to create transaction",
+          error: `Duitku error: ${data.statusMessage}`,
         }
       }
 
@@ -143,23 +101,30 @@ export class DuitkuGateway implements PaymentGateway {
   }
 
   /**
-   * Memverifikasi status transaksi di Duitku
+   * Generate MD5 signature for Duitku
+   */
+  private generateSignature(amount: number, orderId: string): string {
+    const crypto = require("crypto")
+    const signatureString = this.merchantCode + orderId + amount + this.apiKey
+    return crypto.createHash("md5").update(signatureString).digest("hex")
+  }
+
+  /**
+   * Verify transaction status with Duitku
    */
   async verifyTransaction(orderId: string): Promise<VerifyTransactionResult> {
     try {
-      await this.initialize()
+      // Generate signature
+      const signature = this.generateSignature(0, orderId)
 
-      // Buat signature untuk keamanan
-      const signature = this.createSignature(this.merchantCode, 0, orderId)
-
-      // Siapkan payload untuk Duitku
+      // Prepare payload
       const payload = {
         merchantCode: this.merchantCode,
         merchantOrderId: orderId,
         signature: signature,
       }
 
-      // Kirim request ke Duitku
+      // Send request to Duitku
       const response = await fetch(`${this.getBaseUrl()}/api/merchant/transactionStatus`, {
         method: "POST",
         headers: {
@@ -178,11 +143,19 @@ export class DuitkuGateway implements PaymentGateway {
 
       const data = await response.json()
 
+      // Map Duitku status to internal status
+      let status = "unknown"
+      if (data.statusCode === "00" || data.statusCode === "01") {
+        status = "success"
+      } else if (data.statusCode === "02") {
+        status = "pending"
+      } else {
+        status = "failed"
+      }
+
       return {
         isValid: true,
-        status: formatPaymentStatus(
-          data.statusCode === "00" ? "success" : data.statusCode === "01" ? "pending" : "failed",
-        ),
+        status: formatPaymentStatus(status),
         amount: data.amount,
         paymentMethod: data.paymentCode,
         details: data,
@@ -197,27 +170,24 @@ export class DuitkuGateway implements PaymentGateway {
   }
 
   /**
-   * Menangani notifikasi webhook dari Duitku
+   * Handle notification from Duitku
    */
   async handleNotification(payload: any): Promise<NotificationResult> {
     try {
-      await this.initialize()
+      // Verify notification with Duitku
+      const { isValid, status, amount, paymentMethod, details } = await this.verifyTransaction(payload.merchantOrderId)
 
-      // Validasi signature dari notifikasi
-      const receivedSignature = payload.signature
-      const calculatedSignature = this.createSignature(payload.merchantCode, payload.amount, payload.merchantOrderId)
-
-      if (receivedSignature !== calculatedSignature) {
-        throw new Error("Invalid signature in notification")
+      if (!isValid) {
+        throw new Error("Invalid transaction in notification")
       }
 
       return {
         orderId: payload.merchantOrderId,
-        status: formatPaymentStatus(payload.resultCode),
-        isSuccess: payload.resultCode === "00",
-        amount: payload.amount,
-        paymentMethod: payload.paymentCode,
-        details: payload,
+        status,
+        isSuccess: status === "success",
+        amount: Number(amount),
+        paymentMethod,
+        details,
       }
     } catch (error) {
       console.error("Error handling Duitku notification:", error)

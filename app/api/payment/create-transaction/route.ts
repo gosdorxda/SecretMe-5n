@@ -5,7 +5,11 @@ import { generateOrderId } from "@/lib/payment/types"
 
 export async function POST(request: NextRequest) {
   try {
-    // Verifikasi user
+    // Get the request body
+    const body = await request.json()
+    const gatewayName = body.gatewayName || "duitku"
+
+    // Verify user
     const supabase = createClient()
     const {
       data: { user },
@@ -13,10 +17,10 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    // Ambil data user
+    // Get user data
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("name, email, is_premium")
@@ -24,19 +28,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !userData) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    // Cek apakah user sudah premium
+    // Check if user is already premium
     if (userData.is_premium) {
-      return NextResponse.json({ error: "User already premium" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "User already premium" }, { status: 400 })
     }
 
-    // Ambil data dari request
-    const requestData = await request.json()
-    const gatewayName = requestData.gateway || "duitku" // Default ke Duitku jika tidak ada
-
-    // Ambil konfigurasi harga premium
+    // Get premium price from config
     const { data: configData } = await supabase
       .from("site_config")
       .select("config")
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Generate order ID
     const orderId = generateOrderId(user.id)
 
-    // Buat transaksi di database
+    // Create transaction in database
     const { error: transactionError } = await supabase.from("premium_transactions").insert({
       user_id: user.id,
       plan_id: orderId,
@@ -59,16 +59,16 @@ export async function POST(request: NextRequest) {
 
     if (transactionError) {
       console.error("Error creating transaction:", transactionError)
-      return NextResponse.json({ error: "Failed to create transaction" }, { status: 500 })
+      return NextResponse.json({ success: false, error: "Failed to create transaction" }, { status: 500 })
     }
 
-    // Dapatkan gateway pembayaran
+    // Get payment gateway
     const gateway = await getPaymentGateway(gatewayName)
 
-    // Siapkan URL callback
+    // Prepare callback URLs
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
 
-    // Buat transaksi di gateway pembayaran
+    // Create transaction in payment gateway
     const result = await gateway.createTransaction({
       userId: user.id,
       userEmail: userData.email,
@@ -83,18 +83,16 @@ export async function POST(request: NextRequest) {
     })
 
     if (!result.success) {
-      // Hapus transaksi dari database karena gagal
+      // Delete transaction from database because it failed
       await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
 
       return NextResponse.json(
-        {
-          error: result.error || "Failed to create payment transaction",
-        },
+        { success: false, error: result.error || "Failed to create payment transaction" },
         { status: 500 },
       )
     }
 
-    // Update transaksi dengan referensi dari gateway
+    // Update transaction with gateway reference
     if (result.gatewayReference) {
       await supabase
         .from("premium_transactions")
@@ -111,13 +109,7 @@ export async function POST(request: NextRequest) {
       orderId: orderId,
     })
   } catch (error: any) {
-    console.error("Error in create transaction:", error)
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error.message,
-      },
-      { status: 500 },
-    )
+    console.error("Error in create transaction API:", error)
+    return NextResponse.json({ success: false, error: error.message || "Internal server error" }, { status: 500 })
   }
 }
