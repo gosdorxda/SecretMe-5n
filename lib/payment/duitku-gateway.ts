@@ -87,7 +87,7 @@ export class DuitkuGateway implements PaymentGateway {
         returnUrl: successRedirectUrl,
         expiryPeriod: 60, // 60 menit
         signature: signature,
-        paymentMethod: "OV", // Set payment method to QRIS
+        paymentMethod: "VC", // Set payment method to QRIS
       }
 
       console.log("Sending request to Duitku API:", {
