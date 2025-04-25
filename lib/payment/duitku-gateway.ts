@@ -87,6 +87,7 @@ export class DuitkuGateway implements PaymentGateway {
         returnUrl: successRedirectUrl,
         expiryPeriod: 60, // 60 menit
         signature: signature,
+        paymentMethod: "VA", // Add default payment method
       }
 
       console.log("Sending request to Duitku API:", {
