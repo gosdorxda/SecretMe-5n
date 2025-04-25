@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
 import { PremiumClient } from "./client"
+import { getLatestTransaction } from "./actions"
 
 export const dynamic = "force-dynamic"
 
-export default async function PremiumPage() {
+export default async function PremiumPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
   const supabase = createClient()
 
   // Get user session
@@ -24,8 +29,23 @@ export default async function PremiumPage() {
 
   const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
 
-  // If logged in, get user data
+  // Get transaction status from URL if available
+  const status = searchParams.status as string | undefined
+  const orderId = searchParams.order_id as string | undefined
+
+  // Get latest transaction data
+  let transactionData = null
   if (isLoggedIn) {
+    const result = await getLatestTransaction()
+    if (result.success) {
+      if (result.isPremium) {
+        isPremium = true
+      } else if (result.hasTransaction) {
+        transactionData = result.transaction
+      }
+    }
+
+    // Get user data
     const { data: userData } = await supabase
       .from("users")
       .select("name, is_premium")
@@ -38,5 +58,15 @@ export default async function PremiumPage() {
     }
   }
 
-  return <PremiumClient isLoggedIn={isLoggedIn} isPremium={isPremium} userName={userName} premiumPrice={premiumPrice} />
+  return (
+    <PremiumClient
+      isLoggedIn={isLoggedIn}
+      isPremium={isPremium}
+      userName={userName}
+      premiumPrice={premiumPrice}
+      urlStatus={status}
+      urlOrderId={orderId}
+      transaction={transactionData}
+    />
+  )
 }

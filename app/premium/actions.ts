@@ -73,9 +73,10 @@ export async function createTransaction(gatewayName = "duitku") {
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${appUrl}/dashboard?status=success&order_id=${orderId}`,
+      // Ubah URL redirect ke halaman premium dengan status
+      successRedirectUrl: `${appUrl}/premium?status=success&order_id=${orderId}`,
       failureRedirectUrl: `${appUrl}/premium?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
+      pendingRedirectUrl: `${appUrl}/premium?status=pending&order_id=${orderId}`,
       notificationUrl: `${appUrl}/api/payment/notification`,
     })
 
@@ -111,5 +112,92 @@ export async function createTransaction(gatewayName = "duitku") {
       success: false,
       error: error.message || "Internal server error",
     }
+  }
+}
+
+// Fungsi untuk mengecek status transaksi terakhir pengguna
+export async function getLatestTransaction() {
+  try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: "Unauthorized" }
+    }
+
+    // Cek apakah user sudah premium
+    const { data: userData } = await supabase.from("users").select("is_premium").eq("id", user.id).single()
+
+    if (userData?.is_premium) {
+      return { success: true, isPremium: true }
+    }
+
+    // Ambil transaksi terakhir
+    const { data: transactions } = await supabase
+      .from("premium_transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    if (!transactions || transactions.length === 0) {
+      return { success: true, hasTransaction: false }
+    }
+
+    const latestTransaction = transactions[0]
+
+    // Jika status masih pending, cek status terbaru dari gateway
+    if (latestTransaction.status === "pending") {
+      const gateway = await getPaymentGateway(latestTransaction.payment_gateway || "duitku")
+      const result = await gateway.verifyTransaction(latestTransaction.plan_id)
+
+      // Update status transaksi jika berbeda
+      if (result.isValid && result.status !== "unknown" && result.status !== latestTransaction.status) {
+        await supabase
+          .from("premium_transactions")
+          .update({
+            status: result.status,
+            payment_method: result.paymentMethod || latestTransaction.payment_method,
+            payment_details: result.details || latestTransaction.payment_details,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", latestTransaction.id)
+
+        // Jika status berubah menjadi success, update status premium user
+        if (result.status === "success") {
+          await supabase
+            .from("users")
+            .update({
+              is_premium: true,
+              premium_expires_at: null, // Lifetime premium
+            })
+            .eq("id", user.id)
+
+          return { success: true, isPremium: true }
+        }
+
+        latestTransaction.status = result.status
+      }
+    }
+
+    return {
+      success: true,
+      hasTransaction: true,
+      transaction: {
+        id: latestTransaction.id,
+        orderId: latestTransaction.plan_id,
+        status: latestTransaction.status,
+        amount: latestTransaction.amount,
+        paymentMethod: latestTransaction.payment_method,
+        createdAt: latestTransaction.created_at,
+        updatedAt: latestTransaction.updated_at,
+        gateway: latestTransaction.payment_gateway,
+      },
+    }
+  } catch (error: any) {
+    console.error("Error getting latest transaction:", error)
+    return { success: false, error: error.message }
   }
 }
