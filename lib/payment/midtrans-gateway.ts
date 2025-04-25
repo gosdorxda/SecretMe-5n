@@ -67,9 +67,9 @@ export class MidtransGateway implements PaymentGateway {
           },
         ],
         callbacks: {
-          finish: successRedirectUrl,
-          error: failureRedirectUrl,
-          pending: pendingRedirectUrl,
+          finish: `${successRedirectUrl}&status=success&order_id=${orderId}`, // Append status and order_id
+          error: `${failureRedirectUrl}&status=failed&order_id=${orderId}`, // Append status and order_id
+          pending: `${pendingRedirectUrl}&status=pending&order_id=${orderId}`, // Append status and order_id
         },
         payment_type: "qris", // Set payment method to QRIS
       }
