@@ -82,6 +82,44 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   const [allowPublicReplies, setAllowPublicReplies] = useState(user.allow_public_replies || false)
   const hasTransaction = searchParams.has("order_id")
 
+  // Tambahkan state isPremiumChecked
+  const [isPremiumChecked, setIsPremiumChecked] = useState(false)
+
+  // Tambahkan fungsi untuk memeriksa status premium
+  const checkPremiumStatus = async () => {
+    try {
+      const { data: userData, error } = await supabase.from("users").select("is_premium").eq("id", user.id).single()
+
+      if (error) {
+        console.error("Error checking premium status:", error)
+        return
+      }
+
+      // Jika status premium berubah, refresh halaman
+      if (userData && userData.is_premium !== user.is_premium) {
+        console.log("Premium status changed, refreshing page...")
+        window.location.reload()
+      }
+
+      setIsPremiumChecked(true)
+    } catch (error) {
+      console.error("Error checking premium status:", error)
+    }
+  }
+
+  // Tambahkan useEffect untuk memeriksa status premium saat ada transaksi
+  useEffect(() => {
+    if (hasTransaction && !isPremiumChecked) {
+      // Periksa status premium setiap 5 detik
+      const intervalId = setInterval(() => {
+        checkPremiumStatus()
+      }, 5000)
+
+      // Bersihkan interval saat komponen unmount
+      return () => clearInterval(intervalId)
+    }
+  }, [hasTransaction, isPremiumChecked])
+
   // Set active tab based on URL parameter
   useEffect(() => {
     if (tabParam && ["messages", "profile", "settings"].includes(tabParam)) {
@@ -89,10 +127,19 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
     }
   }, [tabParam])
 
-  // Update URL when tab changes
+  // Modifikasi fungsi handleTabChange untuk memperbarui URL tanpa parameter transaksi jika sudah berhasil
   const handleTabChange = (value: string) => {
     setActiveTab(value)
-    router.push(`/dashboard?tab=${value}`, { scroll: false })
+
+    // Jika user sudah premium dan ada parameter transaksi, hapus parameter tersebut
+    if (user.is_premium && hasTransaction) {
+      router.push(`/dashboard?tab=${value}`, { scroll: false })
+    } else {
+      // Pertahankan parameter transaksi jika masih diperlukan
+      const currentParams = new URLSearchParams(window.location.search)
+      currentParams.set("tab", value)
+      router.push(`/dashboard?${currentParams.toString()}`, { scroll: false })
+    }
   }
 
   // Fetch view count data

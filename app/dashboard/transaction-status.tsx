@@ -32,22 +32,36 @@ export function TransactionStatus() {
 
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/payment/check-status?order_id=${orderId}`)
+      // Tambahkan timestamp untuk menghindari cache
+      const response = await fetch(`/api/payment/check-status?order_id=${orderId}&_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      })
 
       if (!response.ok) {
         throw new Error("Failed to check transaction status")
       }
 
       const data = await response.json()
+      console.log("Transaction status check response:", data)
+
       setTransaction(data.transaction)
 
-      // Jika status berubah menjadi success, tampilkan toast
+      // Jika status berubah menjadi success, tampilkan toast dan refresh halaman
       if (data.status === "success" && status !== "success") {
         toast({
           title: "Pembayaran Berhasil!",
           description: "Akun Anda telah diupgrade ke premium.",
           variant: "default",
         })
+
+        // Refresh halaman setelah 2 detik untuk memperbarui UI
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
       }
     } catch (error) {
       console.error("Error checking transaction status:", error)
@@ -63,10 +77,19 @@ export function TransactionStatus() {
 
   // Periksa status saat komponen dimuat
   useEffect(() => {
-    if (orderId) {
+    if (orderId && status !== "success") {
+      // Periksa status saat komponen dimuat
       checkTransactionStatus()
+
+      // Periksa status setiap 5 detik jika status masih pending
+      const intervalId = setInterval(() => {
+        checkTransactionStatus()
+      }, 5000)
+
+      // Bersihkan interval saat komponen unmount
+      return () => clearInterval(intervalId)
     }
-  }, [orderId])
+  }, [orderId, status])
 
   // Jika tidak ada status atau order_id, jangan tampilkan apa-apa
   if (!status || !orderId) {
