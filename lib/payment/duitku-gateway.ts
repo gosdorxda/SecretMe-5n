@@ -6,6 +6,7 @@ import {
   type NotificationResult,
   formatPaymentStatus,
 } from "./types"
+import crypto from "crypto"
 
 export class DuitkuGateway implements PaymentGateway {
   name = "duitku"
@@ -157,9 +158,9 @@ export class DuitkuGateway implements PaymentGateway {
    * Generate MD5 signature for Duitku
    */
   private generateSignature(amount: number, orderId: string): string {
-    const crypto = require("crypto")
     const signatureString = this.merchantCode + orderId + amount + this.apiKey
-    return crypto.createHash("md5").update(signatureString).digest("hex")
+    const hash = crypto.createHash("md5").update(signatureString).digest("hex")
+    return hash
   }
 
   /**
