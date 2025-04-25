@@ -37,7 +37,7 @@ export class DuitkuGateway implements PaymentGateway {
    */
   private getBaseUrl(): string {
     // PENTING: Selalu gunakan sandbox URL untuk development
-    return this.isProduction ? "https://passport.duitku.com/webapi" : "https://sandbox.duitku.com/webapi"
+    return "https://sandbox.duitku.com/webapi"
   }
 
   /**
