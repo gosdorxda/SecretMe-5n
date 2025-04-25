@@ -68,6 +68,32 @@ export async function POST(request: NextRequest) {
     // Prepare callback URLs
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
 
+    // Ambil konfigurasi gateway dari database
+    const { data: gatewayConfigData } = await supabase
+      .from("site_config")
+      .select("config")
+      .eq("type", "payment_gateway_config")
+      .single()
+
+    console.log("Gateway config from database:", gatewayConfigData?.config)
+
+    // Jika ada konfigurasi di database, gunakan untuk override environment variables
+    if (gatewayConfigData?.config?.gateways?.[gatewayName]) {
+      const gatewayConfig = gatewayConfigData.config.gateways[gatewayName]
+
+      // Set environment variables untuk digunakan oleh gateway
+      if (gatewayName === "duitku") {
+        if (gatewayConfig.merchantCode) {
+          process.env.DUITKU_MERCHANT_CODE = gatewayConfig.merchantCode
+        }
+        if (gatewayConfig.apiKey) {
+          process.env.DUITKU_API_KEY = gatewayConfig.apiKey
+        }
+      }
+
+      console.log("Using gateway config from database for", gatewayName)
+    }
+
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
       userId: user.id,

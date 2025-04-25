@@ -3,10 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the request body
-    const config = await request.json()
-
-    // Verify admin user
+    // Verifikasi user admin
     const supabase = createClient()
     const {
       data: { user },
@@ -17,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user is admin
+    // Verifikasi apakah user adalah admin
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("is_admin")
@@ -25,13 +22,16 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !userData || !userData.is_admin) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 })
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    // Save config to database
+    // Ambil data dari request
+    const config = await request.json()
+
+    // Simpan konfigurasi ke database
     const { error } = await supabase.from("site_config").upsert(
       {
-        type: "payment_settings",
+        type: "payment_gateway_config",
         config: config,
         updated_at: new Date().toISOString(),
       },

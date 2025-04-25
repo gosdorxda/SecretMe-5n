@@ -6,6 +6,7 @@ import {
   type NotificationResult,
   formatPaymentStatus,
 } from "./types"
+import crypto from "crypto"
 
 export class DuitkuGateway implements PaymentGateway {
   name = "duitku"
@@ -23,12 +24,19 @@ export class DuitkuGateway implements PaymentGateway {
     this.merchantCode = process.env.DUITKU_MERCHANT_CODE || ""
     this.apiKey = process.env.DUITKU_API_KEY || ""
     this.isProduction = process.env.NODE_ENV === "production"
+
+    console.log("Duitku Gateway initialized with:", {
+      merchantCode: this.merchantCode ? "Set (hidden)" : "Not set",
+      apiKey: this.apiKey ? "Set (hidden)" : "Not set",
+      isProduction: this.isProduction,
+    })
   }
 
   /**
    * Mendapatkan base URL API Duitku
    */
   private getBaseUrl(): string {
+    // PENTING: Selalu gunakan sandbox URL untuk development
     return this.isProduction ? "https://passport.duitku.com/webapi" : "https://sandbox.duitku.com/webapi"
   }
 
@@ -37,7 +45,25 @@ export class DuitkuGateway implements PaymentGateway {
    */
   async createTransaction(params: CreateTransactionParams): Promise<CreateTransactionResult> {
     try {
-      const { userEmail, userName, amount, orderId, description, successRedirectUrl, failureRedirectUrl } = params
+      const {
+        userEmail,
+        userName,
+        amount,
+        orderId,
+        description,
+        successRedirectUrl,
+        failureRedirectUrl,
+        notificationUrl,
+      } = params
+
+      // Validasi kredensial
+      if (!this.merchantCode || !this.apiKey) {
+        console.error("Duitku credentials not set. Please check your environment variables or configuration.")
+        return {
+          success: false,
+          error: "Payment gateway configuration is incomplete. Please contact administrator.",
+        }
+      }
 
       // Generate signature
       const signature = this.generateSignature(amount, orderId)
@@ -46,16 +72,31 @@ export class DuitkuGateway implements PaymentGateway {
       const payload = {
         merchantCode: this.merchantCode,
         paymentAmount: amount,
-        paymentMethod: "VC",
         merchantOrderId: orderId,
         productDetails: description,
         customerVaName: userName,
         email: userEmail,
-        callbackUrl: params.notificationUrl,
+        itemDetails: [
+          {
+            name: description || "SecretMe Premium Lifetime",
+            price: amount,
+            quantity: 1,
+          },
+        ],
+        callbackUrl: notificationUrl,
         returnUrl: successRedirectUrl,
-        expiryPeriod: 1440, // 24 hours
+        expiryPeriod: 60, // 60 menit
         signature: signature,
       }
+
+      console.log("Sending request to Duitku API:", {
+        url: `${this.getBaseUrl()}/api/merchant/v2/inquiry`,
+        merchantCode: this.merchantCode,
+        orderId: orderId,
+        amount: amount,
+        baseUrl: this.getBaseUrl(),
+        isProduction: this.isProduction,
+      })
 
       // Send request to Duitku
       const response = await fetch(`${this.getBaseUrl()}/api/merchant/v2/inquiry`, {
@@ -67,21 +108,32 @@ export class DuitkuGateway implements PaymentGateway {
         body: JSON.stringify(payload),
       })
 
+      const responseText = await response.text()
+      console.log("Duitku API response:", responseText)
+
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Duitku API error:", errorText)
+        console.error("Duitku API error:", responseText)
         return {
           success: false,
-          error: `Failed to create transaction: ${response.status} ${errorText}`,
+          error: `Failed to create transaction: ${response.status} ${responseText}`,
         }
       }
 
-      const data = await response.json()
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (e) {
+        console.error("Failed to parse Duitku response:", e)
+        return {
+          success: false,
+          error: "Invalid response from payment gateway",
+        }
+      }
 
       if (data.statusCode !== "00") {
         return {
           success: false,
-          error: `Duitku error: ${data.statusMessage}`,
+          error: `Duitku error: ${data.statusMessage || "Unknown error"}`,
         }
       }
 
@@ -104,7 +156,6 @@ export class DuitkuGateway implements PaymentGateway {
    * Generate MD5 signature for Duitku
    */
   private generateSignature(amount: number, orderId: string): string {
-    const crypto = require("crypto")
     const signatureString = this.merchantCode + orderId + amount + this.apiKey
     return crypto.createHash("md5").update(signatureString).digest("hex")
   }
