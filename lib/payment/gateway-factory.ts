@@ -90,6 +90,6 @@ export async function getPaymentGateway(gatewayName = "duitku"): Promise<Payment
 }
 
 // Add an empty createGateway function to satisfy the deployment check
-export function createGateway() {
-  // This function is intentionally left empty
+export function createGateway(): PaymentGateway {
+  throw new Error("createGateway is not implemented")
 }
