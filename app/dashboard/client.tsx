@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
@@ -66,6 +66,7 @@ interface DashboardClientProps {
   messages: Message[]
 }
 
+// Ubah dari export default menjadi export function untuk mengatasi error
 export function DashboardClient({ user, messages }: DashboardClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -79,6 +80,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   const { toast } = useToast()
   const [viewCount, setViewCount] = useState(0)
   const [allowPublicReplies, setAllowPublicReplies] = useState(user.allow_public_replies || false)
+  const hasTransaction = searchParams.has("order_id")
 
   // Set active tab based on URL parameter
   useEffect(() => {
@@ -291,6 +293,71 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
           </div>
         </div>
       </div>
+
+      {/* Tampilkan status transaksi jika ada */}
+      {hasTransaction && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <h3 className="text-lg font-medium mb-2 flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-amber-500"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            Status Transaksi
+          </h3>
+          <p className="text-sm text-amber-700 mb-3">
+            Transaksi Anda sedang diproses. Silakan cek status pembayaran Anda.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
+            onClick={() => {
+              // Implementasi pengecekan status transaksi
+              const orderId = searchParams.get("order_id")
+              if (orderId) {
+                fetch(`/api/payment/check-status?order_id=${orderId}`)
+                  .then((res) => res.json())
+                  .then((data) => {
+                    if (data.success) {
+                      toast({
+                        title: "Status Pembayaran",
+                        description: data.message || "Status pembayaran berhasil diperbarui",
+                      })
+                      router.refresh()
+                    } else {
+                      toast({
+                        title: "Gagal Memeriksa Status",
+                        description: data.message || "Terjadi kesalahan saat memeriksa status pembayaran",
+                        variant: "destructive",
+                      })
+                    }
+                  })
+                  .catch((error) => {
+                    toast({
+                      title: "Gagal Memeriksa Status",
+                      description: "Terjadi kesalahan saat memeriksa status pembayaran",
+                      variant: "destructive",
+                    })
+                  })
+              }
+            }}
+          >
+            Cek Status Pembayaran
+          </Button>
+        </div>
+      )}
 
       {/* Profile Quick View and Share */}
       <div className="mb-8">

@@ -13,6 +13,9 @@ import { useToast } from "@/hooks/use-toast"
 import { AlertCircle, CheckCircle2, CreditCard, DollarSign, FileText, RefreshCw, Settings } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
+// Tambahkan import untuk getPaymentConfig dan savePaymentConfig
+import { getPaymentConfig, savePaymentConfig } from "@/lib/payment/gateway-factory"
+
 interface PremiumSettings {
   price: number
   enabled: boolean
@@ -77,6 +80,8 @@ export default function PremiumSettings() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [revenue, setRevenue] = useState(0)
   const [transactionCount, setTransactionCount] = useState(0)
+  const [paymentConfig, setPaymentConfig] = useState<any>(null)
+  const [isSavingPaymentConfig, setIsSavingPaymentConfig] = useState(false)
 
   const supabase = createClient()
   const { toast } = useToast()
@@ -158,14 +163,14 @@ export default function PremiumSettings() {
         .from("premium_transactions")
         .select(
           `
-          *,
-          users:user_id (
-            email,
-            name,
-            username
-          ),
-          payment_details
-        `,
+         *,
+         users:user_id (
+           email,
+           name,
+           username
+         ),
+         payment_details
+       `,
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -199,6 +204,46 @@ export default function PremiumSettings() {
       })
     } finally {
       setIsLoadingTransactions(false)
+    }
+  }
+
+  // Fungsi untuk memuat konfigurasi pembayaran
+  const loadPaymentConfig = async () => {
+    setIsLoading(true)
+    try {
+      const config = await getPaymentConfig()
+      setPaymentConfig(config)
+    } catch (error: any) {
+      console.error("Error loading payment config:", error)
+      toast({
+        title: "Gagal memuat konfigurasi pembayaran",
+        description: error.message || "Terjadi kesalahan saat memuat konfigurasi pembayaran",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fungsi untuk menyimpan konfigurasi pembayaran
+  const savePaymentConfigSettings = async (newConfig: any) => {
+    setIsSavingPaymentConfig(true)
+    try {
+      await savePaymentConfig(newConfig)
+      setPaymentConfig(newConfig)
+      toast({
+        title: "Konfigurasi pembayaran disimpan",
+        description: "Konfigurasi pembayaran berhasil diperbarui",
+      })
+    } catch (error: any) {
+      console.error("Error saving payment config:", error)
+      toast({
+        title: "Gagal menyimpan konfigurasi pembayaran",
+        description: error.message || "Terjadi kesalahan saat menyimpan konfigurasi pembayaran",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingPaymentConfig(false)
     }
   }
 
@@ -342,6 +387,7 @@ export default function PremiumSettings() {
   // Load settings and transactions on component mount
   useEffect(() => {
     loadSettings()
+    loadPaymentConfig()
   }, [])
 
   useEffect(() => {
@@ -363,6 +409,10 @@ export default function PremiumSettings() {
           <TabsTrigger value="settings">
             <Settings className="h-4 w-4 mr-2" />
             Pengaturan
+          </TabsTrigger>
+          <TabsTrigger value="payment-gateways">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Payment Gateways
           </TabsTrigger>
         </TabsList>
 
@@ -669,6 +719,116 @@ export default function PremiumSettings() {
                 </Table>
               </div>
             </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payment-gateways">
+          <Card>
+            <CardHeader>
+              <CardTitle>Konfigurasi Payment Gateways</CardTitle>
+              <CardDescription>Atur konfigurasi untuk berbagai payment gateways</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div>Memuat konfigurasi...</div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Duitku Settings */}
+                  <div>
+                    <h3 className="text-lg font-medium">Duitku</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="duitku-merchant-code">Merchant Code</Label>
+                      <Input
+                        id="duitku-merchant-code"
+                        value={paymentConfig?.gateways?.duitku?.merchantCode || ""}
+                        onChange={(e) =>
+                          setPaymentConfig({
+                            ...paymentConfig,
+                            gateways: {
+                              ...paymentConfig?.gateways,
+                              duitku: {
+                                ...paymentConfig?.gateways?.duitku,
+                                merchantCode: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="duitku-api-key">API Key</Label>
+                      <Input
+                        id="duitku-api-key"
+                        type="password"
+                        value={paymentConfig?.gateways?.duitku?.apiKey || ""}
+                        onChange={(e) =>
+                          setPaymentConfig({
+                            ...paymentConfig,
+                            gateways: {
+                              ...paymentConfig?.gateways,
+                              duitku: {
+                                ...paymentConfig?.gateways?.duitku,
+                                apiKey: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="duitku-is-production"
+                        checked={paymentConfig?.gateways?.duitku?.isProduction !== false}
+                        onCheckedChange={(checked) =>
+                          setPaymentConfig({
+                            ...paymentConfig,
+                            gateways: {
+                              ...paymentConfig?.gateways,
+                              duitku: {
+                                ...paymentConfig?.gateways?.duitku,
+                                isProduction: checked,
+                              },
+                            },
+                          })
+                        }
+                      />
+                      <Label htmlFor="duitku-is-production">Mode Produksi</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => savePaymentConfigSettings(paymentConfig)} disabled={isSavingPaymentConfig}>
+                {isSavingPaymentConfig ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Konfigurasi"
+                )}
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

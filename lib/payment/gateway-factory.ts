@@ -1,4 +1,5 @@
 import type { PaymentGateway } from "./types"
+import { DuitkuGateway } from "./duitku-gateway"
 import { createClient } from "@/lib/supabase/client"
 
 // Simpan instance gateway dalam cache
@@ -25,7 +26,6 @@ export async function getPaymentGateway(name?: string): Promise<PaymentGateway> 
 
     switch (name.toLowerCase()) {
       case "duitku": {
-        const { DuitkuGateway } = await import("./duitku-gateway")
         gateway = new DuitkuGateway()
         break
       }
