@@ -95,10 +95,10 @@ export async function createTransaction(gateway: string) {
     // Simpan transaksi ke database
     const { error: insertError } = await supabase.from("premium_transactions").insert({
       user_id: session.user.id,
-      order_id: orderId,
+      plan_id: orderId,
       amount: premiumPrice,
       status: "pending",
-      gateway: gateway,
+      payment_gateway: gateway,
       gateway_reference: transactionResult.gatewayReference || null,
       redirect_url: transactionResult.redirectUrl || null,
     })
@@ -157,13 +157,13 @@ export async function getLatestTransaction() {
     // Format transaksi untuk client
     const formattedTransaction = {
       id: transaction.id,
-      orderId: transaction.order_id,
+      orderId: transaction.plan_id,
       status: transaction.status,
       amount: transaction.amount,
       paymentMethod: transaction.payment_method || "",
       createdAt: transaction.created_at,
       updatedAt: transaction.updated_at,
-      gateway: transaction.gateway,
+      gateway: transaction.payment_gateway,
     }
 
     return { success: true, hasTransaction: true, transaction: formattedTransaction }
@@ -203,13 +203,13 @@ export async function getTransactionHistory() {
     // Format transaksi untuk client
     const formattedTransactions = transactions.map((transaction) => ({
       id: transaction.id,
-      orderId: transaction.order_id,
+      orderId: transaction.plan_id,
       status: transaction.status,
       amount: transaction.amount,
       paymentMethod: transaction.payment_method || "",
       createdAt: transaction.created_at,
       updatedAt: transaction.updated_at,
-      gateway: transaction.gateway,
+      gateway: transaction.payment_gateway,
     }))
 
     return { success: true, transactions: formattedTransactions }

@@ -538,6 +538,18 @@ export function PremiumClient({
     )
   }
 
+  // Format transaksi untuk client
+  const formattedTransaction = {
+    id: transaction.id,
+    orderId: transaction.plan_id,
+    status: transaction.status,
+    amount: transaction.amount,
+    paymentMethod: transaction.payment_method || "",
+    createdAt: transaction.created_at,
+    updatedAt: transaction.updated_at,
+    gateway: transaction.payment_gateway,
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-3xl mx-auto">
