@@ -152,6 +152,20 @@ export async function middleware(req: NextRequest) {
 
     // Cache respons sukses
     middlewareCache.set(cacheKey, { result: res, timestamp: now })
+
+    // Jika ada logika yang menangani redirect setelah pembayaran, pastikan mengarahkan ke /premium
+    // Cari bagian yang menangani parameter payment atau order_id dan ubah logika redirectnya
+
+    const url = new URL(req.url)
+    if (url.searchParams.has("order_id") || url.searchParams.has("status")) {
+      // Ubah dari redirect ke dashboard menjadi redirect ke premium
+      // Dari:
+      // return NextResponse.redirect(new URL('/dashboard', req.url))
+
+      // Menjadi:
+      return NextResponse.redirect(new URL("/premium", req.url))
+    }
+
     return res
   } catch (error) {
     console.error("❌ MIDDLEWARE: Unexpected error:", error)

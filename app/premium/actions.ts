@@ -67,6 +67,9 @@ export async function createTransaction(gatewayName: string) {
     // Siapkan callback URLs
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
 
+    // Pastikan callbackUrl mengarah ke /premium
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/premium`
+
     // Buat transaksi di payment gateway
     const result = await gateway.createTransaction({
       userId: user.id,
@@ -75,9 +78,9 @@ export async function createTransaction(gatewayName: string) {
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${appUrl}/dashboard?status=success&order_id=${orderId}`,
-      failureRedirectUrl: `${appUrl}/premium?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
+      successRedirectUrl: `${callbackUrl}?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${callbackUrl}?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${callbackUrl}?status=pending&order_id=${orderId}`,
       notificationUrl: `${appUrl}/api/payment/notification`,
     })
 

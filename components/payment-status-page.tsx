@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { CheckCircle2, XCircle, Clock, RefreshCw } from "lucide-react"
 import { LoadingScreen } from "@/components/loading-screen"
+import Link from "next/link"
 
 interface Transaction {
   id: string
@@ -195,6 +196,11 @@ export function PaymentStatusPage() {
               </Button>
             </div>
           )}
+          <div className="mt-4">
+            <Button variant="default" size="sm" className="w-full" asChild>
+              <Link href="/premium">Kembali ke Halaman Premium</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
