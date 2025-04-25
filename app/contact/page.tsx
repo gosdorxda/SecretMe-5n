@@ -47,7 +47,7 @@ export default function ContactPage() {
               </h2>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">PT Liquid Setiawan Group.</p>
+                  <p className="text-sm font-medium">Address:</p>
                   <p className="text-sm">Jl. Jelapan Sidorejo RT003/RW004</p>
                   <p className="text-sm">Bandongan, Magelang, Indonesia 56151</p>
                 </div>
