@@ -114,27 +114,39 @@ export interface Database {
       premium_transactions: {
         Row: {
           id: string
-          plan_id: string
-          status: string
-          amount: number
-          created_at: string
           user_id: string
+          plan_id: string
+          amount: number
+          status: string
+          payment_method: string | null
+          payment_gateway: string | null
+          payment_details: Json | null
+          created_at: string
+          updated_at: string | null
         }
         Insert: {
           id?: string
-          plan_id: string
-          status?: string
-          amount: number
-          created_at?: string
           user_id: string
+          plan_id: string
+          amount: number
+          status?: string
+          payment_method?: string | null
+          payment_gateway?: string | null
+          payment_details?: Json | null
+          created_at?: string
+          updated_at?: string | null
         }
         Update: {
           id?: string
-          plan_id?: string
-          status?: string
-          amount?: number
-          created_at?: string
           user_id?: string
+          plan_id?: string
+          amount?: number
+          status?: string
+          payment_method?: string | null
+          payment_gateway?: string | null
+          payment_details?: Json | null
+          created_at?: string
+          updated_at?: string | null
         }
       }
       notification_logs: {
