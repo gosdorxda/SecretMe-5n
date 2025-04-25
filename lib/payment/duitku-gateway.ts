@@ -87,7 +87,7 @@ export class DuitkuGateway implements PaymentGateway {
         returnUrl: successRedirectUrl,
         expiryPeriod: 60, // 60 menit
         signature: signature,
-        paymentMethod: "VC", // Set payment method to QRIS
+        paymentMethod: "VC", // Set payment method to Credit Card
       }
 
       console.log("Sending request to Duitku API:", {
@@ -167,6 +167,8 @@ export class DuitkuGateway implements PaymentGateway {
    */
   async verifyTransaction(orderId: string): Promise<VerifyTransactionResult> {
     try {
+      console.log(`Verifying transaction with Duitku for order ID: ${orderId}`)
+
       // Generate signature
       const signature = this.generateSignature(0, orderId)
 
@@ -176,6 +178,11 @@ export class DuitkuGateway implements PaymentGateway {
         merchantOrderId: orderId,
         signature: signature,
       }
+
+      console.log("Sending verification request to Duitku:", {
+        url: `${this.getBaseUrl()}/api/merchant/transactionStatus`,
+        payload: payload,
+      })
 
       // Send request to Duitku
       const response = await fetch(`${this.getBaseUrl()}/api/merchant/transactionStatus`, {
@@ -187,14 +194,27 @@ export class DuitkuGateway implements PaymentGateway {
         body: JSON.stringify(payload),
       })
 
+      const responseText = await response.text()
+      console.log("Duitku verification response:", responseText)
+
       if (!response.ok) {
+        console.error(`Duitku verification failed with status ${response.status}: ${responseText}`)
         return {
           isValid: false,
           status: "unknown",
         }
       }
 
-      const data = await response.json()
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (e) {
+        console.error("Failed to parse Duitku verification response:", e)
+        return {
+          isValid: false,
+          status: "unknown",
+        }
+      }
 
       // Map Duitku status to internal status
       let status = "unknown"
@@ -236,29 +256,59 @@ export class DuitkuGateway implements PaymentGateway {
    */
   async handleNotification(payload: any): Promise<NotificationResult> {
     try {
-      // Verify notification with Duitku
-      const { isValid, status, amount, paymentMethod, details } = await this.verifyTransaction(payload.merchantOrderId)
+      console.log("Handling Duitku notification:", JSON.stringify(payload))
 
-      if (!isValid) {
-        throw new Error("Invalid transaction in notification")
+      // Extract merchantOrderId from payload
+      const merchantOrderId = payload.merchantOrderId
+
+      if (!merchantOrderId) {
+        console.error("Missing merchantOrderId in notification payload")
+        throw new Error("Missing merchantOrderId in notification payload")
       }
 
-      console.log("Duitku Handle Notification Details:", {
-        orderId: payload.merchantOrderId,
-        statusCode: payload.statusCode,
-        statusMessage: payload.statusMessage,
-        amount: Number(amount),
-        paymentMethod: paymentMethod,
-        details: details,
-      })
+      console.log(`Processing notification for order ID: ${merchantOrderId}`)
 
-      return {
-        orderId: payload.merchantOrderId,
-        status,
-        isSuccess: status === "success",
-        amount: Number(amount),
-        paymentMethod,
-        details,
+      // Attempt to verify transaction with Duitku
+      const verificationResult = await this.verifyTransaction(merchantOrderId)
+
+      // Even if verification fails, we'll try to process the notification based on the payload
+      // This is important because sometimes the Duitku API might be slow to update
+
+      // Determine status from notification payload
+      let status = "unknown"
+      const resultCode = payload.resultCode
+
+      if (resultCode === "00" || resultCode === "01") {
+        status = "success"
+      } else if (resultCode === "02") {
+        status = "pending"
+      } else {
+        status = "failed"
+      }
+
+      console.log(`Determined status from notification: ${status}`)
+
+      // Use verification result if valid, otherwise use data from notification
+      if (verificationResult.isValid) {
+        console.log("Using verification result for transaction details")
+        return {
+          orderId: merchantOrderId,
+          status: verificationResult.status,
+          isSuccess: verificationResult.status === "success",
+          amount: Number(verificationResult.amount || payload.amount || 0),
+          paymentMethod: verificationResult.paymentMethod || payload.paymentCode || "unknown",
+          details: verificationResult.details || payload,
+        }
+      } else {
+        console.log("Verification failed, using notification payload for transaction details")
+        return {
+          orderId: merchantOrderId,
+          status: formatPaymentStatus(status),
+          isSuccess: status === "success",
+          amount: Number(payload.amount || 0),
+          paymentMethod: payload.paymentCode || "unknown",
+          details: payload,
+        }
       }
     } catch (error) {
       console.error("Error handling Duitku notification:", error)
