@@ -22,7 +22,8 @@ export class DuitkuGateway implements PaymentGateway {
     // Initialize with environment variables
     this.merchantCode = process.env.DUITKU_MERCHANT_CODE || ""
     this.apiKey = process.env.DUITKU_API_KEY || ""
-    this.isProduction = process.env.NODE_ENV === "production"
+    // Force sandbox URL for testing
+    this.isProduction = false
 
     console.log("Duitku Gateway initialized with:", {
       merchantCode: this.merchantCode ? "Set (hidden)" : "Not set",
