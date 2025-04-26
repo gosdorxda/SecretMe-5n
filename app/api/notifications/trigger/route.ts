@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       // Ambil data pesan
       const { data: messageData, error: messageError } = await supabase
         .from("messages")
-        .select("content, sender_id, recipient_id")
+        .select("content")
         .eq("id", messageId)
         .single()
 
@@ -161,9 +161,23 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
 
           if (logError) {
             console.error("Error logging notification:", logError)
+            return NextResponse.json(
+              {
+                success: false,
+                error: "Failed to log notification: " + logError.message,
+              },
+              { status: 500 },
+            )
           }
-        } catch (logError) {
+        } catch (logError: any) {
           console.error("Error inserting notification log:", logError)
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Failed to insert notification log: " + logError.message,
+            },
+            { status: 500 },
+          )
         }
 
         return NextResponse.json({ success: true, result })
@@ -176,7 +190,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
 
         // Log notifikasi yang gagal
         try {
-          await supabase.from("notification_logs").insert({
+          const { error: logError } = await supabase.from("notification_logs").insert({
             user_id: userId,
             message_id: messageId,
             notification_type: "new_message",
@@ -188,8 +202,26 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
               has_telegram_chat_id: !!userData.telegram_chat_id,
             },
           })
-        } catch (logError) {
+
+          if (logError) {
+            console.error("Error logging notification failure:", logError)
+            return NextResponse.json(
+              {
+                success: false,
+                error: "Failed to log notification failure: " + logError.message,
+              },
+              { status: 500 },
+            )
+          }
+        } catch (logError: any) {
           console.error("Error inserting notification log:", logError)
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Failed to insert notification log: " + logError.message,
+            },
+            { status: 500 },
+          )
         }
 
         return NextResponse.json({
@@ -202,7 +234,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
       console.log("Received message_reply notification, but notifications for replies are disabled")
 
       try {
-        await supabase.from("notification_logs").insert({
+        const { error: logError } = await supabase.from("notification_logs").insert({
           user_id: userId,
           message_id: messageId,
           notification_type: "message_reply",
@@ -211,8 +243,26 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
           error_message: "Notifications for replies are disabled",
           data: { skipped: true },
         })
-      } catch (logError) {
+
+        if (logError) {
+          console.error("Error logging reply notification skip:", logError)
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Failed to log reply notification skip: " + logError.message,
+            },
+            { status: 500 },
+          )
+        }
+      } catch (logError: any) {
         console.error("Error inserting reply notification log:", logError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to insert reply notification log: " + logError.message,
+          },
+          { status: 500 },
+        )
       }
 
       return NextResponse.json({
