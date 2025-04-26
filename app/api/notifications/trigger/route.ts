@@ -166,9 +166,35 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
           error: "No suitable notification channel configured",
         })
       }
-    }
+    } else if (type === "message_reply") {
+      // Untuk tipe message_reply, kita hanya log tanpa mengirim notifikasi
+      console.log("Received message_reply notification, but notifications for replies are disabled")
 
-    return NextResponse.json({ success: true })
+      try {
+        await supabase.from("notification_logs").insert({
+          user_id: userId,
+          message_id: messageId,
+          notification_type: "message_reply",
+          channel: "none",
+          status: "skipped",
+          error_message: "Notifications for replies are disabled",
+          data: { skipped: true },
+        })
+      } catch (logError) {
+        console.error("Error inserting reply notification log:", logError)
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Notifications for replies are disabled",
+      })
+    } else {
+      console.log("Unsupported notification type or missing message ID:", type)
+      return NextResponse.json(
+        { success: false, error: "Unsupported notification type or missing message ID" },
+        { status: 400 },
+      )
+    }
   } catch (error: any) {
     console.error("Error triggering notification:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
