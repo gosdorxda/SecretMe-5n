@@ -40,41 +40,6 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
         throw error
       }
 
-      // Manually log notification since the trigger is disabled
-      if (updatedMessage) {
-        try {
-          await supabase.from("notification_logs").insert({
-            user_id: updatedMessage.user_id,
-            message_id: messageId,
-            notification_type: existingReply ? "reply_updated" : "new_reply",
-            channel: "app",
-            status: "pending",
-            created_at: new Date().toISOString(),
-          })
-        } catch (notifError) {
-          console.error("Failed to log notification:", notifError)
-          // Continue even if notification logging fails
-        }
-
-        // Trigger notification for message reply
-        try {
-          await fetch("/api/notifications/trigger", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId: updatedMessage.user_id,
-              messageId: messageId,
-              type: "message_reply",
-            }),
-          })
-        } catch (notificationError) {
-          console.error("Failed to trigger notification:", notificationError)
-          // Don't throw error here, we still want to show success message
-        }
-      }
-
       toast({
         title: existingReply ? "Balasan diperbarui" : "Balasan terkirim",
         description: existingReply ? "Balasan Anda telah berhasil diperbarui" : "Balasan Anda telah berhasil disimpan",

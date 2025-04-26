@@ -30,6 +30,8 @@ import {
   AlertTriangle,
   Lock,
   CheckCircle,
+  Bell,
+  Phone,
 } from "lucide-react"
 import { UsernameForm } from "@/components/username-form"
 import { SocialMediaForm } from "@/components/social-media-form"
@@ -60,6 +62,15 @@ import { PublicRepliesToggle } from "@/components/public-replies-toggle"
 
 // Tambahkan import WhatsAppForm
 import { WhatsAppForm } from "@/components/whatsapp-form"
+
+// Tambahkan import TelegramForm
+import { TelegramForm } from "@/components/telegram-form"
+
+// Tambahkan import NotificationChannelSelector
+import { NotificationChannelSelector } from "@/components/notification-channel-selector"
+
+// Tambahkan import NotificationSettingsLink di bagian imports
+import { NotificationSettingsLink } from "@/components/notification-settings-link"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
@@ -658,7 +669,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         {/* Cari bagian TabsList dan TabsTrigger */}
-        <TabsList className="grid w-full grid-cols-3 mb-6 p-0.5 h-10 gap-1">
+        <TabsList className="grid w-full grid-cols-4 mb-6 p-0.5 h-10 gap-1">
           <TabsTrigger value="messages" className="rounded-md text-xs">
             <span>Pesan</span>
           </TabsTrigger>
@@ -667,6 +678,12 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
           </TabsTrigger>
           <TabsTrigger value="settings" className="rounded-md text-xs">
             <span>Pengaturan</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-md text-xs" asChild>
+            <Link href="/dashboard/notifications">
+              <Bell className="h-4 w-4 mr-1" />
+              <span>Notifikasi</span>
+            </Link>
           </TabsTrigger>
         </TabsList>
 
@@ -1121,17 +1138,52 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                       tiktokUrl={user.tiktok_url}
                     />
                   </div>
-                  {/* Tambahkan section WhatsApp Notifications di dalam komponen DashboardClient
-                  Cari bagian yang sesuai, misalnya setelah section "Social Media Links"
-                  dan tambahkan kode berikut: */}
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-bold">Notifikasi WhatsApp</h2>
+
+                  {/* Notification Settings Section */}
+                  <div className="space-y-6 mt-8">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-blue-500" />
+                      Pengaturan Notifikasi
+                    </h2>
+
+                    {/* Channel Selector */}
+                    <NotificationChannelSelector
+                      userId={user.id}
+                      initialChannel={user.notification_channel}
+                      hasWhatsApp={!!user.phone_number}
+                      hasTelegram={!!user.telegram_id}
+                    />
+
+                    {/* WhatsApp Form */}
                     <Card>
-                      <CardContent className="pt-6">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Phone className="h-5 w-5 text-green-500" />
+                          WhatsApp
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
                         <WhatsAppForm
                           userId={user.id}
                           initialPhoneNumber={user.phone_number}
                           initialWhatsAppNotifications={user.whatsapp_notifications || false}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {/* Telegram Form */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5 text-blue-500" />
+                          Telegram
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <TelegramForm
+                          userId={user.id}
+                          initialTelegramId={user.telegram_id}
+                          initialTelegramNotifications={user.telegram_notifications || false}
                         />
                       </CardContent>
                     </Card>
@@ -1310,6 +1362,16 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* Tambahkan NotificationSettingsLink di dalam TabsContent value="settings" sebelum bagian "Delete Account"
+                // Tambahkan di bawah div "rounded-lg border border-gray-200 p-4" untuk informasi akun
+                // Letakkan di antara informasi akun dan fitur logout */}
+
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <h3 className="font-medium mb-3 text-sm sm:text-base">Pengaturan Notifikasi</h3>
+                  <p className="text-xs text-gray-500 mb-3">Kelola preferensi notifikasi pesan masuk Anda.</p>
+                  <NotificationSettingsLink />
                 </div>
 
                 <div className="rounded-lg border border-gray-200 p-4">

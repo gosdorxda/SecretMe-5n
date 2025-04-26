@@ -1,71 +1,71 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { sendNewMessageNotification, sendMessageReplyNotification } from "@/lib/fonnte/service"
+import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
+import { sendNewMessageNotification as sendWhatsAppNotification } from "@/lib/fonnte/service"
+import { sendNewMessageNotification as sendTelegramNotification } from "@/lib/telegram/service"
 
 export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
-
-  // Cek session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  // Verifikasi user dengan getUser()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    console.error("Error verifying user:", userError)
-    return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
-  }
-
   try {
-    const body = await request.json()
-    const { userId, messageId, type } = body
+    const { userId, messageId, type } = await request.json()
 
     if (!userId || !messageId || !type) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    // Fetch user details
-    const { data: userData, error: userDataError } = await supabase
-      .from("users")
-      .select("name, phone_number, notification_channel, whatsapp_notifications")
-      .eq("id", userId)
+    // Hanya proses notifikasi pesan masuk
+    if (type !== "new_message") {
+      return NextResponse.json({
+        success: true,
+        message: "Only new message notifications are supported",
+      })
+    }
+
+    const supabase = createClient(cookies())
+
+    // Get user data
+    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
+
+    if (userError) {
+      throw new Error(userError.message)
+    }
+
+    // Get notification preferences
+    const { data: preferences, error: preferencesError } = await supabase
+      .from("notification_preferences")
+      .select("*")
+      .eq("user_id", userId)
       .single()
 
-    if (userDataError || !userData) {
-      console.error("Error fetching user data:", userDataError)
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    // Default preferences if not set
+    const newMessagesEnabled = preferences ? preferences.new_messages : true
+
+    // If notifications are disabled, return early
+    if (!newMessagesEnabled) {
+      return NextResponse.json({
+        success: true,
+        message: "New message notifications are disabled for this user",
+      })
     }
 
-    // Fetch message details
+    // Get message data
     const { data: message, error: messageError } = await supabase
       .from("messages")
-      .select("content, reply")
+      .select("*")
       .eq("id", messageId)
       .single()
 
-    if (messageError || !message) {
-      console.error("Error fetching message:", messageError)
-      return NextResponse.json({ error: "Message not found" }, { status: 404 })
+    if (messageError) {
+      throw new Error(messageError.message)
     }
 
-    // Log notification
+    // Create notification log
     const { data: notificationLog, error: logError } = await supabase
       .from("notification_logs")
       .insert({
         user_id: userId,
         message_id: messageId,
         notification_type: type,
-        channel: userData.notification_channel || "email",
+        channel: "pending",
         status: "pending",
         created_at: new Date().toISOString(),
       })
@@ -73,61 +73,79 @@ export async function POST(request: Request) {
       .single()
 
     if (logError) {
-      console.error("Error logging notification:", logError)
-      return NextResponse.json({ error: "Failed to log notification" }, { status: 500 })
+      throw new Error(logError.message)
     }
 
     // Determine notification channel
     const useWhatsApp =
       userData.notification_channel === "whatsapp" && userData.whatsapp_notifications && userData.phone_number
+    const useTelegram =
+      userData.notification_channel === "telegram" && userData.telegram_notifications && userData.telegram_id
 
-    try {
-      if (useWhatsApp) {
-        // Send WhatsApp notification
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.vercel.app"
-        const profileUrl = `${appUrl}/dashboard`
+    // Generate profile URL
+    const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${userData.username || userData.numeric_id}`
 
-        if (type === "new_message") {
-          await sendNewMessageNotification({
-            phone: userData.phone_number,
-            name: userData.name,
-            messagePreview: message.content,
-            profileUrl,
-          })
-        } else if (type === "message_reply") {
-          await sendMessageReplyNotification({
-            phone: userData.phone_number,
-            name: userData.name,
-            replyPreview: message.reply || "Pesan Anda telah dibalas",
-            messageUrl: profileUrl,
-          })
-        }
+    // Update notification channel
+    await supabase
+      .from("notification_logs")
+      .update({
+        channel: useWhatsApp ? "whatsapp" : useTelegram ? "telegram" : "email",
+      })
+      .eq("id", notificationLog.id)
 
-        // Update status menjadi sent jika berhasil
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-      } else {
-        // Fallback to email notification (existing logic)
-        console.log(`Email notification sent to ${user.email} about message ${messageId}`)
-
-        // Update status menjadi sent
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-      }
-    } catch (sendError: any) {
-      console.error("Failed to send notification:", sendError.message)
-
-      // Catat ke tabel notification_logs
-      await supabase
-        .from("notification_logs")
-        .update({
-          status: "failed",
-          error_message: sendError.message,
+    // Send notification based on channel
+    if (useWhatsApp) {
+      // Send WhatsApp notification
+      try {
+        await sendWhatsAppNotification({
+          phone: userData.phone_number,
+          name: userData.name,
+          messagePreview: message.content,
+          profileUrl,
         })
-        .eq("id", notificationLog.id)
+
+        // Update status to sent
+        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
+      } catch (error) {
+        console.error("Error sending WhatsApp notification:", error)
+        await supabase
+          .from("notification_logs")
+          .update({ status: "failed", error_message: error.message })
+          .eq("id", notificationLog.id)
+      }
+    } else if (useTelegram) {
+      // Send Telegram notification
+      try {
+        await sendTelegramNotification({
+          telegramId: userData.telegram_id,
+          name: userData.name,
+          messagePreview: message.content,
+          profileUrl,
+        })
+
+        // Update status to sent
+        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
+      } catch (error) {
+        console.error("Error sending Telegram notification:", error)
+        await supabase
+          .from("notification_logs")
+          .update({ status: "failed", error_message: error.message })
+          .eq("id", notificationLog.id)
+      }
+    } else {
+      // Fallback to email notification (existing logic)
+      console.log(`Email notification sent to ${userData.email} about message ${messageId}`)
+
+      // Update status to sent
+      await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error("Error processing notification:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  } catch (error) {
+    console.error("Error triggering notification:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to trigger notification" },
+      { status: 500 },
+    )
   }
 }

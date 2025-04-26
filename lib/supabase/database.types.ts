@@ -25,6 +25,8 @@ export interface Database {
           phone_number: string | null
           notification_channel: string | null
           whatsapp_notifications: boolean | null
+          telegram_id: string | null
+          telegram_notifications: boolean | null
         }
         Insert: {
           id?: string
@@ -47,6 +49,8 @@ export interface Database {
           phone_number?: string | null
           notification_channel?: string | null
           whatsapp_notifications?: boolean | null
+          telegram_id?: string | null
+          telegram_notifications?: boolean | null
         }
         Update: {
           id?: string
@@ -69,6 +73,8 @@ export interface Database {
           phone_number?: string | null
           notification_channel?: string | null
           whatsapp_notifications?: boolean | null
+          telegram_id?: string | null
+          telegram_notifications?: boolean | null
         }
       }
       messages: {
