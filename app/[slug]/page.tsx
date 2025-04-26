@@ -69,7 +69,8 @@ export default async function ProfilePage({ params }: { params: { slug: string }
       .eq("username", slug)
       .single()
 
-    if (userByUsername && userByUsername.is_premium) {
+    // Perbaikan: Hapus kondisi is_premium agar semua pengguna dengan username dapat diakses
+    if (userByUsername) {
       user = userByUsername
     }
   }

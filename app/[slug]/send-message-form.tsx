@@ -67,6 +67,29 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     }
   }
 
+  // Fungsi untuk memicu notifikasi
+  const triggerNotification = async (messageId: string) => {
+    try {
+      const response = await fetch("/api/notifications/trigger", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          messageId: messageId,
+          type: "new_message",
+        }),
+      })
+
+      if (!response.ok) {
+        console.error("Failed to trigger notification:", await response.text())
+      }
+    } catch (error) {
+      console.error("Error triggering notification:", error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -93,15 +116,40 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         return
       }
 
-      const { error } = await supabase.from("messages").insert({
-        content: message,
-        user_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      // Kirim pesan ke database
+      const { data, error } = await supabase
+        .from("messages")
+        .insert({
+          content: message,
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
 
       if (error) {
         throw error
+      }
+
+      // Trigger notifikasi jika pesan berhasil dikirim
+      if (data && data.id) {
+        await triggerNotification(data.id)
+      }
+
+      // Laporkan rate limit
+      try {
+        await fetch("/api/rate-limit/report", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            recipientId: user.id,
+          }),
+        })
+      } catch (error) {
+        console.error("Error reporting rate limit:", error)
       }
 
       toast({
