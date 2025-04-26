@@ -24,23 +24,21 @@ async function checkRecentNotificationLogs() {
   console.log("📋 CHECKING RECENT NOTIFICATION LOGS")
   console.log("==================================\n")
 
-  // Check if notification_logs table exists
+  // Check if notification_logs table exists using a simpler approach
   try {
-    const { data: tables, error: tablesError } = await supabase
-      .from("information_schema.tables")
-      .select("table_name")
-      .eq("table_schema", "public")
-      .eq("table_name", "notification_logs")
+    // Try to select a single row from notification_logs to check if it exists
+    const { data: testData, error: testError } = await supabase.from("notification_logs").select("id").limit(1)
 
-    if (tablesError) {
-      console.error("❌ Error fetching tables:", tablesError)
-      process.exit(1)
-    }
-
-    if (!tables || tables.length === 0) {
+    if (testError && testError.code === "42P01") {
+      // Table doesn't exist error code
       console.error("❌ notification_logs table does not exist")
       process.exit(1)
+    } else if (testError) {
+      console.error("❌ Error checking notification_logs table:", testError)
+      process.exit(1)
     }
+
+    console.log("✅ notification_logs table exists")
   } catch (error: any) {
     console.error("❌ Error checking notification_logs table:", error.message)
     process.exit(1)
@@ -63,7 +61,7 @@ async function checkRecentNotificationLogs() {
     process.exit(0)
   }
 
-  console.log(`Found ${logs.length} notification logs:\n`)
+  console.log(`✅ Found ${logs.length} notification logs\n`)
 
   // Display logs
   logs.forEach((log, index) => {
@@ -76,7 +74,10 @@ async function checkRecentNotificationLogs() {
     console.log(`Channel: ${log.channel}`)
     console.log(`Status: ${log.status}`)
     console.log(`Created At: ${new Date(log.created_at).toLocaleString()}`)
-    console.log(`Message ID: ${log.message_id}`)
+
+    if (log.message_id) {
+      console.log(`Message ID: ${log.message_id}`)
+    }
 
     if (log.error_message) {
       console.log(`Error: ${log.error_message}`)
