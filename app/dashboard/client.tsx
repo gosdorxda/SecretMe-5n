@@ -61,6 +61,9 @@ import { PublicRepliesToggle } from "@/components/public-replies-toggle"
 // Tambahkan import WhatsAppForm
 import { WhatsAppForm } from "@/components/whatsapp-form"
 
+// Import TelegramForm di bagian atas file
+import { TelegramForm } from "@/components/telegram-form"
+
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -1133,6 +1136,14 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                           initialPhoneNumber={user.phone_number}
                           initialWhatsAppNotifications={user.whatsapp_notifications || false}
                         />
+                      </CardContent>
+                    </Card>
+
+                    {/* Tambahkan TelegramForm di sini */}
+                    <h2 className="text-xl font-bold">Notifikasi Telegram</h2>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <TelegramForm userId={user.id} initialTelegramChatId={user.telegram_chat_id} />
                       </CardContent>
                     </Card>
                   </div>

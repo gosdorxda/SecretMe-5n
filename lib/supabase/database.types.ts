@@ -25,6 +25,7 @@ export interface Database {
           phone_number: string | null
           notification_channel: string | null
           whatsapp_notifications: boolean | null
+          telegram_chat_id: string | null
         }
         Insert: {
           id?: string
@@ -47,6 +48,7 @@ export interface Database {
           phone_number?: string | null
           notification_channel?: string | null
           whatsapp_notifications?: boolean | null
+          telegram_chat_id?: string | null
         }
         Update: {
           id?: string
@@ -69,6 +71,30 @@ export interface Database {
           phone_number?: string | null
           notification_channel?: string | null
           whatsapp_notifications?: boolean | null
+          telegram_chat_id?: string | null
+        }
+      }
+      telegram_verification: {
+        Row: {
+          id: string
+          user_id: string
+          code: string
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          code: string
+          expires_at: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          code?: string
+          expires_at?: string
+          created_at?: string
         }
       }
       messages: {
