@@ -22,6 +22,9 @@ export interface Database {
           twitter_url: string | null
           tiktok_url: string | null
           allow_public_replies: boolean | null
+          phone_number: string | null
+          notification_channel: string | null
+          whatsapp_notifications: boolean | null
         }
         Insert: {
           id?: string
@@ -41,6 +44,9 @@ export interface Database {
           twitter_url?: string | null
           tiktok_url?: string | null
           allow_public_replies?: boolean | null
+          phone_number?: string | null
+          notification_channel?: string | null
+          whatsapp_notifications?: boolean | null
         }
         Update: {
           id?: string
@@ -60,6 +66,9 @@ export interface Database {
           twitter_url?: string | null
           tiktok_url?: string | null
           allow_public_replies?: boolean | null
+          phone_number?: string | null
+          notification_channel?: string | null
+          whatsapp_notifications?: boolean | null
         }
       }
       messages: {

@@ -58,6 +58,9 @@ import { NameForm } from "@/components/name-form"
 // Tambahkan import untuk PublicRepliesToggle
 import { PublicRepliesToggle } from "@/components/public-replies-toggle"
 
+// Tambahkan import WhatsAppForm
+import { WhatsAppForm } from "@/components/whatsapp-form"
+
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -1117,6 +1120,21 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                       linkedinUrl={user.linkedin_url}
                       tiktokUrl={user.tiktok_url}
                     />
+                  </div>
+                  {/* Tambahkan section WhatsApp Notifications di dalam komponen DashboardClient
+                  Cari bagian yang sesuai, misalnya setelah section "Social Media Links"
+                  dan tambahkan kode berikut: */}
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold">Notifikasi WhatsApp</h2>
+                    <Card>
+                      <CardContent className="pt-6">
+                        <WhatsAppForm
+                          userId={user.id}
+                          initialPhoneNumber={user.phone_number}
+                          initialWhatsAppNotifications={user.whatsapp_notifications || false}
+                        />
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               ) : (

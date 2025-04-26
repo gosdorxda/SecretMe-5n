@@ -55,6 +55,24 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
           console.error("Failed to log notification:", notifError)
           // Continue even if notification logging fails
         }
+
+        // Trigger notification for message reply
+        try {
+          await fetch("/api/notifications/trigger", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: updatedMessage.user_id,
+              messageId: messageId,
+              type: "message_reply",
+            }),
+          })
+        } catch (notificationError) {
+          console.error("Failed to trigger notification:", notificationError)
+          // Don't throw error here, we still want to show success message
+        }
       }
 
       toast({
