@@ -14,6 +14,13 @@ interface SendMessageParams {
 // Function to send message to Telegram
 export async function sendTelegramMessage(params: SendMessageParams): Promise<any> {
   try {
+    console.log("Sending Telegram message with params:", {
+      chat_id: params.chat_id,
+      text_length: params.text.length,
+      parse_mode: params.parse_mode,
+      disable_web_page_preview: params.disable_web_page_preview,
+    })
+
     const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
       method: "POST",
       headers: {
@@ -22,12 +29,16 @@ export async function sendTelegramMessage(params: SendMessageParams): Promise<an
       body: JSON.stringify(params),
     })
 
+    console.log("Telegram API response status:", response.status)
+
+    const responseData = await response.json()
+    console.log("Telegram API response data:", responseData)
+
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(`Telegram API error: ${errorData.description || response.statusText}`)
+      throw new Error(`Telegram API error: ${responseData.description || response.statusText}`)
     }
 
-    return await response.json()
+    return responseData
   } catch (error) {
     console.error("Error sending Telegram message:", error)
     throw error
@@ -55,6 +66,12 @@ export async function sendNewMessageNotification(params: {
   profileUrl: string
 }): Promise<any> {
   const { telegramId, name, messagePreview, profileUrl } = params
+  console.log("Preparing new message notification for Telegram:", {
+    telegramId,
+    name,
+    messagePreviewLength: messagePreview.length,
+    profileUrl,
+  })
 
   // Truncate message preview to 50 characters
   const truncatedPreview = messagePreview.length > 50 ? messagePreview.substring(0, 50) : messagePreview
@@ -64,6 +81,8 @@ export async function sendNewMessageNotification(params: {
     preview: truncatedPreview,
     url: profileUrl,
   })
+
+  console.log("Formatted Telegram message:", message)
 
   return sendTelegramMessage({
     chat_id: telegramId,
