@@ -53,9 +53,6 @@ import NotificationSettings from "./notification-settings"
 // Tambahkan import untuk UserCleanup
 import { UserCleanup } from "./user-cleanup"
 
-// Tambahkan import untuk TelegramWebhookSetup
-import { TelegramWebhookSetup } from "./telegram-webhook-setup"
-
 // type User = Database["public"]["Tables"]["users"]["Row"]
 interface User {
   id: string
@@ -484,7 +481,6 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
             <Crown className="h-4 w-4 mr-2" />
             Premium
           </TabsTrigger>
-          <TabsTrigger value="telegram">Telegram Webhook</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -753,9 +749,6 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="telegram">
-          <TelegramWebhookSetup />
         </TabsContent>
       </Tabs>
 
