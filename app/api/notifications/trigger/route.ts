@@ -32,6 +32,15 @@ export async function POST(request: Request) {
       throw new Error(userError.message)
     }
 
+    // Periksa apakah pengguna adalah premium
+    if (!userData.is_premium) {
+      console.log("Skipping notification for non-premium user:", userId)
+      return NextResponse.json({
+        success: true,
+        message: "Notifications are only available for premium users",
+      })
+    }
+
     console.log("User notification settings:", {
       channel: userData.notification_channel,
       telegramEnabled: userData.telegram_notifications,
