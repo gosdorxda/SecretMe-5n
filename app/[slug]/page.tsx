@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { SendMessageFormWithNotification } from "./send-message-form-with-notification"
+import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
 import { User, Crown, Instagram, Facebook, Linkedin } from "lucide-react"
 import Image from "next/image"
@@ -226,7 +226,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
 
         {/* Send Message Form */}
         <div className="px-0 sm:px-0">
-          <SendMessageFormWithNotification userId={user.id} username={user.username || user.numeric_id.toString()} />
+          <SendMessageForm user={user} />
         </div>
 
         {/* Messages Section */}
