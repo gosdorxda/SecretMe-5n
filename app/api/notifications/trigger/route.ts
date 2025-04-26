@@ -168,6 +168,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
 
         // Log notifikasi ke database
         try {
+          // Modifikasi: Tidak menggunakan kolom data
           const { error: logError } = await supabase.from("notification_logs").insert({
             user_id: userId,
             message_id: messageId,
@@ -175,7 +176,8 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
             channel: "telegram",
             status: result.success ? "sent" : "failed",
             error_message: result.success ? null : result.error || "Unknown error",
-            data: { result },
+            // Hapus kolom data jika tidak ada
+            // data: { result },
           })
 
           if (logError) {
@@ -211,6 +213,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
 
         // Log notifikasi yang gagal
         try {
+          // Modifikasi: Tidak menggunakan kolom data
           const { error: logError } = await supabase.from("notification_logs").insert({
             user_id: userId,
             message_id: messageId,
@@ -218,10 +221,11 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
             channel: userData.notification_channel || "unknown",
             status: "failed",
             error_message: "No suitable notification channel configured",
-            data: {
-              notification_channel: userData.notification_channel,
-              has_telegram_chat_id: !!userData.telegram_chat_id,
-            },
+            // Hapus kolom data jika tidak ada
+            // data: {
+            //   notification_channel: userData.notification_channel,
+            //   has_telegram_chat_id: !!userData.telegram_chat_id,
+            // },
           })
 
           if (logError) {
@@ -278,6 +282,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
       }
 
       try {
+        // Modifikasi: Tidak menggunakan kolom data
         const { error: logError } = await supabase.from("notification_logs").insert({
           user_id: userId,
           message_id: messageId || null, // Gunakan null jika messageId tidak disediakan
@@ -285,7 +290,8 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
           channel: "none",
           status: "skipped",
           error_message: "Notifications for replies are disabled",
-          data: { skipped: true },
+          // Hapus kolom data jika tidak ada
+          // data: { skipped: true },
         })
 
         if (logError) {

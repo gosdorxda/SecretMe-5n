@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
 import dotenv from "dotenv"
-// import fetch from "node-fetch" // Removed import
 
 // Load environment variables
 dotenv.config()
@@ -51,6 +50,8 @@ async function testNotificationWithValidMessage() {
       .eq("user_id", user.id)
       .limit(1)
 
+    let messageId: string
+
     if (messageError || !messages || messages.length === 0) {
       console.log("❌ No existing messages found for this user. Creating a test message...")
 
@@ -73,13 +74,13 @@ async function testNotificationWithValidMessage() {
       console.log(`   Content: ${newMessage.content}`)
       console.log("")
 
-      var messageId = newMessage.id
+      messageId = newMessage.id
     } else {
       console.log(`✅ Found message: ${messages[0].id}`)
       console.log(`   Content: ${messages[0].content}`)
       console.log("")
 
-      var messageId = messages[0].id
+      messageId = messages[0].id
     }
 
     // 3. Test the notification endpoint
@@ -94,6 +95,7 @@ async function testNotificationWithValidMessage() {
     console.log(notificationData)
     console.log("")
 
+    // Using native fetch (Node.js 18+)
     const response = await fetch(`${appUrl}/api/notifications/trigger`, {
       method: "POST",
       headers: {
