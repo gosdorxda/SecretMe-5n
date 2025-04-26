@@ -2,123 +2,167 @@
 
 import type React from "react"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "@/hooks/use-toast"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { LoadingDots } from "@/components/loading-dots"
+import { useToast } from "@/hooks/use-toast"
+import { Send } from "lucide-react"
 
-interface SendMessageFormProps {
-  userId: string
-  username: string
+interface User {
+  id: string
+  name: string
+  username: string | null
+  is_premium: boolean
+  numeric_id: number
 }
 
-export function SendMessageForm({ userId, username }: SendMessageFormProps) {
-  const [message, setMessage] = useState("")
-  const [isPending, startTransition] = useTransition()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+interface SendMessageFormProps {
+  user: User
+}
 
-  const isLoading = isPending || isSubmitting
+export function SendMessageForm({ user }: SendMessageFormProps) {
+  const [message, setMessage] = useState("")
+  const [isSending, setIsSending] = useState(false)
+  const [characterCount, setCharacterCount] = useState(0)
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null)
+  const maxLength = 500
+  const supabase = createClient()
+  const { toast } = useToast()
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    if (value.length <= maxLength) {
+      setMessage(value)
+      setCharacterCount(value.length)
+    }
+  }
+
+  const checkRateLimit = async (): Promise<boolean> => {
+    try {
+      const response = await fetch("/api/rate-limit/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientId: user.id,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setRateLimitError(data.reason || "Terlalu banyak permintaan. Coba lagi nanti.")
+        return false
+      }
+
+      setRateLimitError(null)
+      return data.allowed
+    } catch (error) {
+      console.error("Error checking rate limit:", error)
+      setRateLimitError("Terjadi kesalahan saat memeriksa batas pengiriman. Coba lagi nanti.")
+      return false
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!message.trim()) return
 
-    setIsSubmitting(true)
+    if (!message.trim()) {
+      toast({
+        title: "Pesan tidak boleh kosong",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSending(true)
 
     try {
-      // Check rate limit first
-      const rateLimitResponse = await fetch("/api/rate-limit/check")
-      const rateLimitData = await rateLimitResponse.json()
+      // Periksa rate limit sebelum mengirim pesan
+      const isAllowed = await checkRateLimit()
 
-      if (!rateLimitResponse.ok) {
-        throw new Error(rateLimitData.error || "Rate limit exceeded. Please try again later.")
-      }
-
-      // Send message
-      const { data: messageData, error: messageError } = await supabase
-        .from("messages")
-        .insert({
-          content: message.trim(),
-          user_id: userId,
+      if (!isAllowed) {
+        toast({
+          title: "Gagal mengirim pesan",
+          description: rateLimitError || "Anda telah mencapai batas pengiriman pesan. Coba lagi nanti.",
+          variant: "destructive",
         })
-        .select()
-        .single()
-
-      if (messageError) {
-        throw new Error(messageError.message)
+        return
       }
 
-      // Report rate limit usage
-      await fetch("/api/rate-limit/report", {
-        method: "POST",
+      const { error } = await supabase.from("messages").insert({
+        content: message,
+        user_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
 
-      // Trigger notification
-      if (messageData) {
-        try {
-          console.log("Triggering notification for message:", messageData.id)
-          const notificationResponse = await fetch("/api/notifications/trigger", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId,
-              messageId: messageData.id,
-              type: "new_message",
-            }),
-          })
-
-          if (!notificationResponse.ok) {
-            const notificationResult = await notificationResponse.json()
-            console.error("Notification error:", notificationResult)
-            // Don't throw error here, we still want to show success message
-          }
-        } catch (notificationError) {
-          console.error("Failed to trigger notification:", notificationError)
-          // Don't throw error here, we still want to show success message
-        }
+      if (error) {
+        throw error
       }
 
       toast({
         title: "Pesan terkirim!",
-        description: "Pesan Anda telah berhasil terkirim.",
+        description: "Pesan anonim Anda telah berhasil terkirim.",
       })
 
       setMessage("")
-
-      // Refresh the page
-      startTransition(() => {
-        router.refresh()
-      })
+      setCharacterCount(0)
     } catch (error: any) {
+      console.error(error)
       toast({
-        title: "Error",
-        description: error.message || "Gagal mengirim pesan. Silakan coba lagi.",
+        title: "Gagal mengirim pesan",
+        description: error.message || "Terjadi kesalahan saat mengirim pesan",
         variant: "destructive",
       })
     } finally {
-      setIsSubmitting(false)
+      setIsSending(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Textarea
-        placeholder={`Kirim pesan anonim ke ${username}...`}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        className="min-h-[120px] resize-none"
-        disabled={isLoading}
-      />
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? <LoadingDots /> : "Kirim Pesan"}
-      </Button>
-    </form>
+    <Card className="neo-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-xl">Kirim Pesan Anonim</CardTitle>
+        <CardDescription>Kirim pesan anonim ke {user.name || `@${user.username || user.numeric_id}`}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Textarea
+              placeholder="Tulis pesan anonim Anda di sini..."
+              value={message}
+              onChange={handleMessageChange}
+              className="min-h-[120px] resize-none"
+              maxLength={maxLength}
+            />
+            <div className="flex justify-end">
+              <span
+                className={`text-xs ${characterCount > maxLength * 0.8 ? "text-orange-500" : "text-muted-foreground"}`}
+              >
+                {characterCount}/{maxLength}
+              </span>
+            </div>
+          </div>
+          {rateLimitError && <div className="text-sm text-red-500 p-2 bg-red-50 rounded-md">{rateLimitError}</div>}
+          <Button type="submit" className="w-full neo-btn" disabled={isSending || !message.trim()}>
+            {isSending ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                Mengirim...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Kirim Pesan
+              </>
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

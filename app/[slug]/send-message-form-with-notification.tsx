@@ -61,8 +61,7 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
       // Trigger notification
       if (messageData) {
         try {
-          console.log("Triggering notification for message:", messageData.id)
-          const notificationResponse = await fetch("/api/notifications/trigger", {
+          await fetch("/api/notifications/trigger", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -73,27 +72,9 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
               type: "new_message",
             }),
           })
-
-          const notificationResult = await notificationResponse.json()
-          console.log("Notification result:", notificationResult)
-
-          if (!notificationResponse.ok) {
-            console.error("Notification error:", notificationResult)
-            // Don't throw error here, we still want to show success message
-            toast({
-              title: "Pesan terkirim, tetapi notifikasi gagal",
-              description: notificationResult.error || "Terjadi kesalahan saat mengirim notifikasi",
-              variant: "destructive",
-            })
-          }
-        } catch (notificationError: any) {
+        } catch (notificationError) {
           console.error("Failed to trigger notification:", notificationError)
           // Don't throw error here, we still want to show success message
-          toast({
-            title: "Pesan terkirim, tetapi notifikasi gagal",
-            description: notificationError.message || "Terjadi kesalahan saat mengirim notifikasi",
-            variant: "destructive",
-          })
         }
       }
 
