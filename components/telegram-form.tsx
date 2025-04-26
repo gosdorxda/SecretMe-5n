@@ -12,10 +12,11 @@ import { AlertCircle, CheckCircle, Send } from "lucide-react"
 interface TelegramFormProps {
   userId: string
   initialTelegramChatId?: string | null
+  initialNotificationChannel?: string | null
 }
 
-export function TelegramForm({ userId, initialTelegramChatId }: TelegramFormProps) {
-  const [telegramEnabled, setTelegramEnabled] = useState(!!initialTelegramChatId)
+export function TelegramForm({ userId, initialTelegramChatId, initialNotificationChannel }: TelegramFormProps) {
+  const [telegramEnabled, setTelegramEnabled] = useState(initialNotificationChannel === "telegram")
   const [isGeneratingCode, setIsGeneratingCode] = useState(false)
   const [generatedCode, setGeneratedCode] = useState("")
   const [isConnected, setIsConnected] = useState(!!initialTelegramChatId)
@@ -27,12 +28,12 @@ export function TelegramForm({ userId, initialTelegramChatId }: TelegramFormProp
   useEffect(() => {
     if (initialTelegramChatId) {
       setIsConnected(true)
-      setTelegramEnabled(true)
+      setTelegramEnabled(initialNotificationChannel === "telegram")
     } else {
       setIsConnected(false)
       setTelegramEnabled(false)
     }
-  }, [initialTelegramChatId])
+  }, [initialTelegramChatId, initialNotificationChannel])
 
   const handleGenerateCode = async () => {
     setIsGeneratingCode(true)
@@ -156,7 +157,6 @@ export function TelegramForm({ userId, initialTelegramChatId }: TelegramFormProp
 
       if (data?.telegram_chat_id) {
         setIsConnected(true)
-        setTelegramEnabled(true)
         setGeneratedCode("")
         clearInterval(checkInterval)
 
@@ -177,37 +177,43 @@ export function TelegramForm({ userId, initialTelegramChatId }: TelegramFormProp
         <p className="text-sm text-muted-foreground">Terima notifikasi pesan baru melalui Telegram</p>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="telegram-notifications"
-          checked={telegramEnabled}
-          onCheckedChange={handleToggleNotifications}
-          disabled={!isConnected}
-        />
-        <Label htmlFor="telegram-notifications">
-          {telegramEnabled ? "Notifikasi Telegram Aktif" : "Notifikasi Telegram Nonaktif"}
-        </Label>
-      </div>
-
       {isConnected ? (
         <div className="bg-green-50 border border-green-200 rounded-md p-4">
           <div className="flex items-start gap-3">
             <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
             <div>
               <h4 className="font-medium text-green-800">Telegram Terhubung</h4>
-              <p className="text-sm text-green-700 mt-1">
-                Akun Telegram Anda sudah terhubung dengan SecretMe. Anda akan menerima notifikasi saat ada pesan baru.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 bg-white"
-                onClick={handleSendTestMessage}
-                disabled={isTestSending}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {isTestSending ? "Mengirim..." : "Kirim Pesan Test"}
-              </Button>
+              <p className="text-sm text-green-700 mt-1">Akun Telegram Anda sudah terhubung dengan SecretMe.</p>
+
+              {/* Tambahkan toggle untuk mengaktifkan/menonaktifkan notifikasi Telegram */}
+              <div className="mt-3 flex items-center space-x-2 p-2 bg-white rounded-md border border-green-100">
+                <Switch
+                  id="telegram-notifications"
+                  checked={telegramEnabled}
+                  onCheckedChange={handleToggleNotifications}
+                />
+                <Label htmlFor="telegram-notifications" className="font-medium text-sm">
+                  {telegramEnabled ? "Notifikasi Telegram Aktif" : "Notifikasi Telegram Nonaktif"}
+                </Label>
+              </div>
+
+              <div className="mt-3">
+                <p className="text-xs text-green-600 mb-2">
+                  {telegramEnabled
+                    ? "Anda akan menerima notifikasi pesan baru melalui Telegram."
+                    : "Aktifkan untuk menerima notifikasi pesan baru melalui Telegram."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white"
+                  onClick={handleSendTestMessage}
+                  disabled={isTestSending}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {isTestSending ? "Mengirim..." : "Kirim Pesan Test"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -64,6 +64,9 @@ import { WhatsAppForm } from "@/components/whatsapp-form"
 // Import TelegramForm di bagian atas file
 import { TelegramForm } from "@/components/telegram-form"
 
+// Tambahkan import NotificationChannelSelector
+import { NotificationChannelSelector } from "@/components/notification-channel-selector"
+
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -1128,6 +1131,16 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                   Cari bagian yang sesuai, misalnya setelah section "Social Media Links"
                   dan tambahkan kode berikut: */}
                   <div className="space-y-4">
+                    <h2 className="text-xl font-bold">Pengaturan Notifikasi</h2>
+
+                    {/* Tambahkan NotificationChannelSelector */}
+                    <NotificationChannelSelector
+                      userId={user.id}
+                      initialChannel={user.notification_channel}
+                      hasTelegram={!!user.telegram_chat_id}
+                      hasWhatsApp={!!user.whatsapp_notifications}
+                    />
+
                     <h2 className="text-xl font-bold">Notifikasi WhatsApp</h2>
                     <Card>
                       <CardContent className="pt-6">
@@ -1139,11 +1152,14 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                       </CardContent>
                     </Card>
 
-                    {/* Tambahkan TelegramForm di sini */}
                     <h2 className="text-xl font-bold">Notifikasi Telegram</h2>
                     <Card>
                       <CardContent className="pt-6">
-                        <TelegramForm userId={user.id} initialTelegramChatId={user.telegram_chat_id} />
+                        <TelegramForm
+                          userId={user.id}
+                          initialTelegramChatId={user.telegram_chat_id}
+                          initialNotificationChannel={user.notification_channel}
+                        />
                       </CardContent>
                     </Card>
                   </div>
