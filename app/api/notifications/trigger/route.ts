@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       // Ambil data pesan
       const { data: messageData, error: messageError } = await supabase
         .from("messages")
-        .select("content")
+        .select("content, sender_id, recipient_id")
         .eq("id", messageId)
         .single()
 
