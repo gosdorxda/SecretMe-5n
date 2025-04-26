@@ -72,6 +72,25 @@ export async function POST(request: Request) {
 
     // Jika tipe notifikasi adalah pesan baru
     if (type === "new_message" && messageId) {
+      // Verifikasi message_id ada di tabel messages
+      const { data: messageExists, error: messageExistsError } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("id", messageId)
+        .single()
+
+      if (messageExistsError || !messageExists) {
+        console.error("Error: Message ID does not exist:", messageExistsError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Message ID does not exist in messages table",
+            details: messageExistsError,
+          },
+          { status: 404 },
+        )
+      }
+
       // Ambil data pesan
       const { data: messageData, error: messageError } = await supabase
         .from("messages")
@@ -165,6 +184,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
               {
                 success: false,
                 error: "Failed to log notification: " + logError.message,
+                details: logError,
               },
               { status: 500 },
             )
@@ -175,6 +195,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
             {
               success: false,
               error: "Failed to insert notification log: " + logError.message,
+              details: logError,
             },
             { status: 500 },
           )
@@ -209,6 +230,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
               {
                 success: false,
                 error: "Failed to log notification failure: " + logError.message,
+                details: logError,
               },
               { status: 500 },
             )
@@ -219,6 +241,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
             {
               success: false,
               error: "Failed to insert notification log: " + logError.message,
+              details: logError,
             },
             { status: 500 },
           )
@@ -233,10 +256,31 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
       // Untuk tipe message_reply, kita hanya log tanpa mengirim notifikasi
       console.log("Received message_reply notification, but notifications for replies are disabled")
 
+      // Verifikasi message_id ada di tabel messages jika disediakan
+      if (messageId) {
+        const { data: messageExists, error: messageExistsError } = await supabase
+          .from("messages")
+          .select("id")
+          .eq("id", messageId)
+          .single()
+
+        if (messageExistsError || !messageExists) {
+          console.error("Error: Message ID does not exist:", messageExistsError)
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Message ID does not exist in messages table",
+              details: messageExistsError,
+            },
+            { status: 404 },
+          )
+        }
+      }
+
       try {
         const { error: logError } = await supabase.from("notification_logs").insert({
           user_id: userId,
-          message_id: messageId,
+          message_id: messageId || null, // Gunakan null jika messageId tidak disediakan
           notification_type: "message_reply",
           channel: "none",
           status: "skipped",
@@ -250,6 +294,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
             {
               success: false,
               error: "Failed to log reply notification skip: " + logError.message,
+              details: logError,
             },
             { status: 500 },
           )
@@ -260,6 +305,7 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
           {
             success: false,
             error: "Failed to insert reply notification log: " + logError.message,
+            details: logError,
           },
           { status: 500 },
         )
@@ -278,7 +324,14 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
     }
   } catch (error: any) {
     console.error("Error triggering notification:", error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      },
+      { status: 500 },
+    )
   }
 }
 
