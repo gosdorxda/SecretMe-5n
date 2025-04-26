@@ -1,61 +1,100 @@
-// Script untuk menguji pengiriman pesan Telegram secara langsung
-// Jalankan dengan: TELEGRAM_BOT_TOKEN=your-token npx tsx scripts/test-direct-telegram.ts chat_id
+import dotenv from "dotenv"
 
-// Ambil chat ID dari argumen command line
+// Load environment variables
+dotenv.config()
+
+// Validate environment variables
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN
+
+if (!telegramBotToken) {
+  console.error("❌ Missing environment variable. Please set TELEGRAM_BOT_TOKEN")
+  process.exit(1)
+}
+
+// Get chat ID from command line arguments
 const chatId = process.argv[2]
 
 if (!chatId) {
-  console.error("Please provide a chat ID")
-  console.error("Usage: TELEGRAM_BOT_TOKEN=your-token npx tsx scripts/test-direct-telegram.ts chat_id")
+  console.error("❌ Please provide a chat ID as an argument")
+  console.log("Usage: npx tsx scripts/test-direct-telegram.ts CHAT_ID")
   process.exit(1)
 }
 
-// Ambil token bot dari environment variables
-const botToken = process.env.TELEGRAM_BOT_TOKEN
+async function testDirectTelegram() {
+  console.log("🧪 TESTING DIRECT TELEGRAM MESSAGE")
+  console.log("================================\n")
 
-if (!botToken) {
-  console.error("TELEGRAM_BOT_TOKEN is not defined")
-  console.error("Run with: TELEGRAM_BOT_TOKEN=your-token npx tsx scripts/test-direct-telegram.ts chat_id")
-  process.exit(1)
-}
+  // 1. Check bot info
+  console.log("1️⃣ CHECKING BOT INFO")
+  console.log("-------------------")
 
-async function sendTelegramMessage() {
   try {
-    console.log("🔍 TESTING TELEGRAM MESSAGE")
-    console.log("==========================\n")
+    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/getMe`)
+    const data = await response.json()
 
-    console.log(`Sending test message to chat ID: ${chatId}`)
+    if (data.ok) {
+      console.log("✅ Telegram Bot API is working")
+      console.log(`   Bot Name: ${data.result.first_name}`)
+      console.log(`   Bot Username: @${data.result.username}`)
+    } else {
+      console.log("❌ Telegram Bot API error:", data.description)
+      process.exit(1)
+    }
+  } catch (error: any) {
+    console.log("❌ Error checking Telegram Bot API:", error.message)
+    process.exit(1)
+  }
+  console.log("")
 
-    // Buat pesan test
-    const message = `🔔 *Test Notification*\n\nThis is a test message sent at ${new Date().toLocaleString()}\n\nIf you received this message, your Telegram notifications are working correctly!`
+  // 2. Send test message
+  console.log("2️⃣ SENDING TEST MESSAGE")
+  console.log("---------------------")
 
-    // Kirim pesan ke Telegram
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+  const testMessage = `
+🧪 Test Direct Telegram Message
+
+This is a direct test message from the SecretMe notification system.
+
+Time: ${new Date().toLocaleString()}
+Chat ID: ${chatId}
+
+If you're receiving this message, your Telegram bot is working correctly!
+  `
+
+  try {
+    console.log(`Sending message to chat ID: ${chatId}`)
+
+    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         chat_id: chatId,
-        text: message,
-        parse_mode: "Markdown",
+        text: testMessage,
       }),
     })
 
-    const result = await response.json()
+    const data = await response.json()
 
-    if (result.ok) {
-      console.log("✅ Message sent successfully!")
-      console.log(`Message ID: ${result.result.message_id}`)
+    if (data.ok) {
+      console.log("✅ Test message sent successfully")
+      console.log(`   Message ID: ${data.result.message_id}`)
     } else {
-      console.error("❌ Failed to send message")
-      console.error(`Error: ${result.description}`)
+      console.log("❌ Error sending test message:", data.description)
+      process.exit(1)
     }
-
-    console.log("\n✨ TEST COMPLETE")
-  } catch (error) {
-    console.error("Error sending Telegram message:", error)
+  } catch (error: any) {
+    console.log("❌ Error sending test message:", error.message)
+    process.exit(1)
   }
+  console.log("")
+
+  console.log("✨ TEST COMPLETE")
 }
 
-sendTelegramMessage()
+// Run the function
+testDirectTelegram().catch((error) => {
+  console.error("Error:", error)
+  process.exit(1)
+})
