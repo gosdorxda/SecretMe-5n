@@ -9,6 +9,7 @@ interface SendMessageParams {
 export async function sendTelegramMessage({ chatId, message, parseMode = "HTML" }: SendMessageParams) {
   try {
     console.log(`Sending Telegram message to chat ID: ${chatId}`)
+    console.log(`Message content: ${message.substring(0, 100)}...`)
 
     const response = await fetch(getTelegramApiUrl("sendMessage"), {
       method: "POST",

@@ -1,148 +1,146 @@
+import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
-import { sendNewMessageNotification } from "@/lib/fonnte/service"
-import { sendNewMessageNotificationTelegram } from "@/lib/telegram/service"
+
+// Fungsi untuk mengirim notifikasi Telegram langsung
+async function sendTelegramNotification(chatId: string, message: string) {
+  try {
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+
+    if (!TELEGRAM_BOT_TOKEN) {
+      console.error("TELEGRAM_BOT_TOKEN is not defined")
+      return { success: false, error: "TELEGRAM_BOT_TOKEN is not defined" }
+    }
+
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: "HTML",
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!data.ok) {
+      console.error("Error sending message to Telegram:", data)
+      return { success: false, error: data.description || "Unknown error" }
+    }
+
+    return { success: true, data }
+  } catch (error: any) {
+    console.error("Error sending message to Telegram:", error)
+    return { success: false, error: error.message || "Unknown error" }
+  }
+}
 
 export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
-
-  // Cek session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  // Verifikasi user dengan getUser()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    console.error("Error verifying user:", userError)
-    return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
-  }
-
   try {
+    const supabase = createRouteHandlerClient({ cookies })
     const body = await request.json()
     const { userId, messageId, type } = body
 
-    if (!userId || !messageId || !type) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    console.log("Notification trigger received:", { userId, messageId, type })
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 })
     }
 
-    // Hanya proses notifikasi untuk pesan baru, bukan balasan
-    if (type !== "new_message") {
-      console.log(`Skipping notification for type: ${type} as requested`)
-      return NextResponse.json({ success: true, message: "Notification type skipped as requested" })
-    }
-
-    // Fetch user details
-    const { data: userData, error: userDataError } = await supabase
+    // Ambil data user
+    const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("name, phone_number, notification_channel, whatsapp_notifications, telegram_chat_id")
+      .select("id, name, username, notification_channel, telegram_chat_id")
       .eq("id", userId)
       .single()
 
-    if (userDataError || !userData) {
-      console.error("Error fetching user data:", userDataError)
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    if (userError || !userData) {
+      console.error("Error fetching user data:", userError)
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    // Fetch message details
-    const { data: message, error: messageError } = await supabase
-      .from("messages")
-      .select("content, reply")
-      .eq("id", messageId)
-      .single()
+    console.log("User data:", userData)
 
-    if (messageError || !message) {
-      console.error("Error fetching message:", messageError)
-      return NextResponse.json({ error: "Message not found" }, { status: 404 })
-    }
+    // Jika tipe notifikasi adalah pesan baru
+    if (type === "new_message" && messageId) {
+      // Ambil data pesan
+      const { data: messageData, error: messageError } = await supabase
+        .from("messages")
+        .select("content")
+        .eq("id", messageId)
+        .single()
 
-    // Log notification
-    const { data: notificationLog, error: logError } = await supabase
-      .from("notification_logs")
-      .insert({
-        user_id: userId,
-        message_id: messageId,
-        notification_type: type,
-        channel: userData.notification_channel || "email",
-        status: "pending",
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
-
-    if (logError) {
-      console.error("Error logging notification:", logError)
-      return NextResponse.json({ error: "Failed to log notification" }, { status: 500 })
-    }
-
-    // Determine notification channel
-    const useWhatsApp =
-      userData.notification_channel === "whatsapp" && userData.whatsapp_notifications && userData.phone_number
-
-    const useTelegram = userData.notification_channel === "telegram" && userData.telegram_chat_id
-
-    try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.vercel.app"
-      const profileUrl = `${appUrl}/dashboard`
-
-      if (useWhatsApp) {
-        // Send WhatsApp notification
-        await sendNewMessageNotification({
-          phone: userData.phone_number,
-          name: userData.name,
-          messagePreview: message.content,
-          profileUrl,
-        })
-
-        // Update status menjadi sent jika berhasil
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-      } else if (useTelegram) {
-        // Send Telegram notification
-        const result = await sendNewMessageNotificationTelegram({
-          chatId: userData.telegram_chat_id,
-          name: userData.name,
-          messagePreview: message.content,
-          profileUrl,
-        })
-
-        if (result.success) {
-          // Update status menjadi sent jika berhasil
-          await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-        } else {
-          throw new Error(result.error || "Failed to send Telegram notification")
-        }
-      } else {
-        // Fallback to email notification (existing logic)
-        console.log(`Email notification sent to ${user.email} about message ${messageId}`)
-
-        // Update status menjadi sent
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
+      if (messageError || !messageData) {
+        console.error("Error fetching message data:", messageError)
+        return NextResponse.json({ success: false, error: "Message not found" }, { status: 404 })
       }
-    } catch (sendError: any) {
-      console.error("Failed to send notification:", sendError.message)
 
-      // Catat ke tabel notification_logs
-      await supabase
-        .from("notification_logs")
-        .update({
-          status: "failed",
-          error_message: sendError.message,
+      console.log("Message data:", messageData)
+
+      // Siapkan preview pesan (batasi ke 50 karakter)
+      const messagePreview =
+        messageData.content.length > 50 ? messageData.content.substring(0, 50) + "..." : messageData.content
+
+      // Siapkan URL profil
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.site"
+      const profileUrl = `${appUrl}/${userData.username || ""}`
+
+      // Kirim notifikasi berdasarkan channel yang dipilih user
+      if (userData.notification_channel === "telegram" && userData.telegram_chat_id) {
+        console.log("Sending Telegram notification to:", userData.telegram_chat_id)
+
+        // Buat pesan notifikasi
+        const notificationMessage = `
+<b>🔔 Pesan Baru di SecretMe!</b>
+
+Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
+
+"<i>${messagePreview}</i>"
+
+<a href="${profileUrl}">Klik di sini</a> untuk melihat dan membalas pesan.
+
+<i>Bot ini adalah layanan resmi dari SecretMe</i>
+        `
+
+        // Kirim notifikasi Telegram langsung
+        const result = await sendTelegramNotification(userData.telegram_chat_id, notificationMessage)
+
+        console.log("Telegram notification result:", result)
+
+        // Log notifikasi ke database
+        await supabase.from("notification_logs").insert({
+          user_id: userId,
+          message_id: messageId,
+          notification_type: "new_message",
+          channel: "telegram",
+          status: result.success ? "sent" : "failed",
+          error_message: result.success ? null : result.error || "Unknown error",
+          data: { result },
         })
-        .eq("id", notificationLog.id)
+
+        return NextResponse.json({ success: true, result })
+      } else {
+        console.log("No suitable notification channel found for user:", userId)
+        console.log("User data:", userData)
+
+        return NextResponse.json({
+          success: false,
+          error: "No suitable notification channel configured",
+        })
+      }
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("Error processing notification:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error triggering notification:", error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
+}
+
+// Endpoint untuk testing
+export async function GET() {
+  return NextResponse.json({ success: true, message: "Notification endpoint is active" })
 }

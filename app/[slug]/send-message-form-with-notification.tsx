@@ -61,7 +61,8 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
       // Trigger notification
       if (messageData) {
         try {
-          await fetch("/api/notifications/trigger", {
+          console.log("Triggering notification for message:", messageData.id)
+          const notificationResponse = await fetch("/api/notifications/trigger", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -72,6 +73,13 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
               type: "new_message",
             }),
           })
+
+          const notificationResult = await notificationResponse.json()
+          console.log("Notification result:", notificationResult)
+
+          if (!notificationResponse.ok) {
+            console.error("Notification error:", notificationResult)
+          }
         } catch (notificationError) {
           console.error("Failed to trigger notification:", notificationError)
           // Don't throw error here, we still want to show success message
