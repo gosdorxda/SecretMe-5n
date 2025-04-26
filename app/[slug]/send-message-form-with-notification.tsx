@@ -32,11 +32,20 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
 
     try {
       // Check rate limit first
-      const rateLimitResponse = await fetch("/api/rate-limit/check")
+      const rateLimitResponse = await fetch("/api/rate-limit/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientId: userId,
+        }),
+      })
+
       const rateLimitData = await rateLimitResponse.json()
 
       if (!rateLimitResponse.ok) {
-        throw new Error(rateLimitData.error || "Rate limit exceeded. Please try again later.")
+        throw new Error(rateLimitData.error || rateLimitData.reason || "Rate limit exceeded. Please try again later.")
       }
 
       // Send message
@@ -56,6 +65,12 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
       // Report rate limit usage
       await fetch("/api/rate-limit/report", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientId: userId,
+        }),
       })
 
       // Trigger notification
