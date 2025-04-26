@@ -2,7 +2,6 @@
 // Jalankan dengan: npx tsx scripts/debug-notification-flow.ts USER_ID
 
 import { createClient } from "@supabase/supabase-js"
-import fetch from "node-fetch"
 
 // Ambil environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -13,7 +12,7 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing required environment variables")
   console.error(
-    "Run with: NEXT_PUBLIC_SUPABASE_URL=xxx SUPABASE_SERVICE_ROLE_KEY=xxx npx tsx scripts/debug-notification-flow.ts USER_ID",
+    "Run with: NEXT_PUBLIC_SUPABASE_URL=xxx SUPABASE_SERVICE_ROLE_KEY=xxx TELEGRAM_BOT_TOKEN=xxx npx tsx scripts/debug-notification-flow.ts USER_ID",
   )
   process.exit(1)
 }
@@ -121,57 +120,43 @@ async function debugNotificationFlow() {
     console.log("---------------------------------")
 
     try {
-      // Periksa apakah tabel notification_logs ada
-      const { data: tables, error: tablesError } = await supabase
-        .from("pg_tables")
-        .select("tablename")
-        .eq("schemaname", "public")
+      // Coba cara yang lebih sederhana untuk memeriksa tabel
+      const { count, error: countError } = await supabase
+        .from("notification_logs")
+        .select("*", { count: "exact", head: true })
 
-      if (tablesError) {
-        console.error("❌ Error fetching tables:", tablesError)
-      } else {
-        const hasNotificationLogsTable = tables.some((t) => t.tablename === "notification_logs")
-
-        if (hasNotificationLogsTable) {
-          console.log("✅ notification_logs table exists")
-
-          // Periksa struktur tabel
-          const { data: columns, error: columnsError } = await supabase.rpc("get_table_columns", {
-            table_name: "notification_logs",
-          })
-
-          if (columnsError) {
-            console.error("❌ Error fetching table columns:", columnsError)
-          } else {
-            console.log("✅ notification_logs table columns:", columns)
-          }
-
-          // Periksa log terbaru
-          const { data: logs, error: logsError } = await supabase
-            .from("notification_logs")
-            .select("*")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false })
-            .limit(1)
-
-          if (logsError) {
-            console.error("❌ Error fetching notification logs:", logsError)
-          } else if (logs && logs.length > 0) {
-            console.log("✅ Latest notification log found:")
-            console.log(`   ID: ${logs[0].id}`)
-            console.log(`   Status: ${logs[0].status}`)
-            console.log(`   Channel: ${logs[0].channel}`)
-            console.log(`   Created At: ${new Date(logs[0].created_at).toLocaleString()}`)
-
-            if (logs[0].error_message) {
-              console.error(`   Error Message: ${logs[0].error_message}`)
-            }
-          } else {
-            console.log("ℹ️ No notification logs found for this user")
-          }
-        } else {
+      if (countError) {
+        if (countError.code === "42P01") {
           console.error("❌ notification_logs table does not exist")
           console.log("   You need to create the notification_logs table")
+        } else {
+          console.error("❌ Error checking notification_logs table:", countError)
+        }
+      } else {
+        console.log("✅ notification_logs table exists")
+
+        // Periksa log terbaru
+        const { data: logs, error: logsError } = await supabase
+          .from("notification_logs")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+
+        if (logsError) {
+          console.error("❌ Error fetching notification logs:", logsError)
+        } else if (logs && logs.length > 0) {
+          console.log("✅ Latest notification log found:")
+          console.log(`   ID: ${logs[0].id}`)
+          console.log(`   Status: ${logs[0].status}`)
+          console.log(`   Channel: ${logs[0].channel}`)
+          console.log(`   Created At: ${new Date(logs[0].created_at).toLocaleString()}`)
+
+          if (logs[0].error_message) {
+            console.error(`   Error Message: ${logs[0].error_message}`)
+          }
+        } else {
+          console.log("ℹ️ No notification logs found for this user")
         }
       }
     } catch (error) {
@@ -225,6 +210,10 @@ If you receive this message, your Telegram bot is working correctly!
 
     if (!userData.telegram_chat_id) {
       console.log("• Connect Telegram first")
+      console.log("  1. Login to SecretMe")
+      console.log("  2. Go to Dashboard or Settings")
+      console.log("  3. Find Telegram Notification settings")
+      console.log("  4. Generate code and send it to @secretme_official_bot")
     }
 
     if (userData.notification_channel !== "telegram") {
@@ -234,6 +223,7 @@ If you receive this message, your Telegram bot is working correctly!
 
     if (!TELEGRAM_BOT_TOKEN) {
       console.log("• Set the TELEGRAM_BOT_TOKEN environment variable")
+      console.log("  Add to .env file or export in terminal")
     }
 
     console.log("\n✨ DEBUG COMPLETE")

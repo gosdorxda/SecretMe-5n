@@ -1,14 +1,25 @@
-// Script untuk memperbaiki notification_channel pengguna tertentu
+// Script untuk memperbaiki notification_channel pengguna
 // Jalankan dengan: npx tsx scripts/fix-user-notification-channel.ts USER_ID
 
 import { createClient } from "@supabase/supabase-js"
 
-// Gunakan environment variables langsung dari process.env
+// Ambil environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing required environment variables")
+  console.error(
+    "Run with: NEXT_PUBLIC_SUPABASE_URL=xxx SUPABASE_SERVICE_ROLE_KEY=xxx npx tsx scripts/fix-user-notification-channel.ts USER_ID",
+  )
+  process.exit(1)
+}
+
+// Ambil user ID dari argumen command line
+const userId = process.argv[2]
+if (!userId) {
+  console.error("Please provide a user ID")
+  console.error("Usage: npx tsx scripts/fix-user-notification-channel.ts USER_ID")
   process.exit(1)
 }
 
@@ -16,65 +27,58 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 async function fixUserNotificationChannel() {
   try {
-    const userId = process.argv[2]
+    console.log("🔧 FIXING USER NOTIFICATION CHANNEL")
+    console.log("=================================\n")
 
-    if (!userId) {
-      console.error("Please provide a user ID")
-      console.log("Usage: npx tsx scripts/fix-user-notification-channel.ts USER_ID")
-      process.exit(1)
-    }
+    // 1. Periksa user
+    console.log("1️⃣ CHECKING USER DATA")
+    console.log("--------------------")
 
-    console.log(`Memperbaiki notification_channel untuk pengguna: ${userId}`)
-
-    // Ambil data user
-    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id, name, username, notification_channel, telegram_chat_id")
+      .eq("id", userId)
+      .single()
 
     if (userError || !userData) {
-      console.error("Error fetching user data:", userError)
+      console.error("❌ Error fetching user data:", userError)
       console.error("User not found")
-      process.exit(1)
+      return
     }
 
-    console.log("Data pengguna saat ini:")
-    console.log(`- Nama: ${userData.name}`)
-    console.log(`- Username: ${userData.username}`)
-    console.log(`- Notification Channel: ${userData.notification_channel || "Not set"}`)
-    console.log(`- Telegram Chat ID: ${userData.telegram_chat_id || "Not set"}`)
+    console.log("✅ User found:")
+    console.log(`   Name: ${userData.name || "N/A"}`)
+    console.log(`   Username: ${userData.username || "N/A"}`)
+    console.log(`   Current Notification Channel: ${userData.notification_channel || "N/A"}`)
+    console.log(`   Telegram Chat ID: ${userData.telegram_chat_id || "N/A"}`)
 
-    // Periksa apakah pengguna memiliki telegram_chat_id
-    if (userData.telegram_chat_id && userData.notification_channel !== "telegram") {
-      console.log("\nPengguna memiliki Telegram Chat ID tapi notification_channel bukan 'telegram'")
+    // 2. Update notification_channel
+    console.log("\n2️⃣ UPDATING NOTIFICATION CHANNEL")
+    console.log("------------------------------")
 
-      // Update notification_channel ke 'telegram'
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ notification_channel: "telegram" })
-        .eq("id", userId)
+    if (userData.notification_channel === "telegram") {
+      console.log("✅ Notification channel is already set to 'telegram'")
+      return
+    }
 
-      if (updateError) {
-        console.error("Error updating notification channel:", updateError)
-        process.exit(1)
-      }
+    if (!userData.telegram_chat_id) {
+      console.error("❌ User does not have a Telegram chat ID")
+      console.error("   Please connect Telegram first before setting notification_channel to 'telegram'")
+      return
+    }
 
-      console.log("✅ Berhasil memperbarui notification_channel menjadi 'telegram'")
-    } else if (!userData.telegram_chat_id && userData.notification_channel === "telegram") {
-      console.log("\nPengguna tidak memiliki Telegram Chat ID tapi notification_channel adalah 'telegram'")
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ notification_channel: "telegram" })
+      .eq("id", userId)
 
-      // Update notification_channel ke 'email'
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ notification_channel: "email" })
-        .eq("id", userId)
-
-      if (updateError) {
-        console.error("Error updating notification channel:", updateError)
-        process.exit(1)
-      }
-
-      console.log("✅ Berhasil memperbarui notification_channel menjadi 'email'")
+    if (updateError) {
+      console.error("❌ Error updating notification_channel:", updateError)
     } else {
-      console.log("\nPengaturan notification_channel sudah benar, tidak perlu diperbarui.")
+      console.log("✅ Notification channel updated to 'telegram'")
     }
+
+    console.log("\n✨ FIX COMPLETE")
   } catch (error) {
     console.error("Error fixing user notification channel:", error)
   }

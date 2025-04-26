@@ -62,8 +62,7 @@
     "html2canvas": "latest",
     "@supabase/auth-helpers-nextjs": "latest",
     "crypto": "latest",
-    "dotenv": "latest",
-    "node-fetch": "latest"
+    "dotenv": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

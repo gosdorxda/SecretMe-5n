@@ -1,8 +1,7 @@
-// Script untuk menguji trigger notifikasi
-// Jalankan dengan: npx tsx scripts/test-notification-trigger.ts USER_ID [MESSAGE_ID]
+// Script untuk mengirim notifikasi test
+// Jalankan dengan: npx tsx scripts/test-notification-trigger.ts USER_ID
 
 import { createClient } from "@supabase/supabase-js"
-import fetch from "node-fetch"
 
 // Ambil environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -12,7 +11,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing required environment variables")
   console.error(
-    "Run with: NEXT_PUBLIC_SUPABASE_URL=xxx SUPABASE_SERVICE_ROLE_KEY=xxx npx tsx scripts/test-notification-trigger.ts USER_ID [MESSAGE_ID]",
+    "Run with: NEXT_PUBLIC_SUPABASE_URL=xxx SUPABASE_SERVICE_ROLE_KEY=xxx npx tsx scripts/test-notification-trigger.ts USER_ID",
   )
   process.exit(1)
 }
@@ -21,7 +20,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const userId = process.argv[2]
 if (!userId) {
   console.error("Please provide a user ID")
-  console.error("Usage: npx tsx scripts/test-notification-trigger.ts USER_ID [MESSAGE_ID]")
+  console.error("Usage: npx tsx scripts/test-notification-trigger.ts USER_ID")
   process.exit(1)
 }
 
@@ -29,9 +28,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 async function testNotificationTrigger() {
   try {
-    console.log(`Testing notification trigger for user ID: ${userId}`)
+    console.log("🔔 TESTING NOTIFICATION TRIGGER")
+    console.log("============================\n")
 
-    // Periksa apakah user ada dan memiliki telegram_chat_id
+    // 1. Periksa user
+    console.log("1️⃣ CHECKING USER DATA")
+    console.log("--------------------")
+
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, name, username, notification_channel, telegram_chat_id")
@@ -39,142 +42,78 @@ async function testNotificationTrigger() {
       .single()
 
     if (userError || !userData) {
-      console.error("Error fetching user data:", userError)
+      console.error("❌ Error fetching user data:", userError)
       console.error("User not found")
       return
     }
 
-    console.log("User data:")
-    console.log(`Name: ${userData.name || "N/A"}`)
-    console.log(`Username: ${userData.username || "N/A"}`)
-    console.log(`Notification Channel: ${userData.notification_channel || "N/A"}`)
-    console.log(`Telegram Chat ID: ${userData.telegram_chat_id || "N/A"}`)
+    console.log("✅ User found:")
+    console.log(`   Name: ${userData.name || "N/A"}`)
+    console.log(`   Username: ${userData.username || "N/A"}`)
+    console.log(`   Notification Channel: ${userData.notification_channel || "N/A"}`)
+    console.log(`   Telegram Chat ID: ${userData.telegram_chat_id || "N/A"}`)
+
+    // 2. Periksa pengaturan notifikasi
+    console.log("\n2️⃣ CHECKING NOTIFICATION SETTINGS")
+    console.log("------------------------------")
 
     if (!userData.telegram_chat_id) {
-      console.error("User does not have a Telegram chat ID")
-      console.error("Please connect Telegram first")
+      console.error("❌ User does not have a Telegram chat ID")
+      console.error("   Please connect Telegram first")
       return
+    } else {
+      console.log("✅ Telegram Chat ID is set")
     }
 
     if (userData.notification_channel !== "telegram") {
-      console.warn("⚠️ WARNING: User's notification channel is not set to 'telegram'")
-      console.warn(`Current notification channel: ${userData.notification_channel || "N/A"}`)
-      console.warn("This may cause notifications to not be sent via Telegram")
-
-      // Tanyakan apakah ingin melanjutkan
-      console.log("\nDo you want to update the notification channel to 'telegram'? (y/n)")
-      process.stdin.once("data", async (data) => {
-        const input = data.toString().trim().toLowerCase()
-        if (input === "y" || input === "yes") {
-          const { error: updateError } = await supabase
-            .from("users")
-            .update({ notification_channel: "telegram" })
-            .eq("id", userId)
-
-          if (updateError) {
-            console.error("Error updating notification channel:", updateError)
-          } else {
-            console.log("✅ Notification channel updated to 'telegram'")
-          }
-        }
-
-        await continueWithTest(userData)
-      })
+      console.warn("⚠️ User's notification channel is not set to 'telegram'")
+      console.warn(`   Current notification channel: ${userData.notification_channel || "N/A"}`)
+      console.warn("   This may cause notifications to not be sent via Telegram")
     } else {
-      await continueWithTest(userData)
+      console.log("✅ Notification channel is set to 'telegram'")
     }
+
+    // 3. Kirim notifikasi test
+    console.log("\n3️⃣ SENDING TEST NOTIFICATION")
+    console.log("---------------------------")
+
+    // Buat pesan test
+    const testMessage = {
+      userId: userId,
+      type: "test",
+      message: "This is a test notification from the notification debugging script.",
+      data: {
+        timestamp: new Date().toISOString(),
+        source: "test-notification-trigger.ts",
+      },
+    }
+
+    // Kirim notifikasi
+    try {
+      const response = await fetch(`${APP_URL}/api/notifications/trigger`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(testMessage),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log("✅ Test notification sent successfully")
+        console.log(`   Response: ${JSON.stringify(data)}`)
+      } else {
+        console.error("❌ Error sending test notification:", response.status, response.statusText)
+        console.error(`   Response: ${JSON.stringify(data)}`)
+      }
+    } catch (error) {
+      console.error("❌ Error sending test notification:", error)
+    }
+
+    console.log("\n✨ TEST COMPLETE")
   } catch (error) {
     console.error("Error testing notification trigger:", error)
-  }
-}
-
-async function continueWithTest(userData: any) {
-  try {
-    // Cek apakah message ID disediakan
-    let messageId = process.argv[3]
-
-    // Jika tidak ada message ID, cari pesan terbaru
-    if (!messageId) {
-      console.log("No message ID provided, looking for the latest message...")
-
-      const { data: messageData, error: messageError } = await supabase
-        .from("messages")
-        .select("id")
-        .eq("user_id", userData.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-
-      if (messageError || !messageData) {
-        console.error("Error fetching latest message:", messageError)
-        console.error("No messages found for this user")
-        return
-      }
-
-      messageId = messageData.id
-      console.log(`Using latest message ID: ${messageId}`)
-    }
-
-    // Kirim request ke endpoint notifikasi
-    console.log("\nSending notification trigger request...")
-    console.log(`Endpoint: ${APP_URL}/api/notifications/trigger`)
-    console.log(`Payload: { userId: "${userData.id}", messageId: "${messageId}", type: "new_message" }`)
-
-    const response = await fetch(`${APP_URL}/api/notifications/trigger`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: userData.id,
-        messageId: messageId,
-        type: "new_message",
-      }),
-    })
-
-    const result = await response.json()
-
-    console.log("\nResponse:")
-    console.log(`Status: ${response.status}`)
-    console.log("Body:", result)
-
-    if (response.ok) {
-      console.log("\n✅ Notification trigger request successful")
-      console.log("Check your Telegram for the notification")
-    } else {
-      console.error("\n❌ Notification trigger request failed")
-    }
-
-    // Periksa log notifikasi
-    console.log("\nChecking notification logs...")
-    const { data: logs, error: logsError } = await supabase
-      .from("notification_logs")
-      .select("*")
-      .eq("user_id", userData.id)
-      .eq("message_id", messageId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-
-    if (logsError) {
-      console.error("Error fetching notification logs:", logsError)
-    } else if (logs && logs.length > 0) {
-      console.log("\nLatest notification log:")
-      console.log(`ID: ${logs[0].id}`)
-      console.log(`Status: ${logs[0].status}`)
-      console.log(`Channel: ${logs[0].channel}`)
-      console.log(`Created At: ${new Date(logs[0].created_at).toLocaleString()}`)
-
-      if (logs[0].error_message) {
-        console.error(`Error Message: ${logs[0].error_message}`)
-      }
-    } else {
-      console.log("No notification logs found for this message")
-    }
-
-    process.exit(0)
-  } catch (error) {
-    console.error("Error in continueWithTest:", error)
-    process.exit(1)
   }
 }
 
