@@ -62,46 +62,123 @@ async function handleVerificationCode(supabase: any, chatId: string, code: strin
   try {
     console.log(`Processing verification code: ${code} from chat ID: ${chatId}`)
 
-    // Check if code exists in verification_codes table
-    const { data: verificationData, error: verificationError } = await supabase
-      .from("verification_codes")
-      .select("user_id, code")
+    // Coba cari di tabel telegram_verification
+    const userData = null
+    let userId = null
+
+    const { data: telegramVerification, error: telegramError } = await supabase
+      .from("telegram_verification")
+      .select("user_id")
       .eq("code", code)
+      .gt("expires_at", new Date().toISOString())
       .single()
 
-    if (verificationError || !verificationData) {
-      console.log(`Invalid verification code: ${code}`)
+    if (!telegramError && telegramVerification) {
+      console.log(`Found code in telegram_verification table: ${code}`)
+      userId = telegramVerification.user_id
+    } else {
+      console.log(`Code not found in telegram_verification table: ${code}`)
+      console.log("Trying verification_codes table...")
+
+      // Coba cari di tabel verification_codes
+      const { data: verificationCode, error: verificationError } = await supabase
+        .from("verification_codes")
+        .select("user_id")
+        .eq("code", code)
+        .single()
+
+      if (!verificationError && verificationCode) {
+        console.log(`Found code in verification_codes table: ${code}`)
+        userId = verificationCode.user_id
+      } else {
+        console.log(`Code not found in verification_codes table: ${code}`)
+        await sendMessage(chatId, "❌ Kode verifikasi tidak valid atau sudah kadaluarsa. Silakan coba lagi.")
+        return
+      }
+    }
+
+    if (!userId) {
+      console.log("No user ID found for code:", code)
       await sendMessage(chatId, "❌ Kode verifikasi tidak valid atau sudah kadaluarsa. Silakan coba lagi.")
       return
     }
 
-    console.log(`Valid verification code for user ID: ${verificationData.user_id}`)
+    console.log(`Valid verification code for user ID: ${userId}`)
 
-    // Update user with Telegram chat ID
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
+    // Ambil data user
+    const { data: user, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
+
+    if (userError || !user) {
+      console.error("Error fetching user:", userError)
+      await sendMessage(chatId, "❌ Terjadi kesalahan saat memverifikasi pengguna. Silakan coba lagi nanti.")
+      return
+    }
+
+    console.log("User data:", user)
+
+    // Periksa struktur tabel users
+    const { data: columns, error: columnsError } = await supabase.rpc("get_table_columns", { table_name: "users" })
+
+    if (columnsError) {
+      console.error("Error fetching table columns:", columnsError)
+    } else {
+      console.log("Users table columns:", columns)
+    }
+
+    // Update user dengan Telegram chat ID
+    try {
+      // Coba update dengan notification_channel
+      const updateData: any = {
         telegram_chat_id: chatId.toString(),
-        notification_channel: "telegram",
-      })
-      .eq("id", verificationData.user_id)
+      }
 
-    if (updateError) {
-      console.error("Error updating user with Telegram chat ID:", updateError)
+      // Cek apakah kolom notification_channel ada
+      if (columns && columns.includes("notification_channel")) {
+        updateData.notification_channel = "telegram"
+      }
+
+      const { error: updateError } = await supabase.from("users").update(updateData).eq("id", userId)
+
+      if (updateError) {
+        console.error("Error updating user with Telegram chat ID:", updateError)
+
+        // Coba update tanpa notification_channel
+        const { error: simpleUpdateError } = await supabase
+          .from("users")
+          .update({ telegram_chat_id: chatId.toString() })
+          .eq("id", userId)
+
+        if (simpleUpdateError) {
+          console.error("Error updating user with simple update:", simpleUpdateError)
+          throw simpleUpdateError
+        } else {
+          console.log("User updated with simple update (only telegram_chat_id)")
+        }
+      } else {
+        console.log("User updated successfully with full update")
+      }
+    } catch (updateError) {
+      console.error("Error updating user:", updateError)
       await sendMessage(chatId, "❌ Terjadi kesalahan saat menghubungkan akun Anda. Silakan coba lagi nanti.")
       return
     }
 
-    // Delete the verification code
-    await supabase.from("verification_codes").delete().eq("code", code)
+    // Hapus kode verifikasi
+    try {
+      await supabase.from("telegram_verification").delete().eq("code", code)
+      await supabase.from("verification_codes").delete().eq("code", code)
+    } catch (deleteError) {
+      console.error("Error deleting verification code:", deleteError)
+      // Lanjutkan meskipun ada error saat menghapus kode
+    }
 
-    // Send success message
+    // Kirim pesan sukses
     await sendMessage(
       chatId,
       "✅ Akun Anda berhasil terhubung dengan SecretMe! Anda akan menerima notifikasi saat ada pesan baru.",
     )
 
-    // Send test message
+    // Kirim pesan test
     setTimeout(async () => {
       await sendMessage(
         chatId,
@@ -194,13 +271,18 @@ async function disconnectAccount(supabase: any, chatId: string) {
     }
 
     // Update user to remove Telegram chat ID
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        telegram_chat_id: null,
-        notification_channel: null,
-      })
-      .eq("id", userData.id)
+    const updateData: any = {
+      telegram_chat_id: null,
+    }
+
+    // Cek apakah kolom notification_channel ada
+    const { data: columns, error: columnsError } = await supabase.rpc("get_table_columns", { table_name: "users" })
+
+    if (!columnsError && columns && columns.includes("notification_channel")) {
+      updateData.notification_channel = null
+    }
+
+    const { error: updateError } = await supabase.from("users").update(updateData).eq("id", userData.id)
 
     if (updateError) {
       console.error("Error disconnecting account:", updateError)
