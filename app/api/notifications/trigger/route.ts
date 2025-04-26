@@ -94,6 +94,37 @@ export async function POST(request: Request) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.site"
       const profileUrl = `${appUrl}/dashboard`
 
+      // PENTING: Hapus atau perbarui entri notifikasi yang ada dengan status "pending"
+      try {
+        // Cek apakah ada notifikasi pending untuk pesan ini
+        const { data: pendingNotifications } = await supabase
+          .from("notification_logs")
+          .select("id")
+          .eq("message_id", messageId)
+          .eq("status", "pending")
+
+        if (pendingNotifications && pendingNotifications.length > 0) {
+          console.log(`Found ${pendingNotifications.length} pending notifications for message ${messageId}`)
+
+          // Hapus notifikasi pending
+          const { error: deleteError } = await supabase
+            .from("notification_logs")
+            .delete()
+            .in(
+              "id",
+              pendingNotifications.map((n) => n.id),
+            )
+
+          if (deleteError) {
+            console.error("Error deleting pending notifications:", deleteError)
+          } else {
+            console.log("Deleted pending notifications successfully")
+          }
+        }
+      } catch (error) {
+        console.error("Error checking/deleting pending notifications:", error)
+      }
+
       // Kirim notifikasi berdasarkan channel yang dipilih user
       if (userData.notification_channel === "telegram" && userData.telegram_chat_id) {
         console.log("Sending Telegram notification to:", userData.telegram_chat_id)
