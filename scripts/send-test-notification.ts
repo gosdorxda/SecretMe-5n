@@ -1,5 +1,5 @@
-// Script untuk mengirim notifikasi test ke pengguna
-// Jalankan dengan: npx tsx scripts/send-test-notification.ts <user_id>
+// Script untuk mengirim notifikasi test
+// Jalankan dengan: npx tsx scripts/send-test-notification.ts USER_ID
 
 import { createClient } from "@supabase/supabase-js"
 import dotenv from "dotenv"
@@ -18,9 +18,17 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-async function sendTestNotification(userId: string) {
+async function sendTestNotification() {
   try {
-    console.log(`Mengirim notifikasi test ke user ID: ${userId}`)
+    const userId = process.argv[2]
+
+    if (!userId) {
+      console.error("Please provide a user ID")
+      console.log("Usage: npx tsx scripts/send-test-notification.ts USER_ID")
+      process.exit(1)
+    }
+
+    console.log(`Sending test notification to user: ${userId}`)
 
     // Ambil data user
     const { data: userData, error: userError } = await supabase
@@ -31,15 +39,19 @@ async function sendTestNotification(userId: string) {
 
     if (userError || !userData) {
       console.error("Error fetching user data:", userError)
-      console.log("User tidak ditemukan")
-      return
+      console.error("User not found")
+      process.exit(1)
     }
 
     console.log("User data:", userData)
 
     if (userData.notification_channel !== "telegram" || !userData.telegram_chat_id) {
-      console.log("User tidak menggunakan notifikasi Telegram atau tidak memiliki Telegram Chat ID")
-      return
+      console.error("User does not have Telegram notifications enabled")
+      console.log("User notification settings:", {
+        channel: userData.notification_channel,
+        telegram_chat_id: userData.telegram_chat_id,
+      })
+      process.exit(1)
     }
 
     // Kirim notifikasi test
@@ -50,32 +62,23 @@ async function sendTestNotification(userId: string) {
       },
       body: JSON.stringify({
         userId: userData.id,
-        messageId: "test-message",
+        messageId: "test-message-id",
         type: "new_message",
       }),
     })
 
-    const data = await response.json()
+    const result = await response.json()
 
-    console.log("Response:", data)
+    console.log("Notification result:", result)
 
-    if (data.success) {
-      console.log("✅ Notifikasi test berhasil dikirim")
+    if (result.success) {
+      console.log("✅ Test notification sent successfully")
     } else {
-      console.log("❌ Gagal mengirim notifikasi test:", data.error)
+      console.error("❌ Failed to send test notification:", result.error)
     }
   } catch (error) {
     console.error("Error sending test notification:", error)
   }
 }
 
-// Get user ID from command line arguments
-const userId = process.argv[2]
-
-if (!userId) {
-  console.error("User ID is required")
-  console.log("Usage: npx tsx scripts/send-test-notification.ts <user_id>")
-  process.exit(1)
-}
-
-sendTestNotification(userId)
+sendTestNotification()

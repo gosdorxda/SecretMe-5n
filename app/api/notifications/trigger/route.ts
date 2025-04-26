@@ -12,6 +12,9 @@ async function sendTelegramNotification(chatId: string, message: string) {
       return { success: false, error: "TELEGRAM_BOT_TOKEN is not defined" }
     }
 
+    console.log(`Sending Telegram notification to chat ID: ${chatId}`)
+    console.log(`Message content: ${message.substring(0, 100)}...`)
+
     const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: {
@@ -31,6 +34,7 @@ async function sendTelegramNotification(chatId: string, message: string) {
       return { success: false, error: data.description || "Unknown error" }
     }
 
+    console.log("Telegram message sent successfully:", data)
     return { success: true, data }
   } catch (error: any) {
     console.error("Error sending message to Telegram:", error)
@@ -40,11 +44,13 @@ async function sendTelegramNotification(chatId: string, message: string) {
 
 export async function POST(request: Request) {
   try {
+    console.log("Notification trigger received")
+
     const supabase = createRouteHandlerClient({ cookies })
     const body = await request.json()
     const { userId, messageId, type } = body
 
-    console.log("Notification trigger received:", { userId, messageId, type })
+    console.log("Notification trigger data:", { userId, messageId, type })
 
     if (!userId) {
       return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 })
@@ -62,7 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    console.log("User data:", userData)
+    console.log("User data for notification:", userData)
 
     // Jika tipe notifikasi adalah pesan baru
     if (type === "new_message" && messageId) {
@@ -86,7 +92,7 @@ export async function POST(request: Request) {
 
       // Siapkan URL profil
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.site"
-      const profileUrl = `${appUrl}/${userData.username || ""}`
+      const profileUrl = `${appUrl}/dashboard`
 
       // Kirim notifikasi berdasarkan channel yang dipilih user
       if (userData.notification_channel === "telegram" && userData.telegram_chat_id) {
@@ -124,7 +130,10 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
         return NextResponse.json({ success: true, result })
       } else {
         console.log("No suitable notification channel found for user:", userId)
-        console.log("User data:", userData)
+        console.log("User notification settings:", {
+          channel: userData.notification_channel,
+          telegram_chat_id: userData.telegram_chat_id,
+        })
 
         return NextResponse.json({
           success: false,
