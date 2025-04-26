@@ -2,11 +2,8 @@
 // Jalankan dengan: npx tsx scripts/fix-user-notification-channel.ts USER_ID
 
 import { createClient } from "@supabase/supabase-js"
-import dotenv from "dotenv"
 
-// Load environment variables
-dotenv.config({ path: ".env.local" })
-
+// Gunakan environment variables langsung dari process.env
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 

@@ -117,15 +117,23 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
         console.log("Telegram notification result:", result)
 
         // Log notifikasi ke database
-        await supabase.from("notification_logs").insert({
-          user_id: userId,
-          message_id: messageId,
-          notification_type: "new_message",
-          channel: "telegram",
-          status: result.success ? "sent" : "failed",
-          error_message: result.success ? null : result.error || "Unknown error",
-          data: { result },
-        })
+        try {
+          const { error: logError } = await supabase.from("notification_logs").insert({
+            user_id: userId,
+            message_id: messageId,
+            notification_type: "new_message",
+            channel: "telegram",
+            status: result.success ? "sent" : "failed",
+            error_message: result.success ? null : result.error || "Unknown error",
+            data: { result },
+          })
+
+          if (logError) {
+            console.error("Error logging notification:", logError)
+          }
+        } catch (logError) {
+          console.error("Error inserting notification log:", logError)
+        }
 
         return NextResponse.json({ success: true, result })
       } else {
@@ -134,6 +142,24 @@ Hai <b>${userData.name || "Pengguna"}</b>, Anda menerima pesan baru:
           channel: userData.notification_channel,
           telegram_chat_id: userData.telegram_chat_id,
         })
+
+        // Log notifikasi yang gagal
+        try {
+          await supabase.from("notification_logs").insert({
+            user_id: userId,
+            message_id: messageId,
+            notification_type: "new_message",
+            channel: userData.notification_channel || "unknown",
+            status: "failed",
+            error_message: "No suitable notification channel configured",
+            data: {
+              notification_channel: userData.notification_channel,
+              has_telegram_chat_id: !!userData.telegram_chat_id,
+            },
+          })
+        } catch (logError) {
+          console.error("Error inserting notification log:", logError)
+        }
 
         return NextResponse.json({
           success: false,
