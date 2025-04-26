@@ -51,6 +51,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
       .eq("numeric_id", numericId)
       .single()
 
+    // Perbaikan: Hapus kondisi tambahan, semua pengguna dengan numeric_id valid dapat diakses
     if (userByNumericId) {
       // If the user is premium and has a username, redirect to the username URL
       if (userByNumericId.is_premium && userByNumericId.username) {
@@ -69,8 +70,8 @@ export default async function ProfilePage({ params }: { params: { slug: string }
       .eq("username", slug)
       .single()
 
-    // Perbaikan: Hapus kondisi is_premium agar semua pengguna dengan username dapat diakses
-    if (userByUsername) {
+    // Hanya pengguna premium yang dapat mengatur username
+    if (userByUsername && userByUsername.is_premium) {
       user = userByUsername
     }
   }
