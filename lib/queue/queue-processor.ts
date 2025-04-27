@@ -85,10 +85,37 @@ export class QueueProcessor {
 
     // Ekstrak field yang diperlukan dengan fallback
     const chatId = payload.chatId || payload.telegram_id || payload.telegramId
-    const text = payload.text || payload.message || payload.content
-    const parseMode = payload.parseMode || payload.parse_mode || "Markdown"
+    const name = payload.name || "pengguna"
+    const messagePreview = payload.messagePreview || payload.preview || ""
+    const profileUrl = payload.profileUrl || payload.url || ""
+    const messageId = payload.messageId || ""
 
-    console.log(`Processing Telegram notification with chatId: ${chatId}, text length: ${text?.length || 0}`)
+    // Buat teks pesan berdasarkan data yang tersedia
+    let messageText = payload.text || payload.message || payload.content
+
+    // Jika tidak ada teks pesan, buat pesan berdasarkan data lain yang tersedia
+    if (!messageText) {
+      if (item.notification_type === "new_message" || item.notification_type === "telegram_message") {
+        messageText = `🔔 *Pesan Baru*\n\nHalo ${name}, Anda menerima pesan baru di SecretMe!\n\n`
+
+        if (messagePreview) {
+          messageText += `📝 Pesan: "${messagePreview}"\n\n`
+        }
+
+        if (profileUrl) {
+          messageText += `🔗 [Lihat Pesan](${profileUrl})`
+        }
+      } else {
+        // Fallback untuk jenis notifikasi lain
+        messageText = `🔔 *Notifikasi*\n\nHalo ${name}, Anda memiliki notifikasi baru di SecretMe.`
+
+        if (profileUrl) {
+          messageText += `\n\n🔗 [Buka SecretMe](${profileUrl})`
+        }
+      }
+    }
+
+    console.log(`Processing Telegram notification with chatId: ${chatId}, text: ${messageText}`)
 
     // Validasi field yang diperlukan
     if (!chatId) {
@@ -115,21 +142,21 @@ export class QueueProcessor {
       // Gunakan telegram_id dari database
       const telegramId = userData.telegram_id
 
-      // Validasi text
-      if (!text) {
-        throw new Error("Missing text field for Telegram notification")
-      }
-
       // Kirim pesan Telegram
-      await sendTelegramMessage(telegramId, text, parseMode)
+      await sendTelegramMessage({
+        chat_id: telegramId,
+        text: messageText,
+        parse_mode: "Markdown",
+        disable_web_page_preview: false,
+      })
     } else {
-      // Validasi text
-      if (!text) {
-        throw new Error("Missing text field for Telegram notification")
-      }
-
       // Kirim pesan Telegram
-      await sendTelegramMessage(chatId, text, parseMode)
+      await sendTelegramMessage({
+        chat_id: chatId,
+        text: messageText,
+        parse_mode: "Markdown",
+        disable_web_page_preview: false,
+      })
     }
   }
 
