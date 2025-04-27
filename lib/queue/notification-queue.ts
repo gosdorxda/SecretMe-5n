@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import type { NotificationQueueItem, QueueStats } from "./types"
 
 export class NotificationQueue {
@@ -34,7 +35,17 @@ export class NotificationQueue {
     max_retries?: number
   }): Promise<string | null> {
     try {
-      const supabase = createClient()
+      console.log("Enqueueing notification:", {
+        user_id,
+        message_id,
+        notification_type,
+        channel,
+        priority,
+        max_retries,
+      })
+      console.log("Payload:", JSON.stringify(payload, null, 2))
+
+      const supabase = createClient(cookies())
 
       const { data, error } = await supabase
         .from("notification_queue")
@@ -56,6 +67,7 @@ export class NotificationQueue {
         return null
       }
 
+      console.log("Notification enqueued with ID:", data.id)
       return data.id
     } catch (error) {
       console.error("Error in enqueue:", error)
@@ -68,7 +80,7 @@ export class NotificationQueue {
    */
   public async dequeue(limit = 10): Promise<NotificationQueueItem[]> {
     try {
-      const supabase = createClient()
+      const supabase = createClient(cookies())
 
       // Ambil notifikasi dengan status pending atau retry yang waktunya sudah tiba
       // Urutkan berdasarkan prioritas (tinggi ke rendah) dan waktu pembuatan (lama ke baru)
@@ -113,7 +125,7 @@ export class NotificationQueue {
    */
   public async markAsCompleted(id: string): Promise<boolean> {
     try {
-      const supabase = createClient()
+      const supabase = createClient(cookies())
 
       const { error } = await supabase.from("notification_queue").update({ status: "completed" }).eq("id", id)
 
@@ -134,7 +146,7 @@ export class NotificationQueue {
    */
   public async markAsFailed(id: string, errorMessage: string): Promise<boolean> {
     try {
-      const supabase = createClient()
+      const supabase = createClient(cookies())
 
       // Ambil data notifikasi
       const { data, error } = await supabase.from("notification_queue").select("*").eq("id", id).single()
@@ -201,7 +213,7 @@ export class NotificationQueue {
    */
   public async getStats(): Promise<QueueStats> {
     try {
-      const supabase = createClient()
+      const supabase = createClient(cookies())
 
       const stats: QueueStats = {
         pending: 0,
@@ -254,7 +266,7 @@ export class NotificationQueue {
    */
   public async cleanupOldItems(daysToKeep = 7): Promise<number> {
     try {
-      const supabase = createClient()
+      const supabase = createClient(cookies())
 
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
@@ -283,10 +295,13 @@ export class NotificationQueue {
 export async function enqueueTelegramNotification(
   userId: string,
   payload: {
-    messageId?: string
-    chatId: string
+    telegramId: string
     text: string
     parseMode?: string
+    messageId?: string
+    name?: string
+    messagePreview?: string
+    profileUrl?: string
     [key: string]: any
   },
   options: {
@@ -294,6 +309,9 @@ export async function enqueueTelegramNotification(
     maxRetries?: number
   } = {},
 ): Promise<string | null> {
+  console.log("enqueueTelegramNotification called with userId:", userId)
+  console.log("Telegram payload:", JSON.stringify(payload, null, 2))
+
   const queue = NotificationQueue.getInstance()
 
   return queue.enqueue({
