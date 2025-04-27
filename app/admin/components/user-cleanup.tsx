@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast"
 import { AlertCircle, CheckCircle } from "lucide-react"
 
-export function UserCleanup() {
+export default function UserCleanup() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)

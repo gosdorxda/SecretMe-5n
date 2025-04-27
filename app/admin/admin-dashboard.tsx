@@ -4,16 +4,15 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Crown, Globe, FileText } from "lucide-react"
+import { Crown, Globe, FileText, Shield } from "lucide-react"
 
-// Ganti semua import komponen individual dengan import dari file index
+// Import komponen dari folder components (tanpa NotificationBroadcast)
 import {
   AdminStats,
   AuthMonitoring,
-  BlockedIPs,
+  IPSettings,
   NotificationSettings,
   PremiumManagement,
-  RateLimitConfig,
   SeoSettings,
   SitemapSettings,
   UserCleanup,
@@ -78,8 +77,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
       <Tabs defaultValue="users">
         <TabsList className="mb-4">
           <TabsTrigger value="users">Pengguna</TabsTrigger>
-          <TabsTrigger value="rate-limit">Rate Limit</TabsTrigger>
-          <TabsTrigger value="blocked-ips">IP Diblokir</TabsTrigger>
+          <TabsTrigger value="ip-settings">
+            <Shield className="h-4 w-4 mr-2" />
+            Pengaturan IP
+          </TabsTrigger>
           <TabsTrigger value="seo">
             <Globe className="h-4 w-4 mr-2" />
             SEO
@@ -101,12 +102,8 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
           <UsersManagement initialUsers={initialUsers} />
         </TabsContent>
 
-        <TabsContent value="rate-limit">
-          <RateLimitConfig />
-        </TabsContent>
-
-        <TabsContent value="blocked-ips">
-          <BlockedIPs />
+        <TabsContent value="ip-settings">
+          <IPSettings />
         </TabsContent>
 
         <TabsContent value="seo">
