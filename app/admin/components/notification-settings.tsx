@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "@/hooks/use-toast"
 import { StickyNotification } from "@/components/sticky-notification"
+// Tambahkan import untuk NotificationBroadcast
+import { NotificationBroadcast } from "./notification-broadcast"
 
 type Notification = {
   id: number
@@ -409,6 +411,11 @@ export default function NotificationSettings() {
           )}
         </CardContent>
       </Card>
+      {/* Pastikan komponen NotificationBroadcast ditampilkan di dalam komponen NotificationSettings */}
+      {/* Tambahkan kode berikut di akhir div dengan className="space-y-6" (sebelum tag penutup terakhir) */}
+      <div className="mt-6">
+        <NotificationBroadcast />
+      </div>
     </div>
   )
 }

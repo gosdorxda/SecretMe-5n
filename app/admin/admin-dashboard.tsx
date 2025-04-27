@@ -6,17 +6,19 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Crown, Globe, FileText } from "lucide-react"
 
-// Import komponen dari folder components
-import RateLimitConfig from "./components/rate-limit-config"
-import BlockedIPs from "./components/blocked-ips"
-import SeoSettings from "./components/seo-settings"
-import SitemapSettings from "./components/sitemap-settings"
-import AuthMonitoring from "./components/auth-monitoring"
-import NotificationSettings from "./components/notification-settings"
-import { UserCleanup } from "./components/user-cleanup"
-import UsersManagement from "./components/users-management"
-import PremiumManagement from "./components/premium-management"
-import AdminStats from "./components/admin-stats"
+// Ganti semua import komponen individual dengan import dari file index
+import {
+  AdminStats,
+  AuthMonitoring,
+  BlockedIPs,
+  NotificationSettings,
+  PremiumManagement,
+  RateLimitConfig,
+  SeoSettings,
+  SitemapSettings,
+  UserCleanup,
+  UsersManagement,
+} from "./components"
 
 // type User = Database["public"]["Tables"]["users"]["Row"]
 interface User {
