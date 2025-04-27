@@ -2,11 +2,6 @@
 
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createClient } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
-import { Crown, Globe, FileText, Shield, BarChart } from "lucide-react"
-
-// Import komponen dari folder components
 import {
   AdminStats,
   AnalyticsDashboard,
@@ -14,129 +9,59 @@ import {
   IPSettings,
   NotificationSettings,
   PremiumManagement,
-  SeoSettings,
+  SeoSettings as SEOSettings,
   SitemapSettings,
   UserCleanup,
   UsersManagement,
+  RateLimitConfig,
+  BlockedIPs,
 } from "./components"
 
-// type User = Database["public"]["Tables"]["users"]["Row"]
-interface User {
-  id: string
-  email: string
-  created_at: string
-  last_sign_in_at: string | null
-  username: string | null
-  name: string | null
-  avatar_url: string | null
-  is_premium?: boolean
-  premium_expires_at?: string | null
-}
-
-interface AdminDashboardProps {
-  initialUsers: User[]
-}
-
-export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
-  const [users, setUsers] = useState<User[]>(initialUsers)
-  const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClient()
-  const { toast } = useToast()
-
-  // Refresh data pengguna
-  const refreshUsers = async () => {
-    setIsLoading(true)
-    try {
-      const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false })
-
-      if (error) throw error
-
-      setUsers(data || [])
-      toast({
-        title: "Data berhasil diperbarui",
-        description: `${data?.length || 0} pengguna ditemukan`,
-      })
-    } catch (error) {
-      console.error("Error refreshing users:", error)
-      toast({
-        title: "Gagal memperbarui data",
-        description: "Terjadi kesalahan saat mengambil data pengguna",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState("stats")
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-10">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
 
-      {/* Komponen statistik admin */}
-      <AdminStats users={users} onRefresh={refreshUsers} isLoading={isLoading} />
-
-      <Tabs defaultValue="users">
-        <TabsList className="mb-4">
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+          <TabsTrigger value="stats">Statistik</TabsTrigger>
+          <TabsTrigger value="analytics">Analitik</TabsTrigger>
           <TabsTrigger value="users">Pengguna</TabsTrigger>
-          <TabsTrigger value="analytics">
-            <BarChart className="h-4 w-4 mr-2" />
-            Analitik
-          </TabsTrigger>
-          <TabsTrigger value="ip-settings">
-            <Shield className="h-4 w-4 mr-2" />
-            Pengaturan IP
-          </TabsTrigger>
-          <TabsTrigger value="seo">
-            <Globe className="h-4 w-4 mr-2" />
-            SEO
-          </TabsTrigger>
-          <TabsTrigger value="sitemap">
-            <FileText className="h-4 w-4 mr-2" />
-            Sitemap
-          </TabsTrigger>
-          <TabsTrigger value="auth-monitoring">Auth Monitoring</TabsTrigger>
-          <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
-          <TabsTrigger value="user-cleanup">User Cleanup</TabsTrigger>
-          <TabsTrigger value="premium">
-            <Crown className="h-4 w-4 mr-2" />
-            Premium
-          </TabsTrigger>
+          <TabsTrigger value="premium">Premium</TabsTrigger>
+          <TabsTrigger value="security">Keamanan</TabsTrigger>
+          <TabsTrigger value="settings">Pengaturan</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users">
-          <UsersManagement initialUsers={initialUsers} />
+        <TabsContent value="stats" className="space-y-4">
+          <AdminStats />
         </TabsContent>
 
-        <TabsContent value="analytics">
+        <TabsContent value="analytics" className="space-y-4">
           <AnalyticsDashboard />
         </TabsContent>
 
-        <TabsContent value="ip-settings">
-          <IPSettings />
-        </TabsContent>
-
-        <TabsContent value="seo">
-          <SeoSettings />
-        </TabsContent>
-
-        <TabsContent value="sitemap">
-          <SitemapSettings />
-        </TabsContent>
-
-        <TabsContent value="auth-monitoring">
-          <AuthMonitoring />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <NotificationSettings />
-        </TabsContent>
-
-        <TabsContent value="user-cleanup">
+        <TabsContent value="users" className="space-y-4">
+          <UsersManagement />
           <UserCleanup />
         </TabsContent>
 
-        <TabsContent value="premium">
+        <TabsContent value="premium" className="space-y-4">
           <PremiumManagement />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-4">
+          <AuthMonitoring />
+          <IPSettings />
+          <NotificationSettings />
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <RateLimitConfig />
+          <BlockedIPs />
+          <SEOSettings />
+          <SitemapSettings />
         </TabsContent>
       </Tabs>
     </div>

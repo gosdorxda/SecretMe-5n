@@ -125,9 +125,7 @@ export default function AnalyticsDashboard() {
       const endDateStr = format(now, "yyyy-MM-dd")
 
       // Dapatkan total pengguna
-      const { data: usersData, error: usersError } = await supabase
-        .from("users")
-        .select("id, created_at, last_sign_in_at")
+      const { data: usersData, error: usersError } = await supabase.from("users").select("id, created_at, updated_at")
 
       if (usersError) throw usersError
 
@@ -138,14 +136,44 @@ export default function AnalyticsDashboard() {
 
       if (messagesError) throw messagesError
 
-      // Dapatkan top users
-      const { data: topUsersData, error: topUsersError } = await supabase
-        .from("message_stats")
-        .select("user_id, username, name, total_messages")
-        .order("total_messages", { ascending: false })
-        .limit(5)
+      // Dapatkan top users berdasarkan jumlah pesan
+      // Karena tidak ada tabel message_stats, kita akan menghitung secara manual
+      const userMessageCounts = messagesData.reduce(
+        (acc, message) => {
+          const userId = message.user_id
+          if (!acc[userId]) {
+            acc[userId] = 0
+          }
+          acc[userId]++
+          return acc
+        },
+        {} as Record<string, number>,
+      )
+
+      // Konversi ke array dan urutkan
+      const topUserIds = Object.entries(userMessageCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([userId]) => userId)
+
+      // Dapatkan informasi pengguna untuk top users
+      const { data: topUsersInfo, error: topUsersError } = await supabase
+        .from("users")
+        .select("id, username, name")
+        .in("id", topUserIds)
 
       if (topUsersError) throw topUsersError
+
+      // Gabungkan data untuk top users
+      const topUsers = topUserIds.map((userId) => {
+        const userInfo = topUsersInfo.find((user) => user.id === userId) || { id: userId, username: null, name: null }
+        return {
+          user_id: userId,
+          username: userInfo.username,
+          name: userInfo.name,
+          total_messages: userMessageCounts[userId],
+        }
+      })
 
       // Hitung statistik
       const today = new Date()
@@ -174,25 +202,24 @@ export default function AnalyticsDashboard() {
         return date >= twoMonthsAgo && date < oneMonthAgo
       }).length
 
-      // Hitung pengguna aktif (berdasarkan last_sign_in_at)
-      const activeUsersToday = usersData.filter(
-        (user) => user.last_sign_in_at && new Date(user.last_sign_in_at) >= today,
-      ).length
+      // Hitung pengguna aktif berdasarkan updated_at sebagai alternatif last_sign_in_at
+      // Ini mengasumsikan bahwa updated_at diperbarui ketika pengguna melakukan aktivitas
+      const activeUsersToday = usersData.filter((user) => user.updated_at && new Date(user.updated_at) >= today).length
       const activeUsersYesterday = usersData.filter((user) => {
-        if (!user.last_sign_in_at) return false
-        const date = new Date(user.last_sign_in_at)
+        if (!user.updated_at) return false
+        const date = new Date(user.updated_at)
         return date >= yesterday && date < today
       }).length
       const activeUsersThisWeek = usersData.filter(
-        (user) => user.last_sign_in_at && new Date(user.last_sign_in_at) >= oneWeekAgo,
+        (user) => user.updated_at && new Date(user.updated_at) >= oneWeekAgo,
       ).length
       const activeUsersLastWeek = usersData.filter((user) => {
-        if (!user.last_sign_in_at) return false
-        const date = new Date(user.last_sign_in_at)
+        if (!user.updated_at) return false
+        const date = new Date(user.updated_at)
         return date >= twoWeeksAgo && date < oneWeekAgo
       }).length
       const activeUsersThisMonth = usersData.filter(
-        (user) => user.last_sign_in_at && new Date(user.last_sign_in_at) >= oneMonthAgo,
+        (user) => user.updated_at && new Date(user.updated_at) >= oneMonthAgo,
       ).length
 
       // Hitung statistik pesan
@@ -282,12 +309,13 @@ export default function AnalyticsDashboard() {
         })
       }
 
-      // Hitung retensi pengguna (pengguna yang login lebih dari sekali)
-      const usersWithMultipleLogins = usersData.filter((user) => user.last_sign_in_at).length
-      const userRetention = usersData.length > 0 ? (usersWithMultipleLogins / usersData.length) * 100 : 0
+      // Hitung retensi pengguna (pengguna yang memiliki pesan lebih dari satu)
+      const usersWithMessages = new Set(messagesData.map((msg) => msg.user_id))
+      const usersWithMultipleMessages = Object.keys(userMessageCounts).filter((userId) => userMessageCounts[userId] > 1)
+      const userRetention = usersData.length > 0 ? (usersWithMultipleMessages.length / usersData.length) * 100 : 0
 
       // Hitung rata-rata pesan per pengguna
-      const averageMessagesPerUser = usersData.length > 0 ? messagesData.length / usersData.length : 0
+      const averageMessagesPerUser = usersWithMessages.size > 0 ? messagesData.length / usersWithMessages.size : 0
 
       // Buat data untuk statistik perangkat (simulasi data)
       const deviceStats = [
@@ -347,7 +375,7 @@ export default function AnalyticsDashboard() {
         messageDistribution,
         userRetention,
         averageMessagesPerUser,
-        topUsers: topUsersData || [],
+        topUsers,
         deviceStats,
         timeOfDayStats,
       })
