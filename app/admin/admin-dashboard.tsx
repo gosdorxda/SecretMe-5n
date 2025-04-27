@@ -4,11 +4,12 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Crown, Globe, FileText, Shield } from "lucide-react"
+import { Crown, Globe, FileText, Shield, BarChart } from "lucide-react"
 
-// Import komponen dari folder components (tanpa NotificationBroadcast)
+// Import komponen dari folder components
 import {
   AdminStats,
+  AnalyticsDashboard,
   AuthMonitoring,
   IPSettings,
   NotificationSettings,
@@ -77,6 +78,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
       <Tabs defaultValue="users">
         <TabsList className="mb-4">
           <TabsTrigger value="users">Pengguna</TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart className="h-4 w-4 mr-2" />
+            Analitik
+          </TabsTrigger>
           <TabsTrigger value="ip-settings">
             <Shield className="h-4 w-4 mr-2" />
             Pengaturan IP
@@ -100,6 +105,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
 
         <TabsContent value="users">
           <UsersManagement initialUsers={initialUsers} />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <AnalyticsDashboard />
         </TabsContent>
 
         <TabsContent value="ip-settings">
