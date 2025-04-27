@@ -1,16 +1,11 @@
-import { createClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
-import { NotificationQueue } from "./notification-queue"
-import type { NotificationQueueItem, BatchProcessingOptions } from "./types"
+import { notificationQueue } from "./notification-queue"
 import { sendTelegramMessage } from "@/lib/telegram/service"
+import type { NotificationQueueItem, ProcessingResult, BatchProcessingResult } from "./types"
 
 export class QueueProcessor {
   private static instance: QueueProcessor
-  private queue: NotificationQueue
 
-  private constructor() {
-    this.queue = NotificationQueue.getInstance()
-  }
+  private constructor() {}
 
   public static getInstance(): QueueProcessor {
     if (!QueueProcessor.instance) {
@@ -22,295 +17,276 @@ export class QueueProcessor {
   /**
    * Memproses antrian notifikasi
    */
-  public async processQueue(batchSize = 10): Promise<number> {
-    // Ambil item dari antrian
-    const items = await this.queue.dequeue(batchSize)
+  public async processQueue(limit = 10): Promise<{ success: number; failed: number }> {
+    try {
+      console.log(`Starting to process notification queue with limit: ${limit}`)
 
-    if (items.length === 0) {
-      return 0
-    }
+      // Ambil notifikasi dari antrian
+      const notifications = await notificationQueue.dequeue(limit)
 
-    let processedCount = 0
-
-    // Proses setiap item
-    for (const item of items) {
-      try {
-        console.log(`Processing queue item ${item.id}, channel: ${item.channel}, type: ${item.notification_type}`)
-        console.log(`Payload:`, JSON.stringify(item.payload, null, 2))
-
-        const startTime = Date.now()
-        await this.processItem(item)
-        const processingTime = (Date.now() - startTime) / 1000 // Konversi ke detik
-
-        await this.queue.markAsCompleted(item.id, processingTime)
-        processedCount++
-      } catch (error) {
-        console.error(`Error processing queue item ${item.id}:`, error)
-        await this.queue.markAsFailed(item.id, error instanceof Error ? error.message : "Unknown error")
+      if (notifications.length === 0) {
+        console.log("No notifications to process")
+        return { success: 0, failed: 0 }
       }
-    }
 
-    return processedCount
+      console.log(`Processing ${notifications.length} notifications`)
+
+      let successCount = 0
+      let failedCount = 0
+
+      // Proses setiap notifikasi
+      for (const notification of notifications) {
+        const startTime = performance.now()
+        let success = false
+        let errorMessage = ""
+
+        try {
+          // Proses berdasarkan channel
+          if (notification.channel === "telegram") {
+            success = await this.processTelegramNotification(notification)
+          } else if (notification.channel === "whatsapp") {
+            // TODO: Implementasi untuk WhatsApp
+            success = false
+            errorMessage = "WhatsApp channel not implemented yet"
+          } else if (notification.channel === "email") {
+            // TODO: Implementasi untuk Email
+            success = false
+            errorMessage = "Email channel not implemented yet"
+          } else if (notification.channel === "in_app") {
+            // TODO: Implementasi untuk In-App
+            success = false
+            errorMessage = "In-App channel not implemented yet"
+          } else {
+            success = false
+            errorMessage = `Unknown channel: ${notification.channel}`
+          }
+
+          const endTime = performance.now()
+          const processingTime = endTime - startTime
+
+          // Update status notifikasi
+          if (success) {
+            await notificationQueue.markAsCompleted(notification.id, processingTime)
+            successCount++
+          } else {
+            await notificationQueue.markAsFailed(notification.id, errorMessage || "Unknown error")
+            failedCount++
+          }
+        } catch (error) {
+          const endTime = performance.now()
+          const processingTime = endTime - startTime
+
+          console.error(`Error processing notification ${notification.id}:`, error)
+          await notificationQueue.markAsFailed(
+            notification.id,
+            error instanceof Error ? error.message : "Unknown error",
+          )
+          failedCount++
+        }
+      }
+
+      console.log(`Processed ${notifications.length} notifications: ${successCount} success, ${failedCount} failed`)
+      return { success: successCount, failed: failedCount }
+    } catch (error) {
+      console.error("Error processing notification queue:", error)
+      return { success: 0, failed: 0 }
+    }
   }
 
   /**
    * Memproses antrian notifikasi dengan batch processing
    */
   public async processQueueWithBatches(
-    options: BatchProcessingOptions = {
-      batchSize: 20,
-      maxBatches: 5,
-      channelConcurrency: {
-        telegram: 2,
-        whatsapp: 2,
-        email: 3,
-        in_app: 5,
-      },
-    },
-  ): Promise<{
-    processedCount: number
-    batchesProcessed: number
-    processingTime: number
-    channelStats: Record<string, { count: number; time: number }>
-  }> {
-    const startTime = Date.now()
-    let processedCount = 0
-    let batchesProcessed = 0
-    const channelStats: Record<string, { count: number; time: number }> = {}
+    batchSize = 10,
+    channels: Array<"telegram" | "whatsapp" | "email" | "in_app"> = ["telegram"],
+  ): Promise<Record<string, BatchProcessingResult>> {
+    try {
+      console.log(`Starting to process notification queue with batch size: ${batchSize}`)
+      console.log(`Processing channels: ${channels.join(", ")}`)
 
-    // Proses batch untuk setiap channel
-    const channels: Array<"telegram" | "whatsapp" | "email" | "in_app"> = ["telegram", "whatsapp", "email", "in_app"]
+      const results: Record<string, BatchProcessingResult> = {}
 
-    for (const channel of channels) {
-      const concurrency = options.channelConcurrency[channel] || 1
-      const channelStartTime = Date.now()
-      let channelProcessedCount = 0
+      // Proses setiap channel secara terpisah
+      for (const channel of channels) {
+        console.log(`Processing channel: ${channel}`)
 
-      // Proses beberapa batch secara paralel untuk channel ini
-      const batchPromises: Promise<number>[] = []
+        // Ambil batch notifikasi untuk channel ini
+        const batch = await notificationQueue.dequeueBatch(batchSize, channel)
 
-      for (let i = 0; i < concurrency && batchesProcessed < options.maxBatches; i++) {
-        const batchPromise = this.processBatchForChannel(channel, options.batchSize).then((count) => {
-          if (count > 0) {
-            batchesProcessed++
-          }
-          return count
-        })
+        if (!batch) {
+          console.log(`No notifications to process for channel: ${channel}`)
+          continue
+        }
 
-        batchPromises.push(batchPromise)
+        console.log(`Processing batch of ${batch.size} notifications for channel: ${channel}`)
+
+        const batchResult: BatchProcessingResult = {
+          batchId: batch.id,
+          results: [],
+          successCount: 0,
+          failureCount: 0,
+          totalProcessingTime: 0,
+          averageProcessingTime: 0,
+        }
+
+        // Proses batch berdasarkan channel
+        if (channel === "telegram") {
+          const telegramResults = await this.processTelegramBatch(batch.items)
+          batchResult.results = telegramResults
+        } else if (channel === "whatsapp") {
+          // TODO: Implementasi untuk WhatsApp
+          batchResult.results = batch.items.map((item) => ({
+            id: item.id,
+            success: false,
+            error: "WhatsApp channel not implemented yet",
+          }))
+        } else if (channel === "email") {
+          // TODO: Implementasi untuk Email
+          batchResult.results = batch.items.map((item) => ({
+            id: item.id,
+            success: false,
+            error: "Email channel not implemented yet",
+          }))
+        } else if (channel === "in_app") {
+          // TODO: Implementasi untuk In-App
+          batchResult.results = batch.items.map((item) => ({
+            id: item.id,
+            success: false,
+            error: "In-App channel not implemented yet",
+          }))
+        }
+
+        // Hitung statistik batch
+        batchResult.successCount = batchResult.results.filter((r) => r.success).length
+        batchResult.failureCount = batchResult.results.filter((r) => !r.success).length
+        batchResult.totalProcessingTime = batchResult.results.reduce((sum, r) => sum + (r.processingTime || 0), 0)
+        batchResult.averageProcessingTime =
+          batchResult.results.length > 0 ? batchResult.totalProcessingTime / batchResult.results.length : 0
+
+        // Update status notifikasi
+        const successIds = batchResult.results.filter((r) => r.success).map((r) => r.id)
+        const failedItems = batchResult.results
+          .filter((r) => !r.success)
+          .map((r) => ({ id: r.id, errorMessage: r.error || "Unknown error" }))
+
+        const processingTimes = batchResult.results.reduce(
+          (map, r) => {
+            if (r.success && r.processingTime) {
+              map[r.id] = r.processingTime
+            }
+            return map
+          },
+          {} as Record<string, number>,
+        )
+
+        // Update status notifikasi secara batch
+        if (successIds.length > 0) {
+          await notificationQueue.markBatchAsCompleted(successIds, processingTimes)
+        }
+
+        if (failedItems.length > 0) {
+          await notificationQueue.markBatchAsFailed(failedItems)
+        }
+
+        results[channel] = batchResult
       }
 
-      // Tunggu semua batch selesai
-      const results = await Promise.all(batchPromises)
-      channelProcessedCount = results.reduce((sum, count) => sum + count, 0)
-      processedCount += channelProcessedCount
-
-      // Catat statistik channel
-      channelStats[channel] = {
-        count: channelProcessedCount,
-        time: (Date.now() - channelStartTime) / 1000, // Konversi ke detik
-      }
-    }
-
-    const totalProcessingTime = (Date.now() - startTime) / 1000 // Konversi ke detik
-
-    return {
-      processedCount,
-      batchesProcessed,
-      processingTime: totalProcessingTime,
-      channelStats,
-    }
-  }
-
-  /**
-   * Memproses batch untuk channel tertentu
-   */
-  private async processBatchForChannel(
-    channel: "telegram" | "whatsapp" | "email" | "in_app",
-    batchSize: number,
-  ): Promise<number> {
-    // Ambil batch untuk channel ini
-    const batch = await this.queue.dequeueBatch(batchSize, channel)
-
-    if (!batch || batch.items.length === 0) {
-      return 0
-    }
-
-    console.log(`Processing batch of ${batch.items.length} ${channel} notifications`)
-
-    let processedCount = 0
-    const processingTimes: Record<string, number> = {}
-    const failedItems: Array<{ id: string; errorMessage: string }> = []
-
-    // Proses setiap item dalam batch
-    for (const item of batch.items) {
-      try {
-        const startTime = Date.now()
-        await this.processItem(item)
-        const processingTime = (Date.now() - startTime) / 1000 // Konversi ke detik
-
-        processingTimes[item.id] = processingTime
-        processedCount++
-      } catch (error) {
-        console.error(`Error processing batch item ${item.id}:`, error)
-        failedItems.push({
-          id: item.id,
-          errorMessage: error instanceof Error ? error.message : "Unknown error",
-        })
-      }
-    }
-
-    // Tandai item yang berhasil sebagai selesai
-    const successIds = batch.items
-      .filter((item) => !failedItems.some((failedItem) => failedItem.id === item.id))
-      .map((item) => item.id)
-
-    if (successIds.length > 0) {
-      await this.queue.markBatchAsCompleted(successIds, processingTimes)
-    }
-
-    // Tandai item yang gagal
-    if (failedItems.length > 0) {
-      await this.queue.markBatchAsFailed(failedItems)
-    }
-
-    return processedCount
-  }
-
-  /**
-   * Memproses satu item antrian
-   */
-  private async processItem(item: NotificationQueueItem): Promise<void> {
-    switch (item.channel) {
-      case "telegram":
-        await this.processTelegramNotification(item)
-        break
-      case "whatsapp":
-        await this.processWhatsappNotification(item)
-        break
-      case "email":
-        await this.processEmailNotification(item)
-        break
-      case "in_app":
-        await this.processInAppNotification(item)
-        break
-      default:
-        throw new Error(`Unsupported notification channel: ${item.channel}`)
+      console.log("Batch processing completed")
+      return results
+    } catch (error) {
+      console.error("Error processing notification queue with batches:", error)
+      return {}
     }
   }
 
   /**
    * Memproses notifikasi Telegram
    */
-  private async processTelegramNotification(item: NotificationQueueItem): Promise<void> {
-    // Ekstrak payload dengan penanganan error yang lebih baik
-    const payload = item.payload || {}
+  private async processTelegramNotification(notification: NotificationQueueItem): Promise<boolean> {
+    try {
+      console.log(`Processing Telegram notification: ${notification.id}`)
 
-    // Cek apakah payload memiliki format yang benar
-    if (!payload) {
-      throw new Error("Empty payload for Telegram notification")
-    }
+      const { telegramId, text, parseMode } = notification.payload
 
-    // Ekstrak field yang diperlukan dengan fallback
-    const chatId = payload.chatId || payload.telegram_id || payload.telegramId
-    const name = payload.name || "pengguna"
-    const messagePreview = payload.messagePreview || payload.preview || ""
-    const profileUrl = payload.profileUrl || payload.url || ""
-    const messageId = payload.messageId || ""
-
-    // Buat teks pesan berdasarkan data yang tersedia
-    let messageText = payload.text || payload.message || payload.content
-
-    // Jika tidak ada teks pesan, buat pesan berdasarkan data lain yang tersedia
-    if (!messageText) {
-      if (item.notification_type === "new_message" || item.notification_type === "telegram_message") {
-        messageText = `🔔 *Pesan Baru*\n\nHalo ${name}, Anda menerima pesan baru di SecretMe!\n\n`
-
-        if (messagePreview) {
-          messageText += `📝 Pesan: "${messagePreview}"\n\n`
-        }
-
-        if (profileUrl) {
-          messageText += `🔗 [Lihat Pesan](${profileUrl})`
-        }
-      } else {
-        // Fallback untuk jenis notifikasi lain
-        messageText = `🔔 *Notifikasi*\n\nHalo ${name}, Anda memiliki notifikasi baru di SecretMe.`
-
-        if (profileUrl) {
-          messageText += `\n\n🔗 [Buka SecretMe](${profileUrl})`
-        }
+      if (!telegramId) {
+        console.error("Missing telegramId in notification payload")
+        return false
       }
-    }
-
-    console.log(`Processing Telegram notification with chatId: ${chatId}, text: ${messageText}`)
-
-    // Validasi field yang diperlukan
-    if (!chatId) {
-      // Jika chatId tidak ada dalam payload, coba ambil dari database
-      const userId = item.user_id
-      if (!userId) {
-        throw new Error("No user ID or chat ID available for Telegram notification")
-      }
-
-      // Ambil telegram_id dari database
-      const supabase = createClient(cookies())
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("telegram_id")
-        .eq("id", userId)
-        .single()
-
-      if (userError || !userData?.telegram_id) {
-        throw new Error(
-          `Failed to get Telegram ID for user ${userId}: ${userError?.message || "User has no Telegram ID"}`,
-        )
-      }
-
-      // Gunakan telegram_id dari database
-      const telegramId = userData.telegram_id
 
       // Kirim pesan Telegram
-      await sendTelegramMessage({
-        chat_id: telegramId,
-        text: messageText,
-        parse_mode: "Markdown",
-        disable_web_page_preview: false,
-      })
-    } else {
-      // Kirim pesan Telegram
-      await sendTelegramMessage({
-        chat_id: chatId,
-        text: messageText,
-        parse_mode: "Markdown",
-        disable_web_page_preview: false,
-      })
+      const result = await sendTelegramMessage(telegramId, text, parseMode)
+
+      if (!result.success) {
+        console.error(`Failed to send Telegram message: ${result.error}`)
+        return false
+      }
+
+      console.log(`Successfully sent Telegram message to ${telegramId}`)
+      return true
+    } catch (error) {
+      console.error("Error processing Telegram notification:", error)
+      return false
     }
   }
 
   /**
-   * Memproses notifikasi WhatsApp
+   * Memproses batch notifikasi Telegram
    */
-  private async processWhatsappNotification(item: NotificationQueueItem): Promise<void> {
-    // Implementasi untuk WhatsApp
-    throw new Error("WhatsApp notification processing not implemented yet")
-  }
+  private async processTelegramBatch(notifications: NotificationQueueItem[]): Promise<ProcessingResult[]> {
+    const results: ProcessingResult[] = []
 
-  /**
-   * Memproses notifikasi Email
-   */
-  private async processEmailNotification(item: NotificationQueueItem): Promise<void> {
-    // Implementasi untuk Email
-    throw new Error("Email notification processing not implemented yet")
-  }
+    for (const notification of notifications) {
+      const startTime = performance.now()
+      try {
+        console.log(`Processing Telegram notification in batch: ${notification.id}`)
 
-  /**
-   * Memproses notifikasi In-App
-   */
-  private async processInAppNotification(item: NotificationQueueItem): Promise<void> {
-    // Implementasi untuk In-App
-    throw new Error("In-App notification processing not implemented yet")
+        const { telegramId, text, parseMode } = notification.payload
+
+        if (!telegramId) {
+          console.error("Missing telegramId in notification payload")
+          results.push({
+            id: notification.id,
+            success: false,
+            error: "Missing telegramId in notification payload",
+            processingTime: performance.now() - startTime,
+          })
+          continue
+        }
+
+        // Kirim pesan Telegram
+        const result = await sendTelegramMessage(telegramId, text, parseMode)
+
+        if (!result.success) {
+          console.error(`Failed to send Telegram message: ${result.error}`)
+          results.push({
+            id: notification.id,
+            success: false,
+            error: result.error || "Failed to send Telegram message",
+            processingTime: performance.now() - startTime,
+          })
+          continue
+        }
+
+        console.log(`Successfully sent Telegram message to ${telegramId}`)
+        results.push({
+          id: notification.id,
+          success: true,
+          processingTime: performance.now() - startTime,
+        })
+      } catch (error) {
+        console.error(`Error processing Telegram notification ${notification.id}:`, error)
+        results.push({
+          id: notification.id,
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+          processingTime: performance.now() - startTime,
+        })
+      }
+    }
+
+    return results
   }
 }
 
+// Export instance singleton untuk kemudahan penggunaan
 export const queueProcessor = QueueProcessor.getInstance()

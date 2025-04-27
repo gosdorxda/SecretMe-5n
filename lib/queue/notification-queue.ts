@@ -1,7 +1,21 @@
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { v4 as uuidv4 } from "uuid"
 import type { NotificationQueueItem, QueueStats, NotificationBatch } from "./types"
+
+// Helper function to generate UUID using native crypto API
+function generateUUID(): string {
+  // In Node.js environment
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  // Fallback implementation
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 export class NotificationQueue {
   private static instance: NotificationQueue
@@ -52,7 +66,7 @@ export class NotificationQueue {
       const supabase = createClient(cookies())
 
       // Jika batch_id tidak disediakan, buat batch baru
-      const notificationBatchId = batch_id || uuidv4()
+      const notificationBatchId = batch_id || generateUUID()
 
       // Cek apakah ini bagian dari batch yang ada
       let batchSize = 1
@@ -119,7 +133,7 @@ export class NotificationQueue {
     }
 
     try {
-      const batchId = uuidv4()
+      const batchId = generateUUID()
       const batchSize = notifications.length
 
       const supabase = createClient(cookies())
@@ -239,7 +253,7 @@ export class NotificationQueue {
       }
 
       // Buat batch ID baru
-      const batchId = uuidv4()
+      const batchId = generateUUID()
       const items = data as NotificationQueueItem[]
       const batchChannel = channel || items[0].channel
 

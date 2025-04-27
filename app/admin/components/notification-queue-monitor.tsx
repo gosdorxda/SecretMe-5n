@@ -3,474 +3,215 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createClient } from "@/lib/supabase/client"
-import { useToast } from "@/hooks/use-toast"
-import type { QueueStats, NotificationQueueItem } from "@/lib/queue/types"
-import { RefreshCw, Play, Trash2, BarChart2, Clock } from "lucide-react"
-import { processNotificationQueue, cleanupOldQueueItems, getQueueStats } from "../actions"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { processQueue, cleanupQueue, getQueueStats } from "../actions"
+import { Loader2, RefreshCw, Trash2 } from "lucide-react"
 
 export default function NotificationQueueMonitor() {
-  const [stats, setStats] = useState<QueueStats>({
-    pending: 0,
-    processing: 0,
-    completed: 0,
-    failed: 0,
-    retry: 0,
-    total: 0,
-    avg_processing_time: 0,
-    max_processing_time: 0,
-    avg_retry_count: 0,
-  })
-  const [queueItems, setQueueItems] = useState<NotificationQueueItem[]>([])
-  const [activeTab, setActiveTab] = useState<string>("pending")
-  const [isLoading, setIsLoading] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [isCleaning, setIsCleaning] = useState(false)
-  const [lastProcessingStats, setLastProcessingStats] = useState<{
-    processedCount: number
-    batchesProcessed: number
-    processingTime: number
-    channelStats: Record<string, { count: number; time: number }>
-  } | null>(null)
-  const supabase = createClient()
-  const { toast } = useToast()
+  const [stats, setStats] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [processingResult, setProcessingResult] = useState<any>(null)
+  const [cleanupResult, setCleanupResult] = useState<any>(null)
+  const [refreshInterval, setRefreshInterval] = useState<number | null>(null)
 
-  // Fungsi untuk memuat statistik antrian
-  const loadStats = async () => {
+  const fetchStats = async () => {
     try {
-      const result = await getQueueStats()
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to load queue stats")
-      }
-
-      setStats(
-        result.stats || {
-          pending: 0,
-          processing: 0,
-          completed: 0,
-          failed: 0,
-          retry: 0,
-          total: 0,
-          avg_processing_time: 0,
-          max_processing_time: 0,
-          avg_retry_count: 0,
-        },
-      )
+      const data = await getQueueStats()
+      setStats(data)
     } catch (error) {
-      console.error("Error loading queue stats:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load queue statistics",
-        variant: "destructive",
-      })
+      console.error("Error fetching queue stats:", error)
     }
   }
 
-  // Fungsi untuk memuat item antrian berdasarkan status
-  const loadQueueItems = async (status: string) => {
-    setIsLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from("notification_queue")
-        .select("*")
-        .eq("status", status)
-        .order("dynamic_priority", { ascending: false })
-        .order("created_at", { ascending: true })
-        .limit(50)
-
-      if (error) throw error
-
-      setQueueItems(data || [])
-    } catch (error) {
-      console.error(`Error loading ${status} queue items:`, error)
-      toast({
-        title: "Error",
-        description: `Failed to load ${status} queue items`,
-        variant: "destructive",
-      })
-      setQueueItems([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Fungsi untuk memproses antrian secara manual menggunakan server action
-  const handleProcessQueue = async () => {
-    setIsProcessing(true)
-    try {
-      const result = await processNotificationQueue(20)
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to process queue")
-      }
-
-      // Simpan statistik pemrosesan
-      if (result.batchesProcessed !== undefined) {
-        setLastProcessingStats({
-          processedCount: result.processedCount,
-          batchesProcessed: result.batchesProcessed,
-          processingTime: result.processingTime || 0,
-          channelStats: result.channelStats || {},
-        })
-      }
-
-      toast({
-        title: "Success",
-        description: `Processed ${result.processedCount} notifications in ${result.processingTime?.toFixed(2) || "?"} seconds`,
-      })
-
-      // Refresh data
-      await loadStats()
-      await loadQueueItems(activeTab)
-    } catch (error) {
-      console.error("Error processing queue:", error)
-      toast({
-        title: "Error",
-        description: "Failed to process notification queue",
-        variant: "destructive",
-      })
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  // Fungsi untuk membersihkan antrian lama menggunakan server action
-  const handleCleanupOldItems = async () => {
-    if (!confirm("Are you sure you want to clean up old completed and failed notifications?")) {
-      return
-    }
-
-    setIsCleaning(true)
-    try {
-      const result = await cleanupOldQueueItems(7)
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to clean up old items")
-      }
-
-      toast({
-        title: "Success",
-        description: `Cleaned up ${result.cleanedCount} old notifications`,
-      })
-
-      // Refresh data
-      await loadStats()
-      await loadQueueItems(activeTab)
-    } catch (error) {
-      console.error("Error cleaning up old items:", error)
-      toast({
-        title: "Error",
-        description: "Failed to clean up old notifications",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCleaning(false)
-    }
-  }
-
-  // Fungsi untuk mendapatkan badge berdasarkan status
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            Pending
-          </Badge>
-        )
-      case "processing":
-        return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            Processing
-          </Badge>
-        )
-      case "completed":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            Completed
-          </Badge>
-        )
-      case "failed":
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            Failed
-          </Badge>
-        )
-      case "retry":
-        return (
-          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-            Retry
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  // Format tanggal
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "-"
-    return new Date(dateString).toLocaleString()
-  }
-
-  // Format waktu dalam detik
-  const formatTime = (seconds?: number) => {
-    if (seconds === undefined || seconds === null) return "-"
-    return `${seconds.toFixed(2)}s`
-  }
-
-  // Efek untuk memuat data saat komponen dimuat
   useEffect(() => {
-    loadStats()
-    loadQueueItems("pending")
+    fetchStats()
   }, [])
 
-  // Efek untuk memuat item antrian saat tab berubah
   useEffect(() => {
-    loadQueueItems(activeTab)
-  }, [activeTab])
+    if (refreshInterval) {
+      const interval = setInterval(fetchStats, refreshInterval)
+      return () => clearInterval(interval)
+    }
+  }, [refreshInterval])
+
+  const handleProcessQueue = async () => {
+    setLoading(true)
+    try {
+      const result = await processQueue()
+      setProcessingResult(result)
+      await fetchStats()
+    } catch (error) {
+      console.error("Error processing queue:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCleanupQueue = async () => {
+    setLoading(true)
+    try {
+      const result = await cleanupQueue()
+      setCleanupResult(result)
+      await fetchStats()
+    } catch (error) {
+      console.error("Error cleaning up queue:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleRefresh = () => {
+    if (refreshInterval) {
+      setRefreshInterval(null)
+    } else {
+      setRefreshInterval(10000) // 10 seconds
+    }
+  }
+
+  const formatTime = (ms: number) => {
+    if (ms < 1000) {
+      return `${ms.toFixed(2)}ms`
+    }
+    return `${(ms / 1000).toFixed(2)}s`
+  }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Notification Queue Monitor</CardTitle>
-        <CardDescription>Monitor and manage notification queue</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          <Card className="bg-blue-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-medium text-blue-700">Pending</p>
-              <p className="text-2xl font-bold text-blue-900">{stats.pending}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-yellow-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-medium text-yellow-700">Processing</p>
-              <p className="text-2xl font-bold text-yellow-900">{stats.processing}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-green-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-medium text-green-700">Completed</p>
-              <p className="text-2xl font-bold text-green-900">{stats.completed}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-red-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-medium text-red-700">Failed</p>
-              <p className="text-2xl font-bold text-red-900">{stats.failed}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-purple-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-medium text-purple-700">Retry</p>
-              <p className="text-2xl font-bold text-purple-900">{stats.retry}</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Performance Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card className="bg-gray-50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700 flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  Avg Processing Time
-                </p>
-                <p className="text-lg font-bold text-gray-900">{formatTime(stats.avg_processing_time)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700 flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  Max Processing Time
-                </p>
-                <p className="text-lg font-bold text-gray-900">{formatTime(stats.max_processing_time)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-700 flex items-center">
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Avg Retry Count
-                </p>
-                <p className="text-lg font-bold text-gray-900">
-                  {stats.avg_retry_count !== undefined ? stats.avg_retry_count.toFixed(2) : "-"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Last Processing Stats */}
-        {lastProcessingStats && (
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-blue-800 flex items-center">
-                <BarChart2 className="h-4 w-4 mr-2" />
-                Last Processing Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-xs text-blue-700">Processed</p>
-                  <p className="text-lg font-bold text-blue-900">{lastProcessingStats.processedCount}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-blue-700">Batches</p>
-                  <p className="text-lg font-bold text-blue-900">{lastProcessingStats.batchesProcessed}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-blue-700">Time</p>
-                  <p className="text-lg font-bold text-blue-900">{formatTime(lastProcessingStats.processingTime)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-blue-700">Rate</p>
-                  <p className="text-lg font-bold text-blue-900">
-                    {lastProcessingStats.processingTime > 0
-                      ? `${(lastProcessingStats.processedCount / lastProcessingStats.processingTime).toFixed(2)}/s`
-                      : "-"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Channel Stats */}
-              {Object.keys(lastProcessingStats.channelStats).length > 0 && (
-                <div className="mt-4 border-t border-blue-200 pt-4">
-                  <p className="text-xs text-blue-700 mb-2">Channel Performance</p>
-                  <div className="grid grid-cols-4 gap-2 text-xs">
-                    <div className="font-medium text-blue-800">Channel</div>
-                    <div className="font-medium text-blue-800">Count</div>
-                    <div className="font-medium text-blue-800">Time</div>
-                    <div className="font-medium text-blue-800">Rate</div>
-
-                    {Object.entries(lastProcessingStats.channelStats).map(([channel, stats]) => (
-                      <>
-                        <div key={`${channel}-name`} className="text-blue-900">
-                          {channel}
-                        </div>
-                        <div key={`${channel}-count`} className="text-blue-900">
-                          {stats.count}
-                        </div>
-                        <div key={`${channel}-time`} className="text-blue-900">
-                          {formatTime(stats.time)}
-                        </div>
-                        <div key={`${channel}-rate`} className="text-blue-900">
-                          {stats.time > 0 ? `${(stats.count / stats.time).toFixed(2)}/s` : "-"}
-                        </div>
-                      </>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="flex justify-between mb-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              loadStats()
-              loadQueueItems(activeTab)
-            }}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          <div className="space-x-2">
-            <Button variant="default" onClick={handleProcessQueue} disabled={isProcessing}>
-              <Play className="h-4 w-4 mr-2" />
-              {isProcessing ? "Processing..." : "Process Queue"}
+        <CardTitle className="flex items-center justify-between">
+          <span>Notification Queue Monitor</span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleRefresh}
+              className={refreshInterval ? "bg-green-100" : ""}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {refreshInterval ? "Auto Refresh On" : "Auto Refresh Off"}
             </Button>
-            <Button variant="outline" onClick={handleCleanupOldItems} disabled={isCleaning}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              {isCleaning ? "Cleaning..." : "Clean Old Items"}
+            <Button variant="outline" size="sm" onClick={fetchStats}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
             </Button>
           </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="processing">Processing</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="failed">Failed</TabsTrigger>
-            <TabsTrigger value="retry">Retry</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value={activeTab}>
-            <div className="border rounded-md">
-              {isLoading ? (
-                <div className="p-8 text-center">
-                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">Loading...</p>
-                </div>
-              ) : queueItems.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-muted-foreground">No {activeTab} notifications found</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Channel</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Retry</TableHead>
-                      <TableHead>Processing Time</TableHead>
-                      <TableHead>Error</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {queueItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.notification_type}</TableCell>
-                        <TableCell>{item.channel}</TableCell>
-                        <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell>
-                          {item.dynamic_priority !== undefined ? (
-                            <span title={`Base: ${item.priority}`}>{item.dynamic_priority}</span>
-                          ) : (
-                            item.priority
-                          )}
-                        </TableCell>
-                        <TableCell>{formatDate(item.created_at)}</TableCell>
-                        <TableCell>
-                          {item.retry_count}/{item.max_retries}
-                          {item.next_retry_at && (
-                            <div className="text-xs text-muted-foreground">Next: {formatDate(item.next_retry_at)}</div>
-                          )}
-                        </TableCell>
-                        <TableCell>{formatTime(item.processing_time)}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{item.error_message || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+        </CardTitle>
+        <CardDescription>Monitor and manage the notification queue</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {stats ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <StatCard title="Pending" value={stats.pending} color="bg-yellow-100" />
+              <StatCard title="Processing" value={stats.processing} color="bg-blue-100" />
+              <StatCard title="Completed" value={stats.completed} color="bg-green-100" />
+              <StatCard title="Failed" value={stats.failed} color="bg-red-100" />
+              <StatCard title="Retry" value={stats.retry} color="bg-purple-100" />
             </div>
-          </TabsContent>
-        </Tabs>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <StatCard
+                title="Avg Processing Time"
+                value={stats.avg_processing_time ? formatTime(stats.avg_processing_time) : "N/A"}
+                color="bg-blue-50"
+              />
+              <StatCard
+                title="Max Processing Time"
+                value={stats.max_processing_time ? formatTime(stats.max_processing_time) : "N/A"}
+                color="bg-blue-50"
+              />
+              <StatCard
+                title="Avg Retry Count"
+                value={stats.avg_retry_count ? stats.avg_retry_count.toFixed(2) : "N/A"}
+                color="bg-purple-50"
+              />
+            </div>
+
+            {processingResult && (
+              <div className="mt-4 p-4 rounded-md bg-gray-50">
+                <h3 className="text-sm font-medium mb-2">Last Processing Result</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-sm">
+                    <span className="font-medium">Processed:</span> {processingResult.processed}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Success:</span> {processingResult.success}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Failed:</span> {processingResult.failed}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Time:</span> {processingResult.processingTime}
+                  </div>
+                </div>
+
+                {processingResult.results && Object.keys(processingResult.results).length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2">Batch Results</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Channel</TableHead>
+                          <TableHead>Batch ID</TableHead>
+                          <TableHead>Success</TableHead>
+                          <TableHead>Failed</TableHead>
+                          <TableHead>Avg Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(processingResult.results).map(([channel, result]: [string, any]) => (
+                          <TableRow key={channel}>
+                            <TableCell>
+                              <Badge variant="outline">{channel}</Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{result.batchId.substring(0, 8)}...</TableCell>
+                            <TableCell className="text-green-600">{result.successCount}</TableCell>
+                            <TableCell className="text-red-600">{result.failureCount}</TableCell>
+                            <TableCell>{formatTime(result.averageProcessingTime)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {cleanupResult && (
+              <div className="mt-4 p-4 rounded-md bg-gray-50">
+                <h3 className="text-sm font-medium">Cleanup Result</h3>
+                <p className="text-sm mt-1">
+                  Removed {cleanupResult.cleanup?.count || 0} old notification(s) from the queue.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex justify-center items-center h-40">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">Showing up to 50 most recent {activeTab} notifications</div>
-        <div className="text-sm text-muted-foreground">Total: {stats.total} notifications</div>
+        <Button onClick={handleProcessQueue} disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+          Process Queue
+        </Button>
+        <Button variant="outline" onClick={handleCleanupQueue} disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+          Cleanup Old Items
+        </Button>
       </CardFooter>
     </Card>
+  )
+}
+
+function StatCard({ title, value, color }: { title: string; value: string | number; color: string }) {
+  return (
+    <div className={`p-4 rounded-md ${color}`}>
+      <h3 className="text-sm font-medium">{title}</h3>
+      <p className="text-2xl font-bold mt-1">{value}</p>
+    </div>
   )
 }
