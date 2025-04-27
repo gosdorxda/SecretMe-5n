@@ -10,14 +10,14 @@ export const TELEGRAM_MESSAGE_TEMPLATES = {
     "Hai {name},\n" +
     "Anda baru saja menerima pesan di SecretMe.\n\n" +
     "👤 *Dari:* Seseorang\n" +
-    "💬 *Pesan:* ||{preview}||\n\n" +
+    "💬 *Pesan:* {preview}\n\n" +
     "🔗 [Buka SecretMe untuk membaca selengkapnya]({url})",
   VERIFICATION:
     "🔐 *Kode Verifikasi*\n\n" +
     "Halo! Kode verifikasi Anda untuk SecretMe adalah: *{code}*\n\n" +
     "Kode ini berlaku selama 10 menit.",
   TEST:
-    "✅ *Notifikasi Berhasil Terhubung!*\n\n" +
+    "✅ *Notifikasi Berhasil Terhubung*\n\n" +
     "Halo {name}!\n\n" +
     "Selamat! Notifikasi Telegram Anda telah berhasil dikonfigurasi. Anda akan menerima pemberitahuan saat ada pesan baru di SecretMe.\n\n" +
     "Gunakan perintah berikut:\n" +
@@ -25,7 +25,7 @@ export const TELEGRAM_MESSAGE_TEMPLATES = {
     "• /status - Memeriksa status koneksi\n" +
     "• /disconnect - Memutuskan koneksi akun",
   CONNECTION_SUCCESS:
-    "✅ *Koneksi Berhasil!*\n\n" +
+    "✅ *Koneksi Berhasil*\n\n" +
     "Akun SecretMe Anda telah berhasil terhubung dengan Telegram.\n\n" +
     "Anda akan menerima notifikasi saat ada pesan baru. Gunakan perintah /help untuk melihat bantuan.",
   DISCONNECTED:
