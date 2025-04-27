@@ -7,7 +7,7 @@ const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`
 interface SendMessageParams {
   chat_id: string
   text: string
-  parse_mode?: "Markdown" | "HTML"
+  parse_mode?: "Markdown" | "MarkdownV2" | "HTML"
   disable_web_page_preview?: boolean
 }
 
@@ -73,12 +73,18 @@ export async function sendNewMessageNotification(params: {
     profileUrl,
   })
 
-  // Truncate message preview to 50 characters
-  const truncatedPreview = messagePreview.length > 50 ? messagePreview.substring(0, 50) : messagePreview
+  // Sanitize message preview to avoid Markdown formatting issues
+  // and truncate to 50 characters
+  let sanitizedPreview = messagePreview.replace(/[_*[\]()~`>#+=|{}.!-]/g, (match) => `\\${match}`).substring(0, 50)
+
+  // Add ellipsis if truncated
+  if (messagePreview.length > 50) {
+    sanitizedPreview += "..."
+  }
 
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.NEW_MESSAGE, {
     name,
-    preview: truncatedPreview,
+    preview: sanitizedPreview,
     url: profileUrl,
   })
 
@@ -87,7 +93,7 @@ export async function sendNewMessageNotification(params: {
   return sendTelegramMessage({
     chat_id: telegramId,
     text: message,
-    parse_mode: "Markdown",
+    parse_mode: "MarkdownV2", // Using MarkdownV2 for spoiler tags
     disable_web_page_preview: false,
   })
 }
@@ -101,6 +107,33 @@ export async function sendTestMessage(telegramId: string, name: string): Promise
   return sendTelegramMessage({
     chat_id: telegramId,
     text: message,
+    parse_mode: "Markdown",
+  })
+}
+
+// Function to send connection success message
+export async function sendConnectionSuccessMessage(telegramId: string): Promise<any> {
+  return sendTelegramMessage({
+    chat_id: telegramId,
+    text: TELEGRAM_MESSAGE_TEMPLATES.CONNECTION_SUCCESS,
+    parse_mode: "Markdown",
+  })
+}
+
+// Function to send disconnection message
+export async function sendDisconnectionMessage(telegramId: string): Promise<any> {
+  return sendTelegramMessage({
+    chat_id: telegramId,
+    text: TELEGRAM_MESSAGE_TEMPLATES.DISCONNECTED,
+    parse_mode: "Markdown",
+  })
+}
+
+// Function to send help message
+export async function sendHelpMessage(telegramId: string): Promise<any> {
+  return sendTelegramMessage({
+    chat_id: telegramId,
+    text: TELEGRAM_MESSAGE_TEMPLATES.HELP,
     parse_mode: "Markdown",
   })
 }

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/hooks/use-toast"
-import { CheckCircle, Copy } from "lucide-react"
+import { CheckCircle, Copy, AlertTriangle } from "lucide-react"
 
 interface TelegramFormProps {
   userId: string
@@ -186,6 +186,50 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     }
   }
 
+  // Fungsi untuk memutuskan koneksi Telegram
+  const handleDisconnect = async () => {
+    if (!initialTelegramId) {
+      return
+    }
+
+    if (
+      !confirm("Apakah Anda yakin ingin memutuskan koneksi Telegram? Anda tidak akan lagi menerima notifikasi pesan.")
+    ) {
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch("/api/telegram/disconnect", {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || `Error ${response.status}`)
+      }
+
+      toast({
+        title: "Berhasil",
+        description: "Koneksi Telegram berhasil diputus",
+      })
+
+      // Refresh halaman untuk mendapatkan data terbaru
+      window.location.reload()
+    } catch (error: any) {
+      console.error("Error disconnecting Telegram:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memutuskan koneksi Telegram",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Fungsi untuk menyalin kode ke clipboard
   const copyCodeToClipboard = () => {
     if (connectionCode) {
@@ -238,6 +282,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                 <code className="flex-1 text-center font-mono text-lg font-bold text-blue-700">{connectionCode}</code>
                 <Button variant="ghost" size="icon" onClick={copyCodeToClipboard} className="h-8 w-8">
                   <Copy className="h-4 w-4" />
+                  <span className="sr-only">Salin kode</span>
                 </Button>
               </div>
 
@@ -293,14 +338,25 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
             </div>
           </div>
 
-          <div className="pt-4">
+          <div className="flex flex-wrap gap-3 pt-4">
             <Button variant="outline" onClick={handleSendTestMessage} disabled={isSubmitting}>
               Kirim Pesan Test
             </Button>
-            <p className="text-xs text-muted-foreground mt-1">
-              Gunakan tombol ini untuk menguji apakah notifikasi Telegram berfungsi
-            </p>
+
+            <Button
+              variant="outline"
+              onClick={handleDisconnect}
+              disabled={isSubmitting}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Putuskan Koneksi
+            </Button>
           </div>
+
+          <p className="text-xs text-muted-foreground mt-1">
+            Anda juga dapat mengirim perintah /disconnect ke bot @SecretMeBot untuk memutuskan koneksi
+          </p>
         </div>
       )}
     </div>
