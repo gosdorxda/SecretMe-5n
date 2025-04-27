@@ -30,6 +30,46 @@ export class NotificationQueue {
   }
 
   /**
+   * Memvalidasi payload notifikasi
+   */
+  private validatePayload(
+    channel: "telegram" | "whatsapp" | "email" | "in_app",
+    payload: Record<string, any>,
+  ): { valid: boolean; error?: string } {
+    if (!payload || Object.keys(payload).length === 0) {
+      return { valid: false, error: "Payload is empty" }
+    }
+
+    // Validasi khusus untuk setiap channel
+    if (channel === "telegram") {
+      // Untuk Telegram, kita memerlukan telegramId/chatId dan text/message/content
+      const chatId = payload.chatId || payload.telegram_id || payload.telegramId
+      const text = payload.text || payload.message || payload.content
+
+      if (!chatId) {
+        return { valid: false, error: "Missing telegramId/chatId in payload" }
+      }
+
+      if (!text) {
+        return { valid: false, error: "Missing text/message/content in payload" }
+      }
+
+      return { valid: true }
+    } else if (channel === "whatsapp") {
+      // TODO: Implementasi validasi untuk WhatsApp
+      return { valid: true }
+    } else if (channel === "email") {
+      // TODO: Implementasi validasi untuk Email
+      return { valid: true }
+    } else if (channel === "in_app") {
+      // TODO: Implementasi validasi untuk In-App
+      return { valid: true }
+    }
+
+    return { valid: true }
+  }
+
+  /**
    * Menambahkan notifikasi ke antrian
    */
   public async enqueue({
@@ -61,7 +101,23 @@ export class NotificationQueue {
         max_retries,
         batch_id,
       })
-      console.log("Payload:", JSON.stringify(payload, null, 2))
+
+      // Validasi payload
+      const payloadValidation = this.validatePayload(channel, payload)
+      if (!payloadValidation.valid) {
+        console.error(`Invalid payload for ${channel} notification:`, payloadValidation.error)
+        console.error("Payload:", JSON.stringify(payload, null, 2))
+        return null
+      }
+
+      // Log payload dengan detail yang lebih baik
+      if (channel === "telegram") {
+        console.log("Telegram payload details:", {
+          telegramId: payload.telegramId || payload.chatId || payload.telegram_id,
+          textLength: (payload.text || payload.message || payload.content || "").length,
+          parseMode: payload.parseMode || "Markdown",
+        })
+      }
 
       const supabase = createClient(cookies())
 
@@ -136,10 +192,43 @@ export class NotificationQueue {
       const batchId = generateUUID()
       const batchSize = notifications.length
 
+      console.log(`Enqueueing batch of ${batchSize} notifications with batch ID: ${batchId}`)
+
+      // Validasi semua payload terlebih dahulu
+      const invalidNotifications = notifications.filter(
+        (notification) => !this.validatePayload(notification.channel, notification.payload).valid,
+      )
+
+      if (invalidNotifications.length > 0) {
+        console.error(`Found ${invalidNotifications.length} invalid notifications in batch:`)
+        invalidNotifications.forEach((notification, index) => {
+          const validation = this.validatePayload(notification.channel, notification.payload)
+          console.error(`Invalid notification ${index + 1}:`, {
+            channel: notification.channel,
+            error: validation.error,
+            payload: notification.payload,
+          })
+        })
+
+        // Jika ada yang tidak valid, batalkan seluruh batch
+        if (invalidNotifications.length === notifications.length) {
+          console.error("All notifications in batch are invalid, cancelling batch")
+          return null
+        }
+
+        // Jika hanya sebagian yang tidak valid, lanjutkan dengan yang valid saja
+        console.log(`Continuing with ${notifications.length - invalidNotifications.length} valid notifications`)
+      }
+
       const supabase = createClient(cookies())
 
+      // Filter notifikasi yang valid
+      const validNotifications = notifications.filter(
+        (notification) => this.validatePayload(notification.channel, notification.payload).valid,
+      )
+
       // Persiapkan data batch untuk dimasukkan
-      const batchData = notifications.map((notification, index) => ({
+      const batchData = validNotifications.map((notification, index) => ({
         user_id: notification.user_id,
         message_id: notification.message_id,
         notification_type: notification.notification_type,
@@ -149,7 +238,7 @@ export class NotificationQueue {
         max_retries: notification.max_retries || 3,
         status: "pending",
         batch_id: batchId,
-        batch_size: batchSize,
+        batch_size: validNotifications.length,
         batch_position: index,
       }))
 
@@ -640,7 +729,33 @@ export async function enqueueTelegramNotification(
   } = {},
 ): Promise<string | null> {
   console.log("enqueueTelegramNotification called with userId:", userId)
-  console.log("Telegram payload:", JSON.stringify(payload, null, 2))
+
+  // Validasi payload dasar
+  if (!payload) {
+    console.error("Telegram notification payload is undefined or null")
+    return null
+  }
+
+  if (!payload.telegramId) {
+    console.error("Missing telegramId in Telegram notification payload")
+    return null
+  }
+
+  if (!payload.text) {
+    console.error("Missing text in Telegram notification payload")
+    return null
+  }
+
+  // Log payload dengan detail yang lebih baik
+  console.log("Telegram payload details:", {
+    telegramId: payload.telegramId,
+    textLength: payload.text.length,
+    parseMode: payload.parseMode || "Markdown",
+    messageId: payload.messageId || "N/A",
+    name: payload.name || "N/A",
+    messagePreviewLength: payload.messagePreview ? payload.messagePreview.length : 0,
+    profileUrl: payload.profileUrl || "N/A",
+  })
 
   const queue = NotificationQueue.getInstance()
 

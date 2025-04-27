@@ -136,6 +136,11 @@ export async function POST(request: NextRequest) {
     // Kirim notifikasi Telegram jika diaktifkan dan ID Telegram tersedia
     if (useTelegram) {
       try {
+        // Validasi Telegram ID
+        if (!userData.telegram_id) {
+          throw new Error("User has no Telegram ID")
+        }
+
         // Siapkan preview pesan
         let messagePreview = ""
         if (messageData && messageData.content) {

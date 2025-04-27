@@ -206,22 +206,38 @@ export class QueueProcessor {
     try {
       console.log(`Processing Telegram notification: ${notification.id}`)
 
-      const { telegramId, text, parseMode } = notification.payload
+      // Pastikan payload ada dan tidak undefined
+      const payload = notification.payload || {}
 
-      if (!telegramId) {
-        console.error("Missing telegramId in notification payload")
+      // Ekstrak data dengan fallback untuk menghindari undefined
+      const chatId = payload.chatId || payload.telegram_id || payload.telegramId || ""
+      const text = payload.text || payload.message || payload.content || ""
+      const parseMode = payload.parseMode || "Markdown"
+
+      // Validasi data yang diperlukan
+      if (!chatId) {
+        console.error("Missing chatId/telegramId in notification payload")
         return false
       }
+
+      if (!text) {
+        console.error("Missing text/message/content in notification payload")
+        return false
+      }
+
+      // Log data yang akan dikirim
+      console.log(`Sending Telegram message to ${chatId} with parse mode ${parseMode}`)
+      console.log(`Message text length: ${text.length} characters`)
 
       // Kirim pesan Telegram
-      const result = await sendTelegramMessage(telegramId, text, parseMode)
+      await sendTelegramMessage({
+        chat_id: chatId,
+        text: text,
+        parse_mode: parseMode,
+        disable_web_page_preview: false,
+      })
 
-      if (!result.success) {
-        console.error(`Failed to send Telegram message: ${result.error}`)
-        return false
-      }
-
-      console.log(`Successfully sent Telegram message to ${telegramId}`)
+      console.log(`Successfully sent Telegram message to ${chatId}`)
       return true
     } catch (error) {
       console.error("Error processing Telegram notification:", error)
@@ -240,34 +256,50 @@ export class QueueProcessor {
       try {
         console.log(`Processing Telegram notification in batch: ${notification.id}`)
 
-        const { telegramId, text, parseMode } = notification.payload
+        // Pastikan payload ada dan tidak undefined
+        const payload = notification.payload || {}
 
-        if (!telegramId) {
-          console.error("Missing telegramId in notification payload")
+        // Ekstrak data dengan fallback untuk menghindari undefined
+        const chatId = payload.chatId || payload.telegram_id || payload.telegramId || ""
+        const text = payload.text || payload.message || payload.content || ""
+        const parseMode = payload.parseMode || "Markdown"
+
+        // Validasi data yang diperlukan
+        if (!chatId) {
+          console.error("Missing chatId/telegramId in notification payload")
           results.push({
             id: notification.id,
             success: false,
-            error: "Missing telegramId in notification payload",
+            error: "Missing chatId/telegramId in notification payload",
             processingTime: performance.now() - startTime,
           })
           continue
         }
+
+        if (!text) {
+          console.error("Missing text/message/content in notification payload")
+          results.push({
+            id: notification.id,
+            success: false,
+            error: "Missing text/message/content in notification payload",
+            processingTime: performance.now() - startTime,
+          })
+          continue
+        }
+
+        // Log data yang akan dikirim
+        console.log(`Sending Telegram message to ${chatId} with parse mode ${parseMode}`)
+        console.log(`Message text length: ${text.length} characters`)
 
         // Kirim pesan Telegram
-        const result = await sendTelegramMessage(telegramId, text, parseMode)
+        await sendTelegramMessage({
+          chat_id: chatId,
+          text: text,
+          parse_mode: parseMode,
+          disable_web_page_preview: false,
+        })
 
-        if (!result.success) {
-          console.error(`Failed to send Telegram message: ${result.error}`)
-          results.push({
-            id: notification.id,
-            success: false,
-            error: result.error || "Failed to send Telegram message",
-            processingTime: performance.now() - startTime,
-          })
-          continue
-        }
-
-        console.log(`Successfully sent Telegram message to ${telegramId}`)
+        console.log(`Successfully sent Telegram message to ${chatId}`)
         results.push({
           id: notification.id,
           success: true,

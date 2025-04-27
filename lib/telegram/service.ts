@@ -14,6 +14,15 @@ interface SendMessageParams {
 // Function to send message to Telegram
 export async function sendTelegramMessage(params: SendMessageParams): Promise<any> {
   try {
+    // Validasi parameter
+    if (!params.chat_id) {
+      throw new Error("Missing chat_id parameter")
+    }
+
+    if (!params.text) {
+      throw new Error("Missing text parameter")
+    }
+
     console.log("Sending Telegram message with params:", {
       chat_id: params.chat_id,
       text_length: params.text.length,
@@ -38,15 +47,26 @@ export async function sendTelegramMessage(params: SendMessageParams): Promise<an
       throw new Error(`Telegram API error: ${responseData.description || response.statusText}`)
     }
 
-    return responseData
+    return { success: true, data: responseData }
   } catch (error) {
     console.error("Error sending Telegram message:", error)
-    throw error
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error sending Telegram message",
+    }
   }
 }
 
 // Function to send verification code
 export async function sendVerificationCode(telegramId: string, code: string): Promise<any> {
+  if (!telegramId) {
+    return { success: false, error: "Missing telegramId parameter" }
+  }
+
+  if (!code) {
+    return { success: false, error: "Missing code parameter" }
+  }
+
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.VERIFICATION, {
     code,
   })
@@ -66,20 +86,26 @@ export async function sendNewMessageNotification(params: {
   profileUrl: string
 }): Promise<any> {
   const { telegramId, name, messagePreview, profileUrl } = params
+
+  if (!telegramId) {
+    return { success: false, error: "Missing telegramId parameter" }
+  }
+
   console.log("Preparing new message notification for Telegram:", {
     telegramId,
     name,
-    messagePreviewLength: messagePreview.length,
+    messagePreviewLength: messagePreview?.length || 0,
     profileUrl,
   })
 
   // Truncate message preview to 50 characters
-  const truncatedPreview = messagePreview.length > 50 ? messagePreview.substring(0, 50) : messagePreview
+  const truncatedPreview =
+    messagePreview && messagePreview.length > 50 ? messagePreview.substring(0, 50) : messagePreview || "..."
 
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.NEW_MESSAGE, {
-    name,
+    name: name || "pengguna",
     preview: truncatedPreview,
-    url: profileUrl,
+    url: profileUrl || "",
   })
 
   console.log("Formatted Telegram message:", message)
@@ -94,8 +120,12 @@ export async function sendNewMessageNotification(params: {
 
 // Function to send test message
 export async function sendTestMessage(telegramId: string, name: string): Promise<any> {
+  if (!telegramId) {
+    return { success: false, error: "Missing telegramId parameter" }
+  }
+
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.TEST, {
-    name,
+    name: name || "pengguna",
   })
 
   return sendTelegramMessage({
