@@ -69,9 +69,6 @@ import { TelegramForm } from "@/components/telegram-form"
 // Tambahkan import NotificationChannelSelector
 import { NotificationChannelSelector } from "@/components/notification-channel-selector"
 
-// Tambahkan import NotificationSettingsLink di bagian imports
-import { NotificationSettingsLink } from "@/components/notification-settings-link"
-
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -669,7 +666,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         {/* Cari bagian TabsList dan TabsTrigger */}
-        <TabsList className="grid w-full grid-cols-4 mb-6 p-0.5 h-10 gap-1">
+        <TabsList className="grid w-full grid-cols-3 mb-6 p-0.5 h-10 gap-1">
           <TabsTrigger value="messages" className="rounded-md text-xs">
             <span>Pesan</span>
           </TabsTrigger>
@@ -678,12 +675,6 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
           </TabsTrigger>
           <TabsTrigger value="settings" className="rounded-md text-xs">
             <span>Pengaturan</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-md text-xs" asChild>
-            <Link href="/dashboard/notifications">
-              <Bell className="h-4 w-4 mr-1" />
-              <span>Notifikasi</span>
-            </Link>
           </TabsTrigger>
         </TabsList>
 
@@ -1362,16 +1353,6 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                       </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Tambahkan NotificationSettingsLink di dalam TabsContent value="settings" sebelum bagian "Delete Account"
-                // Tambahkan di bawah div "rounded-lg border border-gray-200 p-4" untuk informasi akun
-                // Letakkan di antara informasi akun dan fitur logout */}
-
-                <div className="rounded-lg border border-gray-200 p-4">
-                  <h3 className="font-medium mb-3 text-sm sm:text-base">Pengaturan Notifikasi</h3>
-                  <p className="text-xs text-gray-500 mb-3">Kelola preferensi notifikasi pesan masuk Anda.</p>
-                  <NotificationSettingsLink />
                 </div>
 
                 <div className="rounded-lg border border-gray-200 p-4">
