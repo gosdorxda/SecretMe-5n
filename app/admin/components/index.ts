@@ -1,27 +1,12 @@
-import AdminStats from "./admin-stats"
-import AnalyticsDashboard from "./analytics-dashboard"
-import AuthMonitoring from "./auth-monitoring"
-import BlockedIPs from "./blocked-ips"
-import IPSettings from "./ip-settings"
-import NotificationSettings from "./notification-settings"
-import PremiumManagement from "./premium-management"
-import RateLimitConfig from "./rate-limit-config"
-import SeoSettings from "./seo-settings"
-import SitemapSettings from "./sitemap-settings"
-import UserCleanup from "./user-cleanup"
-import UsersManagement from "./users-management"
-
-export {
-  AdminStats,
-  AnalyticsDashboard,
-  AuthMonitoring,
-  BlockedIPs,
-  IPSettings,
-  NotificationSettings,
-  PremiumManagement,
-  RateLimitConfig,
-  SeoSettings,
-  SitemapSettings,
-  UserCleanup,
-  UsersManagement,
-}
+export { default as AdminStats } from "./admin-stats"
+export { default as AnalyticsDashboard } from "./analytics-dashboard"
+export { default as AuthMonitoring } from "./auth-monitoring"
+export { default as BlockedIPs } from "./blocked-ips"
+export { default as IPSettings } from "./ip-settings"
+export { default as NotificationSettings } from "./notification-settings"
+export { default as PremiumManagement } from "./premium-management"
+export { default as RateLimitConfig } from "./rate-limit-config"
+export { default as SeoSettings } from "./seo-settings"
+export { default as SitemapSettings } from "./sitemap-settings"
+export { default as UserCleanup } from "./user-cleanup"
+export { default as UsersManagement } from "./users-management"

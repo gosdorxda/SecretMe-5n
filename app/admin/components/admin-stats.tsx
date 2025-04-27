@@ -3,6 +3,8 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Activity, BarChart3, Crown, RefreshCw, Users, UserX } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 interface User {
   id: string
@@ -12,12 +14,40 @@ interface User {
 }
 
 interface AdminStatsProps {
-  users: User[]
-  onRefresh: () => void
-  isLoading: boolean
+  onRefresh?: () => void
+  isLoading?: boolean
 }
 
-export default function AdminStats({ users, onRefresh, isLoading }: AdminStatsProps) {
+export default function AdminStats({ onRefresh, isLoading = false }: AdminStatsProps) {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  // Fetch users data
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("id, email, created_at, is_premium")
+          .order("created_at", { ascending: false })
+
+        if (error) {
+          console.error("Error fetching users:", error)
+          return
+        }
+
+        setUsers(data || [])
+      } catch (error) {
+        console.error("Error fetching users:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUsers()
+  }, [supabase])
+
   // Hitung statistik pengguna
   const calculateStats = () => {
     const now = new Date()
@@ -39,6 +69,32 @@ export default function AdminStats({ users, onRefresh, isLoading }: AdminStatsPr
 
   const stats = calculateStats()
 
+  const handleRefresh = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, created_at, is_premium")
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Error refreshing users:", error)
+        return
+      }
+
+      setUsers(data || [])
+
+      // Call parent onRefresh if provided
+      if (onRefresh) {
+        onRefresh()
+      }
+    } catch (error) {
+      console.error("Error refreshing users:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <Card className="bg-white border-2 border-black shadow-[var(--shadow)]">
@@ -57,8 +113,8 @@ export default function AdminStats({ users, onRefresh, isLoading }: AdminStatsPr
               <Activity className="h-3 w-3" />
               <span>Aktif</span>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onRefresh}>
-              <RefreshCw className={`h-3 w-3 mr-1 ${isLoading ? "animate-spin" : ""}`} />
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleRefresh}>
+              <RefreshCw className={`h-3 w-3 mr-1 ${loading || isLoading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
