@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
+import { enqueueTelegramNotification } from "@/lib/queue/notification-queue"
 import { sendNewMessageNotification as sendWhatsAppNotification } from "@/lib/fonnte/service"
-import { sendNewMessageNotification as sendTelegramNotification } from "@/lib/telegram/service"
 
 export async function POST(request: Request) {
   try {
@@ -120,9 +120,40 @@ export async function POST(request: Request) {
       })
       .eq("id", notificationLog.id)
 
-    // Send notification based on channel
-    if (useWhatsApp) {
-      // Send WhatsApp notification
+    // Tambahkan ke antrian notifikasi berdasarkan channel
+    if (useTelegram) {
+      // Tambahkan ke antrian Telegram
+      console.log("Enqueueing Telegram notification for user:", userId)
+      const enqueueResult = await enqueueTelegramNotification(
+        userId,
+        {
+          telegramId: userData.telegram_id,
+          name: userData.name || userData.username,
+          messagePreview: message.content,
+          profileUrl,
+          messageId,
+        },
+        { priority: 2 }, // Prioritas tinggi untuk notifikasi pesan baru
+      )
+
+      console.log("Telegram notification enqueued:", enqueueResult)
+
+      if (enqueueResult.success) {
+        // Update status to queued
+        await supabase
+          .from("notification_logs")
+          .update({ status: "queued", queue_id: enqueueResult.id })
+          .eq("id", notificationLog.id)
+      } else {
+        // Update status to failed
+        await supabase
+          .from("notification_logs")
+          .update({ status: "failed", error_message: enqueueResult.error })
+          .eq("id", notificationLog.id)
+      }
+    } else if (useWhatsApp) {
+      // Implementasi antrian WhatsApp bisa ditambahkan di sini
+      // Untuk saat ini, kita gunakan implementasi langsung yang sudah ada
       try {
         console.log("Sending WhatsApp notification to:", userData.phone_number)
         const whatsappResult = await sendWhatsAppNotification({
@@ -137,27 +168,6 @@ export async function POST(request: Request) {
         await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
       } catch (error) {
         console.error("Error sending WhatsApp notification:", error)
-        await supabase
-          .from("notification_logs")
-          .update({ status: "failed", error_message: error.message })
-          .eq("id", notificationLog.id)
-      }
-    } else if (useTelegram) {
-      // Send Telegram notification
-      try {
-        console.log("Sending Telegram notification to:", userData.telegram_id)
-        const telegramResult = await sendTelegramNotification({
-          telegramId: userData.telegram_id,
-          name: userData.name,
-          messagePreview: message.content,
-          profileUrl,
-        })
-        console.log("Telegram notification result:", telegramResult)
-
-        // Update status to sent
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-      } catch (error) {
-        console.error("Error sending Telegram notification:", error)
         await supabase
           .from("notification_logs")
           .update({ status: "failed", error_message: error.message })
