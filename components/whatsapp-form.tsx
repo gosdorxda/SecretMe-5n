@@ -290,7 +290,12 @@ export function WhatsAppForm({ userId, initialPhoneNumber, initialWhatsAppNotifi
           onCheckedChange={handleToggleNotifications}
           disabled={!initialPhoneNumber && !verificationSent}
         />
-        <Label htmlFor="whatsapp_notifications">Aktifkan notifikasi WhatsApp</Label>
+        <div className="grid gap-1.5 leading-none">
+          <Label htmlFor="whatsapp_notifications" className="text-sm font-medium leading-none">
+            Aktifkan notifikasi WhatsApp
+          </Label>
+          <p className="text-xs text-muted-foreground">Terima notifikasi pesan baru melalui WhatsApp</p>
+        </div>
       </div>
 
       {/* Tombol untuk mengirim pesan test */}

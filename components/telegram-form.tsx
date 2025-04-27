@@ -272,7 +272,12 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           onCheckedChange={handleToggleNotifications}
           disabled={!initialTelegramId && !verificationSent}
         />
-        <Label htmlFor="telegram_notifications">Aktifkan notifikasi Telegram</Label>
+        <div className="grid gap-1.5 leading-none">
+          <Label htmlFor="telegram_notifications" className="text-sm font-medium leading-none">
+            Aktifkan notifikasi Telegram
+          </Label>
+          <p className="text-xs text-muted-foreground">Terima notifikasi pesan baru melalui Telegram</p>
+        </div>
       </div>
 
       {/* Tombol untuk mengirim pesan test */}

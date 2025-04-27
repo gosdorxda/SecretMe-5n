@@ -66,8 +66,7 @@ import { WhatsAppForm } from "@/components/whatsapp-form"
 // Tambahkan import TelegramForm
 import { TelegramForm } from "@/components/telegram-form"
 
-// Tambahkan import NotificationChannelSelector
-import { NotificationChannelSelector } from "@/components/notification-channel-selector"
+// Hapus import NotificationChannelSelector
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
@@ -1136,48 +1135,94 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                       <Bell className="h-5 w-5 text-blue-500" />
                       Pengaturan Notifikasi
                     </h2>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Pilih cara Anda ingin menerima notifikasi pesan baru. Anda dapat mengaktifkan satu atau beberapa
+                      metode notifikasi.
+                    </p>
 
-                    {/* Channel Selector */}
-                    <NotificationChannelSelector
-                      userId={user.id}
-                      initialChannel={user.notification_channel}
-                      hasWhatsApp={!!user.phone_number}
-                      hasTelegram={!!user.telegram_id}
-                    />
+                    {/* WhatsApp Notification Card */}
+                    <div className="relative rounded-lg border border-green-200 p-4 overflow-hidden text-left bg-gradient-to-br from-green-50/40 to-green-100/30">
+                      {/* Premium badge */}
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
+                        <Crown className="h-2.5 w-2.5" />
+                        <span>Premium</span>
+                      </div>
 
-                    {/* WhatsApp Form */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Phone className="h-5 w-5 text-green-500" />
-                          WhatsApp
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <WhatsAppForm
-                          userId={user.id}
-                          initialPhoneNumber={user.phone_number}
-                          initialWhatsAppNotifications={user.whatsapp_notifications || false}
-                        />
-                      </CardContent>
-                    </Card>
+                      {/* Decorative elements */}
+                      <div className="absolute -right-12 -top-12 w-24 h-24 rounded-full bg-green-500/10"></div>
+                      <div className="absolute -left-6 -bottom-6 w-16 h-16 rounded-full bg-teal-500/10"></div>
 
-                    {/* Telegram Form */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <MessageSquare className="h-5 w-5 text-blue-500" />
-                          Telegram
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <TelegramForm
-                          userId={user.id}
-                          initialTelegramId={user.telegram_id}
-                          initialTelegramNotifications={user.telegram_notifications || false}
-                        />
-                      </CardContent>
-                    </Card>
+                      <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                        <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg shadow-sm">
+                          <Phone className="h-4 w-4" />
+                        </div>
+                        <span>Notifikasi WhatsApp</span>
+                      </h3>
+
+                      <div className="mb-4 p-3 bg-white/50 rounded-lg border border-green-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500">Status:</span>
+                            <span className="text-sm text-green-700">
+                              {user.phone_number
+                                ? user.whatsapp_notifications
+                                  ? "Aktif"
+                                  : "Nonaktif"
+                                : "Belum diatur"}
+                            </span>
+                          </div>
+                          <div className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
+                            {user.phone_number ? (user.whatsapp_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <WhatsAppForm
+                        userId={user.id}
+                        initialPhoneNumber={user.phone_number}
+                        initialWhatsAppNotifications={user.whatsapp_notifications || false}
+                      />
+                    </div>
+
+                    {/* Telegram Notification Card */}
+                    <div className="relative rounded-lg border border-blue-200 p-4 overflow-hidden text-left bg-gradient-to-br from-blue-50/40 to-blue-100/30">
+                      {/* Premium badge */}
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
+                        <Crown className="h-2.5 w-2.5" />
+                        <span>Premium</span>
+                      </div>
+
+                      {/* Decorative elements */}
+                      <div className="absolute -right-12 -top-12 w-24 h-24 rounded-full bg-blue-500/10"></div>
+                      <div className="absolute -left-6 -bottom-6 w-16 h-16 rounded-full bg-indigo-500/10"></div>
+
+                      <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                        <div className="flex items-center justify-center bg-blue-100 text-blue-600 p-1.5 rounded-lg shadow-sm">
+                          <MessageSquare className="h-4 w-4" />
+                        </div>
+                        <span>Notifikasi Telegram</span>
+                      </h3>
+
+                      <div className="mb-4 p-3 bg-white/50 rounded-lg border border-blue-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs text-gray-500">Status:</span>
+                            <span className="text-sm text-blue-700">
+                              {user.telegram_id ? (user.telegram_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
+                            </span>
+                          </div>
+                          <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                            {user.telegram_id ? (user.telegram_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <TelegramForm
+                        userId={user.id}
+                        initialTelegramId={user.telegram_id}
+                        initialTelegramNotifications={user.telegram_notifications || false}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : (
