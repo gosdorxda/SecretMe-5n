@@ -58,7 +58,10 @@ export async function POST(request: Request) {
     if (messageText === "/start") {
       await sendTelegramMessage({
         chat_id: chatId,
-        text: `Halo ${firstName}! Selamat datang di SecretMe Bot.\n\nUntuk menghubungkan akun Anda, silakan kirim kode koneksi yang Anda dapatkan dari website SecretMe.\n\nID Telegram Anda adalah: \`${chatId}\``,
+        text:
+          `Halo ${firstName}! Selamat datang di SecretMe Bot.\n\n` +
+          `Untuk menghubungkan akun Anda, silakan kirim kode 6 digit yang Anda dapatkan dari website SecretMe.\n\n` +
+          `Contoh: 123456`,
         parse_mode: "Markdown",
       })
       return NextResponse.json({ success: true })
@@ -89,7 +92,7 @@ export async function POST(request: Request) {
             `1. Buka website SecretMe\n` +
             `2. Pergi ke Pengaturan > Notifikasi\n` +
             `3. Klik tombol "Hubungkan ke Telegram"\n` +
-            `4. Kirim kode yang muncul ke bot ini`,
+            `4. Kirim kode 6 digit yang muncul ke bot ini`,
           parse_mode: "Markdown",
         })
       } else {
@@ -146,8 +149,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // Jika pesan adalah kode koneksi (6 karakter alfanumerik), coba hubungkan
-    if (/^[A-Z0-9]{6}$/.test(messageText)) {
+    // Jika pesan adalah kode koneksi (6 digit numerik), coba hubungkan
+    if (/^\d{6}$/.test(messageText)) {
       // Cari kode koneksi di database
       const { data: connectionData, error: connectionError } = await supabase
         .from("telegram_connection_codes")
@@ -198,7 +201,7 @@ export async function POST(request: Request) {
     // Jika pesan lainnya, kirim petunjuk
     await sendTelegramMessage({
       chat_id: chatId,
-      text: `Untuk menghubungkan akun SecretMe Anda, silakan kirim kode koneksi 6 digit yang Anda dapatkan dari website SecretMe.\n\nJika Anda belum memiliki kode, silakan kunjungi halaman pengaturan notifikasi di website SecretMe.\n\nGunakan perintah /help untuk bantuan.`,
+      text: `Untuk menghubungkan akun SecretMe Anda, silakan kirim kode 6 digit yang Anda dapatkan dari website SecretMe.\n\nJika Anda belum memiliki kode, silakan kunjungi halaman pengaturan notifikasi di website SecretMe.\n\nGunakan perintah /help untuk bantuan.`,
       parse_mode: "Markdown",
     })
 

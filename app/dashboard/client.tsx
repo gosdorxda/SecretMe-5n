@@ -1129,15 +1129,6 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
 
                   {/* Notification Settings Section */}
                   <div className="space-y-6 mt-8">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                      <Bell className="h-5 w-5 text-blue-500" />
-                      Pengaturan Notifikasi
-                    </h2>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Pilih cara Anda ingin menerima notifikasi pesan baru. Anda dapat mengaktifkan satu atau beberapa
-                      metode notifikasi.
-                    </p>
-
                     {/* Telegram Notification Card */}
                     <div className="relative rounded-lg border border-blue-200 p-4 overflow-hidden text-left bg-gradient-to-br from-blue-50/40 to-blue-100/30">
                       {/* Premium badge */}

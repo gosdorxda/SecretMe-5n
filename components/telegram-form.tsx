@@ -298,7 +298,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                 <ol className="list-decimal list-inside mt-1 space-y-1">
                   <li>Buka Telegram dan cari @SecretMeBot</li>
                   <li>Kirim pesan /start ke bot</li>
-                  <li>Kirim kode di atas ke bot</li>
+                  <li>Kirim kode 6 digit di atas ke bot</li>
                   <li>Halaman ini akan otomatis diperbarui setelah koneksi berhasil</li>
                 </ol>
               </div>

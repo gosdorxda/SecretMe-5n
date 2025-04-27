@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { nanoid } from "nanoid"
 
 export async function POST(request: Request) {
   try {
@@ -15,8 +14,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    // Generate a unique connection code
-    const connectionCode = nanoid(6).toUpperCase()
+    // Generate a 6-digit numeric code
+    const connectionCode = Math.floor(100000 + Math.random() * 900000).toString()
 
     // Store the connection code in the database with expiration time (30 minutes)
     const expiresAt = new Date()
