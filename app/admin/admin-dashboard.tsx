@@ -4,21 +4,20 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Server, Clock } from "lucide-react"
+import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText } from "lucide-react"
 
-// Import komponen langsung dari file mereka, bukan dari index
-import AdminStats from "@/app/admin/components/admin-stats"
-import AuthMonitoring from "@/app/admin/components/auth-monitoring"
-import IPSettings from "@/app/admin/components/ip-settings"
-import NotificationLogs from "@/app/admin/components/notification-logs"
-import NotificationSettings from "@/app/admin/components/notification-settings"
-import NotificationQueueMonitor from "@/app/admin/components/notification-queue-monitor"
-import PremiumManagement from "@/app/admin/components/premium-management"
-import SeoSettings from "@/app/admin/components/seo-settings"
-import UserCleanup from "@/app/admin/components/user-cleanup"
-import UsersManagement from "@/app/admin/components/users-management"
-// Impor komponen CronJobManager
-import { CronJobManager } from "./components/cron-job-manager"
+// Import komponen dari folder components
+import {
+  AdminStats,
+  AuthMonitoring,
+  IPSettings,
+  NotificationLogs,
+  NotificationSettings,
+  PremiumManagement,
+  SeoSettings,
+  UserCleanup,
+  UsersManagement,
+} from "./components"
 
 // type User = Database["public"]["Tables"]["users"]["Row"]
 interface User {
@@ -97,10 +96,6 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
             <Bell className="h-4 w-4 mr-2" />
             Notifikasi
           </TabsTrigger>
-          <TabsTrigger value="queue-monitor">
-            <Server className="h-4 w-4 mr-2" />
-            Antrian Notifikasi
-          </TabsTrigger>
           <TabsTrigger value="user-cleanup">
             <Trash2 className="h-4 w-4 mr-2" />
             User Cleanup
@@ -112,10 +107,6 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
           <TabsTrigger value="notification-logs">
             <FileText className="h-4 w-4 mr-2" />
             Log Notifikasi
-          </TabsTrigger>
-          <TabsTrigger value="cron-jobs">
-            <Clock className="h-4 w-4 mr-2" />
-            Cron Jobs
           </TabsTrigger>
         </TabsList>
 
@@ -139,11 +130,6 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
           <NotificationSettings />
         </TabsContent>
 
-        {/* Tambahkan tab baru untuk monitor antrian */}
-        <TabsContent value="queue-monitor">
-          <NotificationQueueMonitor />
-        </TabsContent>
-
         <TabsContent value="user-cleanup">
           <UserCleanup />
         </TabsContent>
@@ -154,9 +140,6 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
 
         <TabsContent value="notification-logs">
           <NotificationLogs />
-        </TabsContent>
-        <TabsContent value="cron-jobs">
-          <CronJobManager />
         </TabsContent>
       </Tabs>
     </div>

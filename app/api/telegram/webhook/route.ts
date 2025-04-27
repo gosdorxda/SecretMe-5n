@@ -1,9 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 import { TELEGRAM_BOT_TOKEN } from "@/lib/telegram/config"
 
-// Tipe untuk update Telegram
+// Interface untuk update Telegram
 interface TelegramUpdate {
   update_id: number
   message?: {
@@ -15,243 +15,142 @@ interface TelegramUpdate {
     }
     chat: {
       id: number
-      type: string
       first_name: string
       username?: string
+      type: string
     }
     date: number
     text?: string
   }
-  callback_query?: {
-    id: string
-    from: {
-      id: number
-      first_name: string
-      username?: string
-    }
-    message?: {
-      message_id: number
-      chat: {
-        id: number
-        type: string
-      }
-    }
-    data: string
-  }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    // Verifikasi bahwa request berasal dari Telegram
-    const telegramToken = TELEGRAM_BOT_TOKEN
-    if (!telegramToken) {
-      console.error("TELEGRAM_BOT_TOKEN is not set")
-      return NextResponse.json({ error: "Configuration error" }, { status: 500 })
+    const update: TelegramUpdate = await request.json()
+
+    // Hanya proses pesan teks
+    if (!update.message?.text) {
+      return NextResponse.json({ success: true })
     }
 
-    // Parse body
-    const body = await request.json()
-    console.log("Received Telegram webhook:", JSON.stringify(body, null, 2))
-
-    // Validasi update
-    const update = body as TelegramUpdate
-    if (!update || !update.update_id) {
-      console.error("Invalid Telegram update format")
-      return NextResponse.json({ error: "Invalid update format" }, { status: 400 })
-    }
-
-    // Proses pesan
-    if (update.message) {
-      await processMessage(update.message)
-    }
-
-    // Proses callback query (untuk tombol inline)
-    if (update.callback_query) {
-      await processCallbackQuery(update.callback_query)
-    }
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error processing Telegram webhook:", error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
-  }
-}
-
-async function processMessage(message: TelegramUpdate["message"]) {
-  if (!message) return
-
-  const chatId = message.chat.id.toString()
-  const text = message.text || ""
-  const username = message.from.username || ""
-
-  console.log(`Processing message from ${username} (${chatId}): ${text}`)
-
-  // Cek apakah ini adalah pesan /start
-  if (text.startsWith("/start")) {
-    await handleStartCommand(chatId, message.from.first_name)
-    return
-  }
-
-  // Cek apakah ini adalah pesan verifikasi
-  if (text.match(/^\/verify\s+\d{6}$/)) {
-    const code = text.split(" ")[1]
-    await handleVerificationCode(chatId, code)
-    return
-  }
-
-  // Pesan default jika tidak ada yang cocok
-  await sendTelegramMessage(
-    chatId,
-    "Maaf, saya tidak mengerti perintah tersebut. Silakan gunakan /start untuk memulai.",
-  )
-}
-
-async function processCallbackQuery(callbackQuery: TelegramUpdate["callback_query"]) {
-  if (!callbackQuery) return
-
-  const chatId = callbackQuery.message?.chat.id.toString() || ""
-  const data = callbackQuery.data
-
-  console.log(`Processing callback query from ${callbackQuery.from.id}: ${data}`)
-
-  // Proses callback query berdasarkan data
-  if (data.startsWith("verify_")) {
-    // Format: verify_userId
-    const userId = data.split("_")[1]
-    await handleVerifyCallback(chatId, userId)
-  }
-}
-
-async function handleStartCommand(chatId: string, firstName: string) {
-  const welcomeMessage = `Halo ${firstName}! 👋
-
-Selamat datang di bot SecretMe. Bot ini akan mengirimkan notifikasi saat Anda menerima pesan baru di SecretMe.
-
-Untuk menghubungkan akun Anda, silakan gunakan perintah verifikasi di aplikasi SecretMe.`
-
-  await sendTelegramMessage(chatId, welcomeMessage)
-}
-
-async function handleVerificationCode(chatId: string, code: string) {
-  try {
+    const chatId = update.message.chat.id
+    const text = update.message.text
     const supabase = createClient(cookies())
 
-    // Cari kode verifikasi di database
-    const { data, error } = await supabase
-      .from("telegram_verification_codes")
-      .select("*")
-      .eq("code", code)
-      .gt("expires_at", new Date().toISOString())
-      .single()
-
-    if (error || !data) {
-      console.error("Error verifying code:", error)
+    // Tangani perintah /start
+    if (text === "/start") {
+      // Kirim pesan selamat datang dengan ID Telegram pengguna
       await sendTelegramMessage(
         chatId,
-        "Kode verifikasi tidak valid atau sudah kedaluwarsa. Silakan coba lagi dengan kode baru.",
+        `🎉 *Selamat Datang di Bot SecretMe!*\n\n` +
+          `ID Telegram Anda adalah: \`${chatId}\`\n\n` +
+          `Salin ID ini dan tempelkan di pengaturan notifikasi Telegram di akun SecretMe Anda untuk mengaktifkan notifikasi.\n\n` +
+          `Perintah yang tersedia:\n` +
+          `/start - Tampilkan pesan ini dan ID Telegram Anda\n` +
+          `/help - Tampilkan bantuan penggunaan bot\n` +
+          `/status - Cek status koneksi bot dengan akun SecretMe Anda`,
       )
-      return
+      return NextResponse.json({ success: true })
     }
 
-    // Update user dengan telegram_id
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        telegram_id: chatId,
-        telegram_notifications: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", data.user_id)
-
-    if (updateError) {
-      console.error("Error updating user:", updateError)
-      await sendTelegramMessage(chatId, "Terjadi kesalahan saat menghubungkan akun Anda. Silakan coba lagi nanti.")
-      return
+    // Tangani perintah /help
+    if (text === "/help") {
+      await sendTelegramMessage(
+        chatId,
+        `📚 *Bantuan Bot SecretMe*\n\n` +
+          `Bot ini digunakan untuk menerima notifikasi dari akun SecretMe Anda.\n\n` +
+          `Untuk mengaktifkan notifikasi:\n` +
+          `1. Dapatkan ID Telegram Anda dengan perintah /start\n` +
+          `2. Buka akun SecretMe Anda\n` +
+          `3. Pergi ke Pengaturan > Notifikasi\n` +
+          `4. Pilih Telegram sebagai saluran notifikasi\n` +
+          `5. Masukkan ID Telegram Anda\n` +
+          `6. Verifikasi dan simpan pengaturan\n\n` +
+          `Perintah yang tersedia:\n` +
+          `/start - Dapatkan ID Telegram Anda\n` +
+          `/help - Tampilkan pesan bantuan ini\n` +
+          `/status - Cek status koneksi bot dengan akun SecretMe Anda`,
+      )
+      return NextResponse.json({ success: true })
     }
 
-    // Hapus kode verifikasi
-    await supabase.from("telegram_verification_codes").delete().eq("code", code)
+    // Tangani perintah /status
+    if (text === "/status") {
+      // Cek apakah ID Telegram ini terdaftar di database
+      const { data: userData, error } = await supabase
+        .from("users")
+        .select("id, name, email")
+        .eq("telegram_id", chatId.toString())
+        .single()
 
-    // Kirim pesan sukses
+      if (error || !userData) {
+        await sendTelegramMessage(
+          chatId,
+          `❌ *Status Koneksi*\n\n` +
+            `ID Telegram Anda belum terhubung dengan akun SecretMe manapun.\n\n` +
+            `Untuk menghubungkan:\n` +
+            `1. Dapatkan ID Telegram Anda dengan perintah /start\n` +
+            `2. Buka akun SecretMe Anda\n` +
+            `3. Pergi ke Pengaturan > Notifikasi\n` +
+            `4. Pilih Telegram sebagai saluran notifikasi\n` +
+            `5. Masukkan ID Telegram Anda\n` +
+            `6. Verifikasi dan simpan pengaturan`,
+        )
+      } else {
+        await sendTelegramMessage(
+          chatId,
+          `✅ *Status Koneksi*\n\n` +
+            `ID Telegram Anda terhubung dengan akun SecretMe:\n` +
+            `Nama: ${userData.name}\n` +
+            `Email: ${userData.email}\n\n` +
+            `Anda akan menerima notifikasi pesan masuk di akun ini.`,
+        )
+      }
+      return NextResponse.json({ success: true })
+    }
+
+    // Tangani pesan lainnya
     await sendTelegramMessage(
       chatId,
-      "✅ Akun Anda berhasil terhubung dengan SecretMe! Anda akan menerima notifikasi saat ada pesan baru.",
+      `Maaf, saya tidak mengerti perintah tersebut. Gunakan salah satu perintah berikut:\n\n` +
+        `/start - Dapatkan ID Telegram Anda\n` +
+        `/help - Tampilkan bantuan penggunaan bot\n` +
+        `/status - Cek status koneksi bot dengan akun SecretMe Anda`,
     )
 
-    console.log(`Successfully linked Telegram chat ${chatId} to user ${data.user_id}`)
-  } catch (error) {
-    console.error("Error handling verification code:", error)
-    await sendTelegramMessage(chatId, "Terjadi kesalahan saat memproses kode verifikasi. Silakan coba lagi nanti.")
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error("Error handling Telegram webhook:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to process Telegram webhook" },
+      { status: 500 },
+    )
   }
 }
 
-async function handleVerifyCallback(chatId: string, userId: string) {
+// Fungsi untuk mengirim pesan ke Telegram
+async function sendTelegramMessage(chatId: number, text: string) {
   try {
-    const supabase = createClient(cookies())
-
-    // Update user dengan telegram_id
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        telegram_id: chatId,
-        telegram_notifications: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId)
-
-    if (updateError) {
-      console.error("Error updating user:", updateError)
-      await sendTelegramMessage(chatId, "Terjadi kesalahan saat menghubungkan akun Anda. Silakan coba lagi nanti.")
-      return
-    }
-
-    // Kirim pesan sukses
-    await sendTelegramMessage(
-      chatId,
-      "✅ Akun Anda berhasil terhubung dengan SecretMe! Anda akan menerima notifikasi saat ada pesan baru.",
-    )
-
-    console.log(`Successfully linked Telegram chat ${chatId} to user ${userId}`)
-  } catch (error) {
-    console.error("Error handling verify callback:", error)
-    await sendTelegramMessage(chatId, "Terjadi kesalahan saat memproses verifikasi. Silakan coba lagi nanti.")
-  }
-}
-
-async function sendTelegramMessage(
-  chatId: string,
-  text: string,
-  parseMode?: "Markdown" | "HTML",
-  disableWebPagePreview = false,
-) {
-  try {
-    const telegramToken = TELEGRAM_BOT_TOKEN
-    if (!telegramToken) {
-      console.error("TELEGRAM_BOT_TOKEN is not set")
-      return
-    }
-
-    const url = `https://api.telegram.org/bot${telegramToken}/sendMessage`
-    const response = await fetch(url, {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
-        parse_mode: parseMode,
-        disable_web_page_preview: disableWebPagePreview,
+        text: text,
+        parse_mode: "Markdown",
       }),
     })
 
-    const data = await response.json()
     if (!response.ok) {
-      console.error("Error sending Telegram message:", data)
+      const errorData = await response.json()
+      throw new Error(`Telegram API error: ${errorData.description || response.statusText}`)
     }
 
-    return data
+    return await response.json()
   } catch (error) {
     console.error("Error sending Telegram message:", error)
+    throw error
   }
 }

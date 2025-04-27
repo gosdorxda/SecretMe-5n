@@ -14,24 +14,16 @@ export const TELEGRAM_MESSAGE_TEMPLATES = {
 
 // Function to validate Telegram ID
 export function isValidTelegramId(telegramId: string): boolean {
-  if (!telegramId) return false
   // Telegram chat IDs are numeric
   return /^\d+$/.test(telegramId)
 }
 
 // Function to format message with placeholders
 export function formatTelegramMessage(template: string, data: Record<string, string>): string {
-  if (!template) return ""
-
   let message = template
 
   for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined && value !== null) {
-      message = message.replace(new RegExp(`{${key}}`, "g"), value)
-    } else {
-      // Replace missing values with empty string
-      message = message.replace(new RegExp(`{${key}}`, "g"), "")
-    }
+    message = message.replace(new RegExp(`{${key}}`, "g"), value)
   }
 
   return message

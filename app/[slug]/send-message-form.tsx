@@ -70,8 +70,6 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
   // Fungsi untuk memicu notifikasi
   const triggerNotification = async (messageId: string) => {
     try {
-      console.log("Triggering notification for message:", messageId, "to user:", user.id)
-
       const response = await fetch("/api/notifications/trigger", {
         method: "POST",
         headers: {
@@ -83,10 +81,6 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
           type: "new_message",
         }),
       })
-
-      const result = await response.json()
-
-      console.log("Notification trigger response:", result)
 
       if (!response.ok) {
         console.error("Failed to trigger notification:", await response.text())
@@ -137,8 +131,6 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       if (error) {
         throw error
       }
-
-      console.log("Message sent successfully:", data)
 
       // Trigger notifikasi jika pesan berhasil dikirim
       if (data && data.id) {
