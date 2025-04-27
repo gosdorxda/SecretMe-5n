@@ -76,17 +76,10 @@ export async function cleanupOldQueueItems(daysToKeep = 7) {
   }
 }
 
-// Fungsi untuk mendapatkan statistik antrian
+// Fungsi untuk mendapatkan statistik antrian - FIXED VERSION
 export async function getQueueStats(): Promise<{ success: boolean; stats?: QueueStats; error?: string }> {
   try {
     const supabase = createClient()
-
-    // Query untuk mendapatkan jumlah item berdasarkan status
-    const { data, error } = await supabase.from("notification_queue").select("status, count(*)").group("status")
-
-    if (error) {
-      throw error
-    }
 
     // Inisialisasi stats dengan nilai default
     const stats: QueueStats = {
@@ -98,16 +91,23 @@ export async function getQueueStats(): Promise<{ success: boolean; stats?: Queue
       total: 0,
     }
 
-    // Hitung total dan update stats berdasarkan data
-    data.forEach((item) => {
-      const status = item.status as keyof QueueStats
-      const count = Number.parseInt(item.count as string)
+    // Dapatkan jumlah untuk setiap status secara terpisah
+    const statuses = ["pending", "processing", "completed", "failed", "retry"]
 
-      if (status in stats) {
-        stats[status] = count
-        stats.total += count
+    for (const status of statuses) {
+      const { count, error } = await supabase
+        .from("notification_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("status", status)
+
+      if (error) {
+        console.error(`Error getting count for ${status}:`, error)
+        continue
       }
-    })
+
+      stats[status as keyof QueueStats] = count || 0
+      stats.total += count || 0
+    }
 
     return { success: true, stats }
   } catch (error) {

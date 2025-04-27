@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { NotificationQueue } from "@/lib/queue/notification-queue"
 
 export async function POST(request: NextRequest) {
   // Verifikasi otorisasi
@@ -9,32 +9,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { daysToKeep = 7 } = await request.json()
+    const body = await request.json()
+    const daysToKeep = body.daysToKeep || 7
 
-    // Hitung tanggal cutoff
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
+    const queue = NotificationQueue.getInstance()
+    const cleanedCount = await queue.cleanupOldItems(daysToKeep)
 
-    const supabase = createClient()
-
-    // Hapus item yang sudah selesai atau gagal dan lebih lama dari cutoff date
-    const { data, error } = await supabase
-      .from("notification_queue")
-      .delete()
-      .lt("created_at", cutoffDate.toISOString())
-      .in("status", ["completed", "failed"])
-      .select("count")
-
-    if (error) {
-      console.error("Error cleaning up old queue items:", error)
-      return NextResponse.json({ error: "Failed to clean up old items" }, { status: 500 })
-    }
-
-    const cleanedCount = data?.length || 0
-
-    return NextResponse.json({ success: true, cleanedCount })
+    return NextResponse.json({
+      success: true,
+      cleanedCount,
+    })
   } catch (error) {
-    console.error("Error in cleanup route:", error)
+    console.error("Error cleaning up notification queue:", error)
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
   }
 }

@@ -3,9 +3,9 @@ export interface NotificationQueueItem {
   user_id: string
   message_id?: string
   notification_type: string
-  channel: string
-  payload: any
-  status: string
+  channel: "telegram" | "whatsapp" | "email" | "in_app"
+  payload: Record<string, any>
+  status: "pending" | "processing" | "completed" | "failed" | "retry"
   priority: number
   retry_count: number
   max_retries: number
@@ -22,42 +22,23 @@ export interface QueueStats {
   failed: number
   retry: number
   total: number
-  [key: string]: number
+}
+
+export interface TelegramNotificationPayload {
+  messageId?: string
+  chatId: string
+  text: string
+  parseMode?: "HTML" | "Markdown" | "MarkdownV2"
+  [key: string]: any
 }
 
 export interface EnqueueOptions {
   priority?: number
   maxRetries?: number
-  delaySeconds?: number
 }
 
-export interface TelegramNotificationPayload {
-  chatId: string | number
-  text: string
-  parseMode?: "HTML" | "Markdown" | "MarkdownV2"
-  disableWebPagePreview?: boolean
-  disableNotification?: boolean
-  replyToMessageId?: number
-  [key: string]: any
-}
-
-export interface WhatsAppNotificationPayload {
-  phoneNumber: string
-  message: string
-  templateName?: string
-  templateParams?: Record<string, string>
-  [key: string]: any
-}
-
-export interface EmailNotificationPayload {
-  to: string
-  subject: string
-  body: string
-  isHtml?: boolean
-  attachments?: Array<{
-    filename: string
-    content: string | Buffer
-    contentType?: string
-  }>
-  [key: string]: any
+export interface ProcessResult {
+  success: boolean
+  processedCount: number
+  error?: string
 }

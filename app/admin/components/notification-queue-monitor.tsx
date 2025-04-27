@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { QueueStats, NotificationQueueItem } from "@/lib/queue/types"
 import { RefreshCw, Play, Trash2 } from "lucide-react"
 import { processNotificationQueue, cleanupOldQueueItems, getQueueStats } from "../actions"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function NotificationQueueMonitor() {
   const [stats, setStats] = useState<QueueStats>({
@@ -37,7 +38,16 @@ export default function NotificationQueueMonitor() {
         throw new Error(result.error || "Failed to load queue stats")
       }
 
-      setStats(result.stats)
+      setStats(
+        result.stats || {
+          pending: 0,
+          processing: 0,
+          completed: 0,
+          failed: 0,
+          retry: 0,
+          total: 0,
+        },
+      )
     } catch (error) {
       console.error("Error loading queue stats:", error)
       toast({
@@ -70,6 +80,7 @@ export default function NotificationQueueMonitor() {
         description: `Failed to load ${status} queue items`,
         variant: "destructive",
       })
+      setQueueItems([])
     } finally {
       setIsLoading(false)
     }
@@ -107,6 +118,10 @@ export default function NotificationQueueMonitor() {
 
   // Fungsi untuk membersihkan antrian lama menggunakan server action
   const handleCleanupOldItems = async () => {
+    if (!confirm("Are you sure you want to clean up old completed and failed notifications?")) {
+      return
+    }
+
     setIsCleaning(true)
     try {
       const result = await cleanupOldQueueItems(7)
@@ -171,6 +186,12 @@ export default function NotificationQueueMonitor() {
       default:
         return <Badge variant="outline">{status}</Badge>
     }
+  }
+
+  // Format tanggal
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "-"
+    return new Date(dateString).toLocaleString()
   }
 
   // Efek untuk memuat data saat komponen dimuat
@@ -269,56 +290,37 @@ export default function NotificationQueueMonitor() {
                   <p className="text-muted-foreground">No {activeTab} notifications found</p>
                 </div>
               ) : (
-                <div className="divide-y">
-                  {queueItems.map((item) => (
-                    <div key={item.id} className="p-4 hover:bg-muted/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <div className="font-medium">{item.notification_type}</div>
-                          <div className="text-sm text-muted-foreground">Channel: {item.channel}</div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {getStatusBadge(item.status)}
-                          <Badge variant="outline" className="bg-gray-50">
-                            Priority: {item.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Created: </span>
-                          {new Date(item.created_at).toLocaleString()}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Updated: </span>
-                          {new Date(item.updated_at).toLocaleString()}
-                        </div>
-                      </div>
-                      {item.status === "retry" && (
-                        <div className="mt-2 text-sm">
-                          <span className="text-muted-foreground">Next retry: </span>
-                          {item.next_retry_at ? new Date(item.next_retry_at).toLocaleString() : "N/A"}
-                          <span className="ml-4 text-muted-foreground">Attempts: </span>
-                          {item.retry_count} / {item.max_retries}
-                        </div>
-                      )}
-                      {item.error_message && (
-                        <div className="mt-2 text-sm text-red-600">
-                          <span className="font-medium">Error: </span>
-                          {item.error_message}
-                        </div>
-                      )}
-                      <div className="mt-2 text-sm">
-                        <details>
-                          <summary className="cursor-pointer text-muted-foreground">Payload</summary>
-                          <pre className="mt-2 p-2 bg-muted rounded-md text-xs overflow-auto">
-                            {JSON.stringify(item.payload, null, 2)}
-                          </pre>
-                        </details>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Channel</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Retry</TableHead>
+                      <TableHead>Error</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {queueItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.notification_type}</TableCell>
+                        <TableCell>{item.channel}</TableCell>
+                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                        <TableCell>{item.priority}</TableCell>
+                        <TableCell>{formatDate(item.created_at)}</TableCell>
+                        <TableCell>
+                          {item.retry_count}/{item.max_retries}
+                          {item.next_retry_at && (
+                            <div className="text-xs text-muted-foreground">Next: {formatDate(item.next_retry_at)}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">{item.error_message || "-"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </div>
           </TabsContent>
