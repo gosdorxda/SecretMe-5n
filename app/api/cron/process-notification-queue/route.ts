@@ -13,12 +13,25 @@ export async function GET(request: NextRequest) {
 
   try {
     const processor = QueueProcessor.getInstance()
-    // Proses batch yang lebih kecil (20) untuk memastikan selesai dalam 60 detik
-    const processedCount = await processor.processQueue(20)
+
+    // Gunakan batch processing untuk meningkatkan performa
+    const result = await processor.processQueueWithBatches({
+      batchSize: 20,
+      maxBatches: 5,
+      channelConcurrency: {
+        telegram: 2,
+        whatsapp: 2,
+        email: 3,
+        in_app: 5,
+      },
+    })
 
     return NextResponse.json({
       success: true,
-      processedCount,
+      processedCount: result.processedCount,
+      batchesProcessed: result.batchesProcessed,
+      processingTime: result.processingTime,
+      channelStats: result.channelStats,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

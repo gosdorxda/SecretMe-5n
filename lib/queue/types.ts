@@ -13,6 +13,16 @@ export interface NotificationQueueItem {
   error_message?: string
   created_at: string
   updated_at: string
+  // New fields for batch processing
+  batch_id?: string
+  batch_size?: number
+  batch_position?: number
+  // New fields for performance monitoring
+  processing_time?: number
+  last_error?: string
+  last_processed_at?: string
+  // Dynamic priority
+  dynamic_priority?: number
 }
 
 export interface QueueStats {
@@ -22,6 +32,10 @@ export interface QueueStats {
   failed: number
   retry: number
   total: number
+  // New stats
+  avg_processing_time?: number
+  max_processing_time?: number
+  avg_retry_count?: number
 }
 
 export interface TelegramNotificationPayload {
@@ -35,10 +49,27 @@ export interface TelegramNotificationPayload {
 export interface EnqueueOptions {
   priority?: number
   maxRetries?: number
+  batchId?: string
 }
 
 export interface ProcessResult {
   success: boolean
   processedCount: number
   error?: string
+  batchesProcessed?: number
+  processingTime?: number
+}
+
+export interface BatchProcessingOptions {
+  batchSize: number
+  maxBatches: number
+  channelConcurrency: Record<string, number>
+}
+
+export interface NotificationBatch {
+  id: string
+  items: NotificationQueueItem[]
+  size: number
+  channel: string
+  createdAt: string
 }

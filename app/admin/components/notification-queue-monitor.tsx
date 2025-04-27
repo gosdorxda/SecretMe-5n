@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import type { QueueStats, NotificationQueueItem } from "@/lib/queue/types"
-import { RefreshCw, Play, Trash2 } from "lucide-react"
+import { RefreshCw, Play, Trash2, BarChart2, Clock } from "lucide-react"
 import { processNotificationQueue, cleanupOldQueueItems, getQueueStats } from "../actions"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -20,12 +20,21 @@ export default function NotificationQueueMonitor() {
     failed: 0,
     retry: 0,
     total: 0,
+    avg_processing_time: 0,
+    max_processing_time: 0,
+    avg_retry_count: 0,
   })
   const [queueItems, setQueueItems] = useState<NotificationQueueItem[]>([])
   const [activeTab, setActiveTab] = useState<string>("pending")
   const [isLoading, setIsLoading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isCleaning, setIsCleaning] = useState(false)
+  const [lastProcessingStats, setLastProcessingStats] = useState<{
+    processedCount: number
+    batchesProcessed: number
+    processingTime: number
+    channelStats: Record<string, { count: number; time: number }>
+  } | null>(null)
   const supabase = createClient()
   const { toast } = useToast()
 
@@ -46,6 +55,9 @@ export default function NotificationQueueMonitor() {
           failed: 0,
           retry: 0,
           total: 0,
+          avg_processing_time: 0,
+          max_processing_time: 0,
+          avg_retry_count: 0,
         },
       )
     } catch (error) {
@@ -66,7 +78,7 @@ export default function NotificationQueueMonitor() {
         .from("notification_queue")
         .select("*")
         .eq("status", status)
-        .order("priority", { ascending: false })
+        .order("dynamic_priority", { ascending: false })
         .order("created_at", { ascending: true })
         .limit(50)
 
@@ -96,9 +108,19 @@ export default function NotificationQueueMonitor() {
         throw new Error(result.error || "Failed to process queue")
       }
 
+      // Simpan statistik pemrosesan
+      if (result.batchesProcessed !== undefined) {
+        setLastProcessingStats({
+          processedCount: result.processedCount,
+          batchesProcessed: result.batchesProcessed,
+          processingTime: result.processingTime || 0,
+          channelStats: result.channelStats || {},
+        })
+      }
+
       toast({
         title: "Success",
-        description: `Processed ${result.processedCount} notifications`,
+        description: `Processed ${result.processedCount} notifications in ${result.processingTime?.toFixed(2) || "?"} seconds`,
       })
 
       // Refresh data
@@ -194,6 +216,12 @@ export default function NotificationQueueMonitor() {
     return new Date(dateString).toLocaleString()
   }
 
+  // Format waktu dalam detik
+  const formatTime = (seconds?: number) => {
+    if (seconds === undefined || seconds === null) return "-"
+    return `${seconds.toFixed(2)}s`
+  }
+
   // Efek untuk memuat data saat komponen dimuat
   useEffect(() => {
     loadStats()
@@ -244,6 +272,111 @@ export default function NotificationQueueMonitor() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Performance Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <Card className="bg-gray-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700 flex items-center">
+                  <Clock className="h-4 w-4 mr-1" />
+                  Avg Processing Time
+                </p>
+                <p className="text-lg font-bold text-gray-900">{formatTime(stats.avg_processing_time)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700 flex items-center">
+                  <Clock className="h-4 w-4 mr-1" />
+                  Max Processing Time
+                </p>
+                <p className="text-lg font-bold text-gray-900">{formatTime(stats.max_processing_time)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700 flex items-center">
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Avg Retry Count
+                </p>
+                <p className="text-lg font-bold text-gray-900">
+                  {stats.avg_retry_count !== undefined ? stats.avg_retry_count.toFixed(2) : "-"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Last Processing Stats */}
+        {lastProcessingStats && (
+          <Card className="mb-6 bg-blue-50 border-blue-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-blue-800 flex items-center">
+                <BarChart2 className="h-4 w-4 mr-2" />
+                Last Processing Stats
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-blue-700">Processed</p>
+                  <p className="text-lg font-bold text-blue-900">{lastProcessingStats.processedCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-blue-700">Batches</p>
+                  <p className="text-lg font-bold text-blue-900">{lastProcessingStats.batchesProcessed}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-blue-700">Time</p>
+                  <p className="text-lg font-bold text-blue-900">{formatTime(lastProcessingStats.processingTime)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-blue-700">Rate</p>
+                  <p className="text-lg font-bold text-blue-900">
+                    {lastProcessingStats.processingTime > 0
+                      ? `${(lastProcessingStats.processedCount / lastProcessingStats.processingTime).toFixed(2)}/s`
+                      : "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Channel Stats */}
+              {Object.keys(lastProcessingStats.channelStats).length > 0 && (
+                <div className="mt-4 border-t border-blue-200 pt-4">
+                  <p className="text-xs text-blue-700 mb-2">Channel Performance</p>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div className="font-medium text-blue-800">Channel</div>
+                    <div className="font-medium text-blue-800">Count</div>
+                    <div className="font-medium text-blue-800">Time</div>
+                    <div className="font-medium text-blue-800">Rate</div>
+
+                    {Object.entries(lastProcessingStats.channelStats).map(([channel, stats]) => (
+                      <>
+                        <div key={`${channel}-name`} className="text-blue-900">
+                          {channel}
+                        </div>
+                        <div key={`${channel}-count`} className="text-blue-900">
+                          {stats.count}
+                        </div>
+                        <div key={`${channel}-time`} className="text-blue-900">
+                          {formatTime(stats.time)}
+                        </div>
+                        <div key={`${channel}-rate`} className="text-blue-900">
+                          {stats.time > 0 ? `${(stats.count / stats.time).toFixed(2)}/s` : "-"}
+                        </div>
+                      </>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-between mb-4">
           <Button
@@ -299,6 +432,7 @@ export default function NotificationQueueMonitor() {
                       <TableHead>Priority</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Retry</TableHead>
+                      <TableHead>Processing Time</TableHead>
                       <TableHead>Error</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -308,7 +442,13 @@ export default function NotificationQueueMonitor() {
                         <TableCell>{item.notification_type}</TableCell>
                         <TableCell>{item.channel}</TableCell>
                         <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell>{item.priority}</TableCell>
+                        <TableCell>
+                          {item.dynamic_priority !== undefined ? (
+                            <span title={`Base: ${item.priority}`}>{item.dynamic_priority}</span>
+                          ) : (
+                            item.priority
+                          )}
+                        </TableCell>
                         <TableCell>{formatDate(item.created_at)}</TableCell>
                         <TableCell>
                           {item.retry_count}/{item.max_retries}
@@ -316,6 +456,7 @@ export default function NotificationQueueMonitor() {
                             <div className="text-xs text-muted-foreground">Next: {formatDate(item.next_retry_at)}</div>
                           )}
                         </TableCell>
+                        <TableCell>{formatTime(item.processing_time)}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{item.error_message || "-"}</TableCell>
                       </TableRow>
                     ))}

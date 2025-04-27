@@ -12,6 +12,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const batchSize = body.batchSize || 10
+    const useBatchProcessing = body.useBatchProcessing || false
+    const maxBatches = body.maxBatches || 5
+    const channelConcurrency = body.channelConcurrency || {
+      telegram: 2,
+      whatsapp: 2,
+      email: 3,
+      in_app: 5,
+    }
 
     // Cek apakah ini permintaan untuk membersihkan antrian
     if (body.cleanup) {
@@ -27,12 +35,31 @@ export async function POST(request: NextRequest) {
 
     // Proses antrian
     const processor = QueueProcessor.getInstance()
-    const processedCount = await processor.processQueue(batchSize)
 
-    return NextResponse.json({
-      success: true,
-      processedCount,
-    })
+    if (useBatchProcessing) {
+      // Gunakan batch processing
+      const result = await processor.processQueueWithBatches({
+        batchSize,
+        maxBatches,
+        channelConcurrency,
+      })
+
+      return NextResponse.json({
+        success: true,
+        processedCount: result.processedCount,
+        batchesProcessed: result.batchesProcessed,
+        processingTime: result.processingTime,
+        channelStats: result.channelStats,
+      })
+    } else {
+      // Gunakan pemrosesan normal
+      const processedCount = await processor.processQueue(batchSize)
+
+      return NextResponse.json({
+        success: true,
+        processedCount,
+      })
+    }
   } catch (error) {
     console.error("Error processing notification queue:", error)
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
