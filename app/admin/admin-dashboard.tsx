@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText } from "lucide-react"
+import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Server } from "lucide-react"
 
 // Import komponen dari folder components
 import {
@@ -13,7 +13,7 @@ import {
   IPSettings,
   NotificationLogs,
   NotificationSettings,
-  // NotificationQueueMonitor, // Komentari jika belum dibuat
+  NotificationQueueMonitor, // Tambahkan import ini
   PremiumManagement,
   SeoSettings,
   UserCleanup,
@@ -97,6 +97,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
             <Bell className="h-4 w-4 mr-2" />
             Notifikasi
           </TabsTrigger>
+          <TabsTrigger value="queue-monitor">
+            <Server className="h-4 w-4 mr-2" />
+            Antrian Notifikasi
+          </TabsTrigger>
           <TabsTrigger value="user-cleanup">
             <Trash2 className="h-4 w-4 mr-2" />
             User Cleanup
@@ -129,6 +133,11 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
 
         <TabsContent value="notifications">
           <NotificationSettings />
+        </TabsContent>
+
+        {/* Tambahkan tab baru untuk monitor antrian */}
+        <TabsContent value="queue-monitor">
+          <NotificationQueueMonitor />
         </TabsContent>
 
         <TabsContent value="user-cleanup">
