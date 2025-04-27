@@ -11,6 +11,7 @@ import RateLimitConfig from "@/app/admin/components/rate-limit-config"
 import SeoSettings from "@/app/admin/components/seo-settings"
 import UserCleanup from "@/app/admin/components/user-cleanup"
 import UsersManagement from "@/app/admin/components/users-management"
+export { CronJobManager } from "./cron-job-manager"
 
 export {
   AdminStats,

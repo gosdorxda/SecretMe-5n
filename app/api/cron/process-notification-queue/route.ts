@@ -2,19 +2,32 @@ import { NextResponse } from "next/server"
 import { queueProcessor } from "@/lib/queue/queue-processor"
 import { notificationQueue } from "@/lib/queue/notification-queue"
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic" // Perbaikan: menggunakan tanda hubung, bukan underscore
 export const maxDuration = 60 // Maximum allowed value (60 seconds)
 
 export async function GET(request: Request) {
   try {
+    // Tambahkan logging yang lebih detail untuk membantu debugging secret
+
+    // Ubah bagian verifikasi secret menjadi:
     // Verifikasi secret untuk keamanan
     const { searchParams } = new URL(request.url)
     const secret = searchParams.get("secret")
+    const envSecret = process.env.CRON_SECRET
 
-    if (secret !== process.env.CRON_SECRET) {
-      console.error("Invalid secret for cron job")
+    if (!envSecret) {
+      console.error("CRON_SECRET environment variable is not set")
+      return NextResponse.json({ error: "Server configuration error: CRON_SECRET not set" }, { status: 500 })
+    }
+
+    if (secret !== envSecret) {
+      console.error(
+        `Invalid secret for cron job. Provided: "${secret?.substring(0, 3)}..." Expected length: ${envSecret.length}`,
+      )
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    console.log("Cron job secret validated successfully")
 
     console.log("Starting notification queue processing cron job")
 

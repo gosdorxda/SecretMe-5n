@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Server } from "lucide-react"
+import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Server, Clock } from "lucide-react"
 
 // Import komponen langsung dari file mereka, bukan dari index
 import AdminStats from "@/app/admin/components/admin-stats"
@@ -17,6 +17,8 @@ import PremiumManagement from "@/app/admin/components/premium-management"
 import SeoSettings from "@/app/admin/components/seo-settings"
 import UserCleanup from "@/app/admin/components/user-cleanup"
 import UsersManagement from "@/app/admin/components/users-management"
+// Impor komponen CronJobManager
+import { CronJobManager } from "./components/cron-job-manager"
 
 // type User = Database["public"]["Tables"]["users"]["Row"]
 interface User {
@@ -111,6 +113,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
             <FileText className="h-4 w-4 mr-2" />
             Log Notifikasi
           </TabsTrigger>
+          <TabsTrigger value="cron-jobs">
+            <Clock className="h-4 w-4 mr-2" />
+            Cron Jobs
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -148,6 +154,9 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
 
         <TabsContent value="notification-logs">
           <NotificationLogs />
+        </TabsContent>
+        <TabsContent value="cron-jobs">
+          <CronJobManager />
         </TabsContent>
       </Tabs>
     </div>
