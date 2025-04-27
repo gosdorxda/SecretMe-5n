@@ -6,19 +6,17 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Server } from "lucide-react"
 
-// Import komponen dari folder components
-import {
-  AdminStats,
-  AuthMonitoring,
-  IPSettings,
-  NotificationLogs,
-  NotificationSettings,
-  NotificationQueueMonitor, // Tambahkan import ini
-  PremiumManagement,
-  SeoSettings,
-  UserCleanup,
-  UsersManagement,
-} from "./components"
+// Import komponen langsung dari file mereka, bukan dari index
+import AdminStats from "@/app/admin/components/admin-stats"
+import AuthMonitoring from "@/app/admin/components/auth-monitoring"
+import IPSettings from "@/app/admin/components/ip-settings"
+import NotificationLogs from "@/app/admin/components/notification-logs"
+import NotificationSettings from "@/app/admin/components/notification-settings"
+import NotificationQueueMonitor from "@/app/admin/components/notification-queue-monitor"
+import PremiumManagement from "@/app/admin/components/premium-management"
+import SeoSettings from "@/app/admin/components/seo-settings"
+import UserCleanup from "@/app/admin/components/user-cleanup"
+import UsersManagement from "@/app/admin/components/users-management"
 
 // type User = Database["public"]["Tables"]["users"]["Row"]
 interface User {
