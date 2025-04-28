@@ -392,6 +392,31 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Statistics Section */}
+      <section className="py-8 bg-[var(--main)] border-t-[3px] border-black">
+        <div className="w-full max-w-[56rem] mx-auto px-4">
+          <div className="flex flex-wrap justify-center md:justify-between items-center gap-6 md:gap-4">
+            <div className="text-center md:text-left">
+              <div className="text-3xl md:text-4xl font-bold">30,000+</div>
+              <div className="text-sm font-medium">Pengguna Terdaftar</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold">1.2 Juta+</div>
+              <div className="text-sm font-medium">Pesan Terkirim</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold">98%</div>
+              <div className="text-sm font-medium">Kepuasan Pengguna</div>
+            </div>
+            <div className="text-center md:text-right">
+              <div className="text-3xl md:text-4xl font-bold">5,280+</div>
+              <div className="text-sm font-medium">Pengguna Premium</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Premium Section - Modified with borders */}
       <section className="py-16 bg-[var(--bg)] border-t-[3px] border-black">
         <div className="w-full max-w-[56rem] mx-auto px-4">

@@ -30,7 +30,6 @@ import {
   AlertTriangle,
   Lock,
   CheckCircle,
-  Bell,
   Phone,
 } from "lucide-react"
 import { UsernameForm } from "@/components/username-form"
