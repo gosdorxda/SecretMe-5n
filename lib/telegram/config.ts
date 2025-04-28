@@ -11,9 +11,7 @@ export const TELEGRAM_MESSAGE_TEMPLATES = {
     "📩 Anda baru saja menerima pesan di SecretMe.\n\n" +
     "👤 *Dari:* Seseorang\n" +
     "💬 *Pesan:* {preview}\n\n" +
-    "🔗 [Buka SecretMe untuk membaca selengkapnya]({url})\n" +
-    "⏱️ Diterima pada: " +
-    new Date().toLocaleTimeString("id-ID"),
+    "🔗 [Buka SecretMe untuk membaca selengkapnya]({url})",
   VERIFICATION:
     "🔐 *Kode Verifikasi* 🔑\n\n" +
     "👋 Halo!\n\n" +

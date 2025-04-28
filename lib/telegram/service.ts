@@ -73,15 +73,19 @@ export async function sendNewMessageNotification(params: {
     profileUrl,
   })
 
-  // Truncate message preview to 50 characters and censor with asterisks
+  // Truncate message preview to 50 characters
   const truncatedPreview = messagePreview.length > 50 ? messagePreview.substring(0, 50) + "..." : messagePreview
 
-  // Censor the message by replacing some characters with asterisks
-  // This is a simple alternative to spoiler tags
-  const censoredPreview = truncatedPreview.replace(/(.{1})(.{1})(.{1})/g, "$1*$3")
+  // Sanitize the preview to avoid Markdown formatting issues
+  // Replace any asterisks with spaces to prevent Markdown formatting issues
+  const sanitizedPreview = truncatedPreview.replace(/\*/g, " ")
 
+  // Apply simple censoring (replace every other character with a dot)
+  const censoredPreview = sanitizedPreview.replace(/(.{1})(.{1})/g, "$1.")
+
+  // Create the message with sanitized values
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.NEW_MESSAGE, {
-    name,
+    name: name.replace(/\*/g, ""), // Remove any asterisks from name
     preview: censoredPreview,
     url: profileUrl,
   })
@@ -98,8 +102,11 @@ export async function sendNewMessageNotification(params: {
 
 // Function to send test message
 export async function sendTestMessage(telegramId: string, name: string): Promise<any> {
+  // Sanitize name to avoid Markdown formatting issues
+  const sanitizedName = name.replace(/\*/g, "")
+
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.TEST, {
-    name,
+    name: sanitizedName,
   })
 
   return sendTelegramMessage({
