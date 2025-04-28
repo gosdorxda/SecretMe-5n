@@ -11,20 +11,6 @@ interface SendMessageParams {
   disable_web_page_preview?: boolean
 }
 
-// Function to escape special characters for MarkdownV2
-function escapeMarkdownV2(text: string): string {
-  // Characters that need to be escaped in MarkdownV2
-  const specialChars = ["_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"]
-  let escapedText = text
-
-  // Escape each special character with a backslash
-  specialChars.forEach((char) => {
-    escapedText = escapedText.replace(new RegExp("\\" + char, "g"), "\\" + char)
-  })
-
-  return escapedText
-}
-
 // Function to send message to Telegram
 export async function sendTelegramMessage(params: SendMessageParams): Promise<any> {
   try {
@@ -68,7 +54,7 @@ export async function sendVerificationCode(telegramId: string, code: string): Pr
   return sendTelegramMessage({
     chat_id: telegramId,
     text: message,
-    parse_mode: "Markdown", // Using regular Markdown for simpler messages
+    parse_mode: "Markdown",
   })
 }
 
@@ -87,29 +73,25 @@ export async function sendNewMessageNotification(params: {
     profileUrl,
   })
 
-  // Truncate message preview to 50 characters
+  // Truncate message preview to 50 characters and censor with asterisks
   const truncatedPreview = messagePreview.length > 50 ? messagePreview.substring(0, 50) + "..." : messagePreview
 
-  // For MarkdownV2, we need to escape special characters
-  const escapedName = escapeMarkdownV2(name)
-  const escapedPreview = escapeMarkdownV2(truncatedPreview)
-  const escapedUrl = escapeMarkdownV2(profileUrl)
+  // Censor the message by replacing some characters with asterisks
+  // This is a simple alternative to spoiler tags
+  const censoredPreview = truncatedPreview.replace(/(.{1})(.{1})(.{1})/g, "$1*$3")
 
-  // Create a custom message with proper escaping for MarkdownV2
-  const message =
-    "🔔 *Ada Pesan Baru\\!*\n\n" +
-    `Hai ${escapedName},\n` +
-    "Anda baru saja menerima pesan di SecretMe\\.\n\n" +
-    "👤 *Dari:* Seseorang\n" +
-    `💬 *Pesan:* ||${escapedPreview}||\n\n` +
-    `🔗 [Buka SecretMe untuk membaca selengkapnya](${escapedUrl})`
+  const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.NEW_MESSAGE, {
+    name,
+    preview: censoredPreview,
+    url: profileUrl,
+  })
 
   console.log("Formatted Telegram message:", message)
 
   return sendTelegramMessage({
     chat_id: telegramId,
     text: message,
-    parse_mode: "MarkdownV2", // Using MarkdownV2 for spoiler tags
+    parse_mode: "Markdown", // Using regular Markdown
     disable_web_page_preview: false,
   })
 }
@@ -123,7 +105,7 @@ export async function sendTestMessage(telegramId: string, name: string): Promise
   return sendTelegramMessage({
     chat_id: telegramId,
     text: message,
-    parse_mode: "Markdown", // Using regular Markdown for simpler messages
+    parse_mode: "Markdown",
   })
 }
 
@@ -132,7 +114,7 @@ export async function sendConnectionSuccessMessage(telegramId: string): Promise<
   return sendTelegramMessage({
     chat_id: telegramId,
     text: TELEGRAM_MESSAGE_TEMPLATES.CONNECTION_SUCCESS,
-    parse_mode: "Markdown", // Using regular Markdown for simpler messages
+    parse_mode: "Markdown",
   })
 }
 
@@ -141,7 +123,7 @@ export async function sendDisconnectionMessage(telegramId: string): Promise<any>
   return sendTelegramMessage({
     chat_id: telegramId,
     text: TELEGRAM_MESSAGE_TEMPLATES.DISCONNECTED,
-    parse_mode: "Markdown", // Using regular Markdown for simpler messages
+    parse_mode: "Markdown",
   })
 }
 
@@ -150,6 +132,6 @@ export async function sendHelpMessage(telegramId: string): Promise<any> {
   return sendTelegramMessage({
     chat_id: telegramId,
     text: TELEGRAM_MESSAGE_TEMPLATES.HELP,
-    parse_mode: "Markdown", // Using regular Markdown for simpler messages
+    parse_mode: "Markdown",
   })
 }
