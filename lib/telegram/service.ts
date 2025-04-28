@@ -11,37 +11,77 @@ interface SendMessageParams {
   disable_web_page_preview?: boolean
 }
 
-// Function to send message to Telegram
+// Variables for rate limiting
+let lastRequestTime = 0
+const MIN_REQUEST_INTERVAL = 50 // 50ms = maksimal 20 request per detik
+
+// Function to send message to Telegram with throttling and retry
 export async function sendTelegramMessage(params: SendMessageParams): Promise<any> {
-  try {
-    console.log("Sending Telegram message with params:", {
-      chat_id: params.chat_id,
-      text_length: params.text.length,
-      parse_mode: params.parse_mode,
-      disable_web_page_preview: params.disable_web_page_preview,
-    })
+  // Implementasi throttling sederhana
+  const now = Date.now()
+  const timeElapsed = now - lastRequestTime
 
-    const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(params),
-    })
+  if (timeElapsed < MIN_REQUEST_INTERVAL) {
+    // Tunggu sampai interval minimum terpenuhi
+    await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeElapsed))
+  }
 
-    console.log("Telegram API response status:", response.status)
+  // Update waktu request terakhir
+  lastRequestTime = Date.now()
 
-    const responseData = await response.json()
-    console.log("Telegram API response data:", responseData)
+  // Implementasi retry dengan exponential backoff
+  let retries = 0
+  const MAX_RETRIES = 3
 
-    if (!response.ok) {
-      throw new Error(`Telegram API error: ${responseData.description || response.statusText}`)
+  while (retries <= MAX_RETRIES) {
+    try {
+      console.log(`Sending Telegram message to ${params.chat_id}. Attempt ${retries + 1}/${MAX_RETRIES + 1}`)
+
+      const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      })
+
+      console.log(`Telegram API response status: ${response.status}`)
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        // Cek apakah error adalah rate limiting (429 Too Many Requests)
+        if (response.status === 429 && retries < MAX_RETRIES) {
+          // Ambil retry_after dari response jika ada
+          const retryAfter = responseData.parameters?.retry_after || Math.pow(2, retries) * 1000
+          console.log(`Rate limited by Telegram. Retrying after ${retryAfter}ms. Retry ${retries + 1}/${MAX_RETRIES}`)
+
+          // Tunggu sesuai retry_after atau exponential backoff
+          await new Promise((resolve) => setTimeout(resolve, retryAfter))
+          retries++
+          continue
+        }
+
+        throw new Error(`Telegram API error: ${responseData.description || response.statusText}`)
+      }
+
+      console.log("Telegram message sent successfully")
+      return responseData
+    } catch (error) {
+      console.error(`Error sending Telegram message (attempt ${retries + 1}/${MAX_RETRIES + 1}):`, error)
+
+      // Jika error bukan karena rate limiting atau sudah mencapai max retries
+      if (retries >= MAX_RETRIES) {
+        console.error("Max retries reached. Giving up.")
+        throw error
+      }
+
+      // Exponential backoff untuk error lainnya
+      const backoffTime = Math.pow(2, retries) * 1000
+      console.log(`Retrying after ${backoffTime}ms. Retry ${retries + 1}/${MAX_RETRIES}`)
+      await new Promise((resolve) => setTimeout(resolve, backoffTime))
+      retries++
     }
-
-    return responseData
-  } catch (error) {
-    console.error("Error sending Telegram message:", error)
-    throw error
   }
 }
 
