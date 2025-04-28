@@ -1,0 +1,118 @@
+erDiagram
+    USERS {
+        uuid id PK
+        text name
+        text username UK
+        text email UK
+        timestamptz created_at
+        timestamptz updated_at
+        boolean is_premium
+        timestamptz premium_expires_at
+        bigint numeric_id UK
+        text avatar_url
+        text bio
+        text instagram_url
+        text facebook_url
+        text linkedin_url
+        text twitter_url
+        text tiktok_url
+        boolean allow_public_replies
+        text phone_number
+        text notification_channel
+        boolean whatsapp_notifications
+        text telegram_id
+        boolean telegram_notifications
+    }
+    
+    MESSAGES {
+        uuid id PK
+        text content
+        timestamptz created_at
+        timestamptz updated_at
+        uuid user_id FK
+        text reply
+    }
+    
+    PUBLIC_REPLIES {
+        uuid id PK
+        uuid message_id FK
+        text content
+        text author_name
+        timestamptz created_at
+    }
+    
+    PREMIUM_TRANSACTIONS {
+        uuid id PK
+        uuid user_id FK
+        text plan_id
+        numeric amount
+        text status
+        text payment_method
+        text payment_gateway
+        jsonb payment_details
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    
+    NOTIFICATION_LOGS {
+        uuid id PK
+        uuid user_id FK
+        uuid message_id FK
+        text notification_type
+        text channel
+        text status
+        timestamptz created_at
+        jsonb data
+        text error_message
+    }
+    
+    PROFILE_VIEWS {
+        uuid id PK
+        uuid user_id FK,UK
+        integer count
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    
+    TELEGRAM_CONNECTION_CODES {
+        uuid id PK
+        uuid user_id FK
+        text code UK
+        timestamptz created_at
+        timestamptz expires_at
+        boolean used
+    }
+    
+    SITE_CONFIG {
+        uuid id PK
+        text key UK
+        jsonb value
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    
+    PAYMENT_NOTIFICATION_LOGS {
+        uuid id PK
+        uuid transaction_id FK
+        text gateway
+        jsonb payload
+        text status
+        timestamptz created_at
+    }
+    
+    SITEMAP_LOGS {
+        uuid id PK
+        text type
+        text status
+        jsonb details
+        timestamptz created_at
+    }
+    
+    USERS ||--o{ MESSAGES : "has"
+    USERS ||--o{ PREMIUM_TRANSACTIONS : "makes"
+    USERS ||--o{ NOTIFICATION_LOGS : "receives"
+    USERS ||--o{ PROFILE_VIEWS : "has"
+    USERS ||--o{ TELEGRAM_CONNECTION_CODES : "generates"
+    MESSAGES ||--o{ PUBLIC_REPLIES : "has"
+    MESSAGES ||--o{ NOTIFICATION_LOGS : "triggers"
+    PREMIUM_TRANSACTIONS ||--o{ PAYMENT_NOTIFICATION_LOGS : "generates"
