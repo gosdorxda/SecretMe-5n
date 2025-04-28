@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/hooks/use-toast"
-import { CheckCircle, Copy, AlertTriangle } from "lucide-react"
+import { CheckCircle, Copy, AlertTriangle, Loader2 } from "lucide-react"
 
 interface TelegramFormProps {
   userId: string
@@ -18,13 +18,18 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [connectionCode, setConnectionCode] = useState<string | null>(null)
   const [isConnected, setIsConnected] = useState(!!initialTelegramId)
+  const [telegramId, setTelegramId] = useState(initialTelegramId)
   const [isPolling, setIsPolling] = useState(false)
   const [pollingInterval, setPollingIntervalState] = useState<NodeJS.Timeout | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected" | "disconnecting">(
+    "idle",
+  )
   const supabase = createClient()
 
   // Fungsi untuk menghasilkan kode koneksi
   const generateConnectionCode = async () => {
     setIsSubmitting(true)
+    setConnectionStatus("connecting")
     try {
       const response = await fetch("/api/telegram/generate-code", {
         method: "POST",
@@ -52,6 +57,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         description: error.message || "Gagal membuat kode koneksi",
         variant: "destructive",
       })
+      setConnectionStatus("idle")
     } finally {
       setIsSubmitting(false)
     }
@@ -67,12 +73,19 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
       const data = await response.json()
 
       if (response.ok && data.success && data.isConnected) {
+        // Koneksi berhasil
         setIsConnected(true)
+        setTelegramId(data.telegramId || telegramId)
+        setTelegramNotifications(data.telegramNotifications || telegramNotifications)
         setConnectionCode(null)
         stopPolling()
+        setConnectionStatus("connected")
 
-        // Refresh halaman untuk mendapatkan data terbaru
-        window.location.reload()
+        toast({
+          title: "Koneksi Berhasil",
+          description: "Akun Telegram Anda berhasil terhubung dengan SecretMe",
+          variant: "default",
+        })
       }
     } catch (error) {
       console.error("Error checking connection status:", error)
@@ -108,7 +121,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     setTelegramNotifications(checked)
 
     // Jika sudah ada Telegram ID yang terverifikasi, langsung update preferensi
-    if (initialTelegramId) {
+    if (telegramId) {
       try {
         const response = await fetch("/api/telegram/save", {
           method: "POST",
@@ -116,7 +129,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            telegramId: initialTelegramId,
+            telegramId: telegramId,
             enableNotifications: checked,
           }),
         })
@@ -145,7 +158,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
 
   // Fungsi untuk mengirim pesan test
   const handleSendTestMessage = async () => {
-    if (!initialTelegramId) {
+    if (!telegramId) {
       toast({
         title: "Error",
         description: "Anda belum memiliki Telegram ID yang terverifikasi",
@@ -188,7 +201,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
 
   // Fungsi untuk memutuskan koneksi Telegram
   const handleDisconnect = async () => {
-    if (!initialTelegramId) {
+    if (!telegramId) {
       return
     }
 
@@ -199,6 +212,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     }
 
     setIsSubmitting(true)
+    setConnectionStatus("disconnecting")
 
     try {
       const response = await fetch("/api/telegram/disconnect", {
@@ -211,13 +225,16 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         throw new Error(data?.error || `Error ${response.status}`)
       }
 
+      // Update state
+      setIsConnected(false)
+      setTelegramId(null)
+      setTelegramNotifications(false)
+      setConnectionStatus("idle")
+
       toast({
         title: "Berhasil",
         description: "Koneksi Telegram berhasil diputus",
       })
-
-      // Refresh halaman untuk mendapatkan data terbaru
-      window.location.reload()
     } catch (error: any) {
       console.error("Error disconnecting Telegram:", error)
       toast({
@@ -225,6 +242,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         description: error.message || "Gagal memutuskan koneksi Telegram",
         variant: "destructive",
       })
+      setConnectionStatus("connected")
     } finally {
       setIsSubmitting(false)
     }
@@ -241,6 +259,13 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     }
   }
 
+  // Fungsi untuk membatalkan proses koneksi
+  const handleCancelConnection = () => {
+    setConnectionCode(null)
+    stopPolling()
+    setConnectionStatus("idle")
+  }
+
   return (
     <div className="space-y-4">
       {!isConnected ? (
@@ -251,10 +276,14 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                 <h4 className="font-medium text-blue-800 mb-2">Hubungkan dengan Telegram</h4>
                 <p className="text-sm text-blue-600 mb-4">Dapatkan notifikasi pesan baru langsung ke Telegram Anda</p>
               </div>
-              <Button onClick={generateConnectionCode} disabled={isSubmitting} className="w-full sm:w-auto">
-                {isSubmitting ? (
+              <Button
+                onClick={generateConnectionCode}
+                disabled={isSubmitting || connectionStatus === "connecting"}
+                className="w-full sm:w-auto"
+              >
+                {connectionStatus === "connecting" ? (
                   <>
-                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Memproses...
                   </>
                 ) : (
@@ -299,19 +328,11 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   <li>Buka Telegram dan cari @SecretMeBot</li>
                   <li>Kirim pesan /start ke bot</li>
                   <li>Kirim kode 6 digit di atas ke bot</li>
-                  <li>Halaman ini akan otomatis diperbarui setelah koneksi berhasil</li>
+                  <li>Status akan otomatis diperbarui setelah koneksi berhasil</li>
                 </ol>
               </div>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setConnectionCode(null)
-                  stopPolling()
-                }}
-                className="mt-4"
-                size="sm"
-              >
+              <Button variant="outline" onClick={handleCancelConnection} className="mt-4" size="sm">
                 Batalkan
               </Button>
             </div>
@@ -329,6 +350,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
               id="telegram_notifications"
               checked={telegramNotifications}
               onCheckedChange={handleToggleNotifications}
+              disabled={isSubmitting}
             />
             <div className="grid gap-1.5 leading-none">
               <label htmlFor="telegram_notifications" className="text-sm font-medium leading-none">
@@ -339,17 +361,26 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           </div>
 
           <div className="flex flex-wrap gap-3 pt-4">
-            <Button variant="outline" onClick={handleSendTestMessage} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={handleSendTestMessage}
+              disabled={isSubmitting || connectionStatus === "disconnecting"}
+            >
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Kirim Pesan Test
             </Button>
 
             <Button
               variant="outline"
               onClick={handleDisconnect}
-              disabled={isSubmitting}
+              disabled={isSubmitting || connectionStatus === "disconnecting"}
               className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
             >
-              <AlertTriangle className="h-4 w-4 mr-2" />
+              {connectionStatus === "disconnecting" ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 mr-2" />
+              )}
               Putuskan Koneksi
             </Button>
           </div>

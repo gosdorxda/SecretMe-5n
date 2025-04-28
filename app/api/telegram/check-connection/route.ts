@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     // Check if user has a connected Telegram ID
     const { data: userData, error } = await supabase
       .from("users")
-      .select("telegram_id")
+      .select("telegram_id, telegram_notifications")
       .eq("id", session.user.id)
       .single()
 
@@ -29,6 +29,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       isConnected: !!userData.telegram_id,
+      telegramId: userData.telegram_id,
+      telegramNotifications: userData.telegram_notifications || false,
     })
   } catch (error: any) {
     console.error("Error checking connection status:", error)
