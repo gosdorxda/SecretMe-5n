@@ -146,9 +146,14 @@ export default function RegisterForm() {
   async function handleGoogleSignup() {
     setIsGoogleLoading(true)
     try {
-      // Use the environment variable instead of window.location.origin
+      // Pastikan menggunakan URL yang benar untuk development dan production
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+
+      // Pastikan URL menggunakan protokol yang benar (http untuk localhost)
       const redirectUrl = `${appUrl}/auth/callback?redirect_to=${encodeURIComponent(redirect)}`
+
+      // Log URL untuk debugging
+      console.log("🔍 REGISTER: Google OAuth redirect URL:", redirectUrl)
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",

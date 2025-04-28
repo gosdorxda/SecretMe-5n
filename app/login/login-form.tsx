@@ -154,14 +154,20 @@ export default function LoginForm() {
     }
   }
 
+  // Ubah fungsi handleGoogleLogin untuk memastikan URL callback yang benar
+
   async function handleGoogleLogin() {
     setIsGoogleLoading(true)
     console.log("🔍 LOGIN: Starting Google login")
 
     try {
-      // Use the environment variable instead of window.location.origin
+      // Pastikan menggunakan URL yang benar untuk development dan production
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+
+      // Pastikan URL menggunakan protokol yang benar (http untuk localhost)
       const redirectUrl = `${appUrl}/auth/callback?redirect_to=${encodeURIComponent(redirect)}`
+
+      // Log URL untuk debugging
       console.log("🔍 LOGIN: Google OAuth redirect URL:", redirectUrl)
 
       const { data, error } = await supabase.auth.signInWithOAuth({

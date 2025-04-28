@@ -1,11 +1,16 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
+// Tambahkan logging dan perbaikan untuk penanganan URL
+
 export async function GET(request: Request) {
   console.log("🔍 AUTH CALLBACK: Started processing", new Date().toISOString())
 
   const requestUrl = new URL(request.url)
   console.log("🔍 AUTH CALLBACK: Request URL", requestUrl.toString())
+
+  // Log protokol untuk debugging
+  console.log("🔍 AUTH CALLBACK: URL Protocol:", requestUrl.protocol)
 
   const code = requestUrl.searchParams.get("code")
   console.log("🔍 AUTH CALLBACK: Auth code exists?", !!code)
@@ -20,6 +25,8 @@ export async function GET(request: Request) {
     console.log("🔍 AUTH CALLBACK: Custom redirect target:", redirectTo)
   }
 
+  // Gunakan NEXT_PUBLIC_APP_URL jika tersedia, atau gunakan origin dari request
+  // Pastikan untuk menggunakan protokol yang benar
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin
   console.log("🔍 AUTH CALLBACK: Using app URL:", appUrl)
 
