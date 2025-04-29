@@ -46,7 +46,6 @@ export function ShareImageDialog({ open, onOpenChange, username, message, date, 
         message,
         date,
         avatarUrl,
-        // Tidak perlu lagi parameter theme
       })
       setImagePreview(dataUrl)
     } catch (error) {

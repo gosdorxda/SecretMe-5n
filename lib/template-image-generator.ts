@@ -1,6 +1,5 @@
 "use client"
 
-// Tidak perlu lagi tipe TemplateTheme karena hanya ada satu tema
 interface ThemeColors {
   background: string
   border: string
@@ -26,8 +25,22 @@ const themeColors: ThemeColors = {
   footerText: "#000000",
 }
 
+// Konstanta untuk resolusi dan kualitas
+const CANVAS_WIDTH = 1800 // Ditingkatkan dari 1200
+const CANVAS_HEIGHT = 945 // Ditingkatkan dari 630 (menjaga rasio aspek 1.9:1)
+const EXPORT_QUALITY = 1.0 // Kualitas maksimum untuk ekspor PNG
+
+// Font yang lebih baik untuk rendering teks
+const PRIMARY_FONT = "'Segoe UI', Arial, sans-serif"
+const HEADER_FONT = "bold 72px " + PRIMARY_FONT // Ditingkatkan dari 48px
+const USERNAME_FONT = "bold 54px " + PRIMARY_FONT // Ditingkatkan dari 36px
+const DATE_FONT = "36px " + PRIMARY_FONT // Ditingkatkan dari 24px
+const MESSAGE_FONT = "42px " + PRIMARY_FONT // Ditingkatkan dari 28px
+const FOOTER_FONT = "bold 36px " + PRIMARY_FONT // Ditingkatkan dari 24px
+
 /**
  * Generates a shareable image using a fixed template and dynamic content
+ * with improved resolution and quality
  */
 export async function generateTemplateImage({
   username,
@@ -45,44 +58,79 @@ export async function generateTemplateImage({
       // Gunakan warna tema terang yang sudah didefinisikan
       const colors = themeColors
 
-      // Create canvas
+      // Create high-resolution canvas
       const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
+      canvas.width = CANVAS_WIDTH
+      canvas.height = CANVAS_HEIGHT
+
+      const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: false })
       if (!ctx) {
         throw new Error("Could not get canvas context")
       }
 
-      // Set canvas dimensions
-      canvas.width = 1200
-      canvas.height = 630
+      // Enable image smoothing for better quality
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = "high"
 
-      // Draw background
-      ctx.fillStyle = colors.background
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // Draw background with slight gradient for more depth
+      const bgGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT)
+      bgGradient.addColorStop(0, colors.background)
+      bgGradient.addColorStop(1, "#f8f8f8") // Slightly darker at bottom for depth
+      ctx.fillStyle = bgGradient
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      // Add border
+      // Add border with shadow effect
       ctx.strokeStyle = colors.border
-      ctx.lineWidth = 8
-      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8)
+      ctx.lineWidth = 12 // Increased from 8
+      ctx.shadowColor = "rgba(0, 0, 0, 0.1)"
+      ctx.shadowBlur = 15
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 4
+      ctx.strokeRect(6, 6, CANVAS_WIDTH - 12, CANVAS_HEIGHT - 12)
 
-      // Draw header background
-      ctx.fillStyle = colors.header
-      ctx.fillRect(0, 0, canvas.width, 120)
+      // Reset shadow for other elements
+      ctx.shadowColor = "transparent"
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
 
-      // Draw SecretMe logo/header
+      // Draw header background with gradient
+      const headerGradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, 0)
+      headerGradient.addColorStop(0, colors.header)
+      headerGradient.addColorStop(1, "#ffb067") // Slightly lighter for gradient effect
+      ctx.fillStyle = headerGradient
+      ctx.fillRect(0, 0, CANVAS_WIDTH, 180) // Increased from 120
+
+      // Draw SecretMe logo/header with shadow for depth
       ctx.fillStyle = colors.headerText
-      ctx.font = "bold 48px Arial, sans-serif"
+      ctx.font = HEADER_FONT
       ctx.textAlign = "left"
-      ctx.fillText("SecretMe", 40, 80)
+      ctx.shadowColor = "rgba(0, 0, 0, 0.2)"
+      ctx.shadowBlur = 4
+      ctx.shadowOffsetX = 2
+      ctx.shadowOffsetY = 2
+      ctx.fillText("SecretMe", 60, 120) // Adjusted position
+
+      // Reset shadow
+      ctx.shadowColor = "transparent"
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
 
       // Draw avatar placeholder or image
       ctx.save()
       ctx.beginPath()
-      const avatarX = 100
-      const avatarY = 200
-      const avatarRadius = 50
+      const avatarX = 150 // Adjusted from 100
+      const avatarY = 300 // Adjusted from 200
+      const avatarRadius = 75 // Increased from 50
       ctx.arc(avatarX, avatarY, avatarRadius, 0, Math.PI * 2)
       ctx.closePath()
+
+      // Add avatar border
+      ctx.strokeStyle = "#e0e0e0"
+      ctx.lineWidth = 4
+      ctx.stroke()
+
       ctx.clip()
 
       if (avatarUrl) {
@@ -90,6 +138,7 @@ export async function generateTemplateImage({
         const avatarImg = new Image()
         avatarImg.crossOrigin = "anonymous"
         avatarImg.onload = () => {
+          // Draw with high quality
           ctx.drawImage(avatarImg, avatarX - avatarRadius, avatarY - avatarRadius, avatarRadius * 2, avatarRadius * 2)
           ctx.restore()
           finishDrawing()
@@ -107,55 +156,86 @@ export async function generateTemplateImage({
       }
 
       function drawAvatarFallback() {
-        // Warna fallback untuk avatar
-        ctx.fillStyle = "#e5e7eb"
+        // Create gradient for avatar background
+        const avatarGradient = ctx.createRadialGradient(avatarX, avatarY, 0, avatarX, avatarY, avatarRadius)
+        avatarGradient.addColorStop(0, "#f0f0f0")
+        avatarGradient.addColorStop(1, "#e5e7eb")
+
+        ctx.fillStyle = avatarGradient
         ctx.fillRect(avatarX - avatarRadius, avatarY - avatarRadius, avatarRadius * 2, avatarRadius * 2)
         ctx.restore()
 
-        // Draw avatar text (first letter of username)
+        // Draw avatar text (first letter of username) with better styling
         ctx.fillStyle = "#6b7280"
-        ctx.font = "bold 40px Arial, sans-serif"
+        ctx.font = "bold 60px " + PRIMARY_FONT // Increased from 40px
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText(username.charAt(0).toUpperCase(), avatarX, avatarY)
       }
 
       function finishDrawing() {
-        // Draw username
+        // Draw username with shadow for better readability
         ctx.fillStyle = colors.text
-        ctx.font = "bold 36px Arial, sans-serif"
+        ctx.font = USERNAME_FONT
         ctx.textAlign = "left"
         ctx.textBaseline = "top"
-        ctx.fillText(`@${username}`, 180, 180)
+        ctx.shadowColor = "rgba(0, 0, 0, 0.1)"
+        ctx.shadowBlur = 2
+        ctx.shadowOffsetX = 1
+        ctx.shadowOffsetY = 1
+        ctx.fillText(`@${username}`, 270, 270) // Adjusted from 180, 180
+
+        // Reset shadow
+        ctx.shadowColor = "transparent"
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
 
         // Draw date
         ctx.fillStyle = colors.secondaryText
-        ctx.font = "24px Arial, sans-serif"
-        ctx.fillText(date, 180, 225)
+        ctx.font = DATE_FONT
+        ctx.fillText(date, 270, 340) // Adjusted from 180, 225
 
-        // Draw message box
+        // Draw message box with rounded corners and subtle shadow
+        ctx.shadowColor = "rgba(0, 0, 0, 0.1)"
+        ctx.shadowBlur = 10
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 4
         ctx.fillStyle = colors.messageBox
-        roundRect(ctx, 40, 280, canvas.width - 80, 250, 16, true, false)
+        roundRect(ctx, 60, 420, CANVAS_WIDTH - 120, 375, 24, true, false) // Adjusted size and position
 
-        // Draw message
+        // Reset shadow
+        ctx.shadowColor = "transparent"
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+
+        // Draw message with improved text rendering
         ctx.fillStyle = colors.text
-        ctx.font = "28px Arial, sans-serif"
+        ctx.font = MESSAGE_FONT
         ctx.textAlign = "left"
-        wrapText(ctx, message, 60, 320, canvas.width - 120, 36)
+        wrapText(ctx, message, 90, 480, CANVAS_WIDTH - 180, 54) // Adjusted parameters
 
-        // Draw footer with SecretMe branding
-        ctx.fillStyle = colors.footer
-        ctx.fillRect(0, canvas.height - 80, canvas.width, 80)
+        // Draw footer with gradient
+        const footerGradient = ctx.createLinearGradient(0, CANVAS_HEIGHT - 120, CANVAS_WIDTH, CANVAS_HEIGHT - 120)
+        footerGradient.addColorStop(0, colors.footer)
+        footerGradient.addColorStop(1, "#ffb067") // Slightly lighter for gradient effect
+        ctx.fillStyle = footerGradient
+        ctx.fillRect(0, CANVAS_HEIGHT - 120, CANVAS_WIDTH, 120) // Increased from 80
 
-        // Draw footer text
+        // Draw footer text with shadow for better readability
         ctx.fillStyle = colors.footerText
-        ctx.font = "bold 24px Arial, sans-serif"
+        ctx.font = FOOTER_FONT
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
-        ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", canvas.width / 2, canvas.height - 40)
+        ctx.shadowColor = "rgba(0, 0, 0, 0.2)"
+        ctx.shadowBlur = 2
+        ctx.shadowOffsetX = 1
+        ctx.shadowOffsetY = 1
+        ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 60)
 
-        // Convert canvas to data URL and resolve
-        const dataUrl = canvas.toDataURL("image/png", 1.0)
+        // Convert canvas to data URL with maximum quality
+        const dataUrl = canvas.toDataURL("image/png", EXPORT_QUALITY)
         resolve(dataUrl)
       }
     } catch (error) {
@@ -165,7 +245,7 @@ export async function generateTemplateImage({
   })
 }
 
-// Helper function to draw rounded rectangles
+// Helper function to draw rounded rectangles with improved quality
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -176,26 +256,34 @@ function roundRect(
   fill: boolean,
   stroke: boolean,
 ) {
+  if (typeof radius === "number") {
+    radius = { tl: radius, tr: radius, br: radius, bl: radius }
+  } else {
+    radius = { ...{ tl: 0, tr: 0, br: 0, bl: 0 }, ...radius }
+  }
+
   ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.lineTo(x + width - radius, y)
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
-  ctx.lineTo(x + width, y + height - radius)
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-  ctx.lineTo(x + radius, y + height)
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
-  ctx.lineTo(x, y + radius)
-  ctx.quadraticCurveTo(x, y, x + radius, y)
+  ctx.moveTo(x + radius.tl, y)
+  ctx.lineTo(x + width - radius.tr, y)
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr)
+  ctx.lineTo(x + width, y + height - radius.br)
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height)
+  ctx.lineTo(x + radius.bl, y + height)
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl)
+  ctx.lineTo(x, y + radius.tl)
+  ctx.quadraticCurveTo(x, y, x + radius.tl, y)
   ctx.closePath()
+
   if (fill) {
     ctx.fill()
   }
+
   if (stroke) {
     ctx.stroke()
   }
 }
 
-// Helper function to wrap text
+// Helper function to wrap text with improved quality
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -204,6 +292,12 @@ function wrapText(
   maxWidth: number,
   lineHeight: number,
 ) {
+  // Trim text and handle empty case
+  text = text.trim()
+  if (!text) {
+    return
+  }
+
   const words = text.split(" ")
   let line = ""
   let testLine = ""
@@ -215,7 +309,20 @@ function wrapText(
     const testWidth = metrics.width
 
     if (testWidth > maxWidth && n > 0) {
+      // Apply slight shadow for better text readability
+      ctx.shadowColor = "rgba(0, 0, 0, 0.05)"
+      ctx.shadowBlur = 1
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 1
+
       ctx.fillText(line, x, y + lineCount * lineHeight)
+
+      // Reset shadow
+      ctx.shadowColor = "transparent"
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+
       line = words[n] + " "
       lineCount++
 
@@ -240,7 +347,20 @@ function wrapText(
           lastLine = lastLine.trim() + "..."
         }
 
+        // Apply slight shadow for better text readability
+        ctx.shadowColor = "rgba(0, 0, 0, 0.05)"
+        ctx.shadowBlur = 1
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 1
+
         ctx.fillText(lastLine, x, y + lineCount * lineHeight)
+
+        // Reset shadow
+        ctx.shadowColor = "transparent"
+        ctx.shadowBlur = 0
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+
         break
       }
     } else {
@@ -250,7 +370,19 @@ function wrapText(
 
   // Draw the last line if we haven't exceeded the line limit
   if (lineCount < 5) {
+    // Apply slight shadow for better text readability
+    ctx.shadowColor = "rgba(0, 0, 0, 0.05)"
+    ctx.shadowBlur = 1
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 1
+
     ctx.fillText(line, x, y + lineCount * lineHeight)
+
+    // Reset shadow
+    ctx.shadowColor = "transparent"
+    ctx.shadowBlur = 0
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
   }
 }
 
