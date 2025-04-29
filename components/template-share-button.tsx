@@ -2,37 +2,48 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Share } from "lucide-react"
-import { formatDate } from "@/lib/utils"
-import { ShareImageDialog } from "./share-image-dialog"
+import { ShareImageDialog } from "@/components/share-image-dialog"
+import { ImageIcon } from "lucide-react"
 
 interface TemplateShareButtonProps {
   username: string
   message: string
-  date: Date | string
+  date: string
   avatarUrl?: string | null
+  variant?: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive"
+  size?: "default" | "sm" | "lg" | "icon"
   className?: string
 }
 
-export function TemplateShareButton({ username, message, date, avatarUrl, className }: TemplateShareButtonProps) {
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-
-  // Format date if it's a Date object
-  const formattedDate = typeof date === "string" ? date : formatDate(date)
+export function TemplateShareButton({
+  username,
+  message,
+  date,
+  avatarUrl,
+  variant = "outline",
+  size = "sm",
+  className,
+}: TemplateShareButtonProps) {
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   return (
     <>
-      <Button variant="outline" size="sm" className={className} onClick={() => setShareDialogOpen(true)}>
-        <Share className="mr-2 h-4 w-4" />
-        Bagikan sebagai Gambar
+      <Button
+        variant={variant}
+        size={size}
+        onClick={() => setDialogOpen(true)}
+        className={className}
+        title="Bagikan sebagai gambar"
+      >
+        <ImageIcon className="h-4 w-4" />
       </Button>
 
       <ShareImageDialog
-        open={shareDialogOpen}
-        onOpenChange={setShareDialogOpen}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
         username={username}
         message={message}
-        date={formattedDate}
+        date={date}
         avatarUrl={avatarUrl}
       />
     </>

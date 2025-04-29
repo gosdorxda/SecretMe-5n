@@ -1,8 +1,6 @@
 "use client"
 
-// Definisi tema
-export type TemplateTheme = "light" | "dark" | "colorful"
-
+// Tidak perlu lagi tipe TemplateTheme karena hanya ada satu tema
 interface ThemeColors {
   background: string
   border: string
@@ -15,40 +13,17 @@ interface ThemeColors {
   footerText: string
 }
 
-const themes: Record<TemplateTheme, ThemeColors> = {
-  light: {
-    background: "#ffffff",
-    border: "#000000",
-    header: "#fd9745",
-    headerText: "#000000",
-    text: "#000000",
-    secondaryText: "#6b7280",
-    messageBox: "#f3f4f6",
-    footer: "#fd9745",
-    footerText: "#000000",
-  },
-  dark: {
-    background: "#121212",
-    border: "#ffffff",
-    header: "#2d2d2d",
-    headerText: "#ffffff",
-    text: "#ffffff",
-    secondaryText: "#a0aec0",
-    messageBox: "#2d2d2d",
-    footer: "#2d2d2d",
-    footerText: "#ffffff",
-  },
-  colorful: {
-    background: "#f0f9ff", // Light blue background
-    border: "#3b82f6", // Blue border
-    header: "#3b82f6", // Blue header
-    headerText: "#ffffff",
-    text: "#1e40af", // Dark blue text
-    secondaryText: "#60a5fa", // Medium blue text
-    messageBox: "#dbeafe", // Very light blue message box
-    footer: "#93c5fd", // Light blue footer
-    footerText: "#1e3a8a", // Very dark blue footer text
-  },
+// Definisikan langsung warna tema terang
+const themeColors: ThemeColors = {
+  background: "#ffffff",
+  border: "#000000",
+  header: "#fd9745",
+  headerText: "#000000",
+  text: "#000000",
+  secondaryText: "#6b7280",
+  messageBox: "#f3f4f6",
+  footer: "#fd9745",
+  footerText: "#000000",
 }
 
 /**
@@ -59,18 +34,16 @@ export async function generateTemplateImage({
   message,
   date,
   avatarUrl = null,
-  theme = "light",
 }: {
   username: string
   message: string
   date: string
   avatarUrl?: string | null
-  theme?: TemplateTheme
 }): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
-      // Get theme colors
-      const colors = themes[theme] || themes.light
+      // Gunakan warna tema terang yang sudah didefinisikan
+      const colors = themeColors
 
       // Create canvas
       const canvas = document.createElement("canvas")
@@ -134,13 +107,13 @@ export async function generateTemplateImage({
       }
 
       function drawAvatarFallback() {
-        // Use theme-appropriate colors for avatar fallback
-        ctx.fillStyle = theme === "dark" ? "#4b5563" : "#e5e7eb"
+        // Warna fallback untuk avatar
+        ctx.fillStyle = "#e5e7eb"
         ctx.fillRect(avatarX - avatarRadius, avatarY - avatarRadius, avatarRadius * 2, avatarRadius * 2)
         ctx.restore()
 
         // Draw avatar text (first letter of username)
-        ctx.fillStyle = theme === "dark" ? "#d1d5db" : "#6b7280"
+        ctx.fillStyle = "#6b7280"
         ctx.font = "bold 40px Arial, sans-serif"
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
