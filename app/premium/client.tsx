@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { LoadingDots } from "@/components/loading-dots"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle, AlertCircle, Clock, RefreshCw, Home, X, History, Wallet, Building, QrCode } from "lucide-react"
+import { CheckCircle, AlertCircle, Clock, RefreshCw, X, History, Wallet, Building, QrCode, Lock } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -376,95 +375,69 @@ export function PremiumClient({
 
     let statusIcon
     let statusTitle
-    let statusDescription
     let statusColor
 
     switch (currentTransaction.status) {
       case "success":
-        statusIcon = <CheckCircle className="h-6 w-6 text-green-500" />
+        statusIcon = <CheckCircle className="h-5 w-5 text-green-500" />
         statusTitle = "Pembayaran Berhasil"
-        statusDescription = "Akun Anda telah diupgrade ke Premium."
         statusColor = "border-green-200 bg-green-50"
         break
       case "failed":
-        statusIcon = <AlertCircle className="h-6 w-6 text-red-500" />
+        statusIcon = <AlertCircle className="h-5 w-5 text-red-500" />
         statusTitle = "Pembayaran Gagal"
-        statusDescription = "Silakan coba lagi atau gunakan metode pembayaran lain."
         statusColor = "border-red-200 bg-red-50"
         break
       case "cancelled":
-        statusIcon = <X className="h-6 w-6 text-red-500" />
+        statusIcon = <X className="h-5 w-5 text-red-500" />
         statusTitle = "Pembayaran Dibatalkan"
-        statusDescription = "Transaksi Anda telah dibatalkan."
         statusColor = "border-red-200 bg-red-50"
         break
       case "pending":
       default:
-        statusIcon = <Clock className="h-6 w-6 text-yellow-500" />
+        statusIcon = <Clock className="h-5 w-5 text-yellow-500" />
         statusTitle = "Pembayaran Tertunda"
-        statusDescription = "Kami sedang menunggu konfirmasi pembayaran Anda."
         statusColor = "border-yellow-200 bg-yellow-50"
     }
 
     return (
-      <Alert className={`mb-6 ${statusColor}`}>
-        <div className="flex items-start">
-          <div className="mr-3 mt-0.5">{statusIcon}</div>
-          <div className="flex-1">
-            <AlertTitle>{statusTitle}</AlertTitle>
-            <AlertDescription>
-              {statusDescription}
-              <div className="mt-2 text-sm text-muted-foreground">
-                <p>Order ID: {currentTransaction.orderId}</p>
-                <p>
-                  Metode Pembayaran:{" "}
-                  {currentTransaction.paymentMethod ? currentTransaction.paymentMethod : "Belum dipilih"}
-                </p>
-                <p>Jumlah: Rp {currentTransaction.amount.toLocaleString("id-ID")}</p>
-              </div>
-            </AlertDescription>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {currentTransaction.status === "pending" && (
-                <>
-                  <Button variant="outline" size="sm" onClick={checkTransactionStatus} disabled={checkingStatus}>
-                    {checkingStatus ? (
-                      <LoadingDots />
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" /> Periksa Status
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCancelTransaction}
-                    disabled={cancellingTransaction}
-                  >
-                    {cancellingTransaction ? (
-                      <LoadingDots />
-                    ) : (
-                      <>
-                        <X className="mr-2 h-4 w-4" /> Batalkan
-                      </>
-                    )}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => router.push("/")}>
-                    <Home className="mr-2 h-4 w-4" /> Kembali ke Beranda
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+      <div className={`mb-4 flex justify-between items-center p-3 rounded-lg ${statusColor}`}>
+        <div className="flex items-center gap-2">
+          {statusIcon}
+          <span className="font-medium">{statusTitle}</span>
         </div>
-      </Alert>
+        <div className="flex gap-2">
+          {currentTransaction.status === "pending" && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={checkTransactionStatus}
+                disabled={checkingStatus}
+                className="h-8 px-2"
+              >
+                {checkingStatus ? <LoadingDots /> : <RefreshCw className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelTransaction}
+                disabled={cancellingTransaction}
+                className="h-8 px-2"
+              >
+                {cancellingTransaction ? <LoadingDots /> : <X className="h-4 w-4" />}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
     )
   }
 
   // Render riwayat transaksi
   const renderTransactionHistory = () => {
     return (
-      <Accordion type="single" collapsible className="mt-6">
+      <Accordion type="single" collapsible className="mb-6">
         <AccordionItem value="history">
           <AccordionTrigger className="flex items-center">
             <div className="flex items-center">
@@ -523,8 +496,11 @@ export function PremiumClient({
   // Render metode pembayaran
   const renderPaymentMethods = () => {
     return (
-      <div className="mt-6">
-        <h3 className="text-lg font-medium mb-4">Pilih Metode Pembayaran</h3>
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-4 flex items-center">
+          <Lock className="h-5 w-5 text-green-500 mr-2" />
+          Pilih Metode Pembayaran
+        </h3>
         <Tabs value={selectedPaymentTab} onValueChange={handlePaymentTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="bank" className="flex items-center gap-2">
@@ -579,53 +555,32 @@ export function PremiumClient({
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-3xl mx-auto">
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-2xl">Akun Premium</CardTitle>
+          <Card className="mb-8 border-2 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-6 w-6 text-green-500" />
+                <CardTitle className="text-2xl">Akun Premium</CardTitle>
+              </div>
               <CardDescription>Selamat! Anda telah berhasil mengupgrade ke akun Premium.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Alert className="border-green-200 bg-green-50">
-                <div className="flex items-start">
-                  <CheckCircle className="mr-3 mt-0.5 h-6 w-6 text-green-500" />
-                  <div>
-                    <AlertTitle>Akun Premium Aktif</AlertTitle>
-                    <AlertDescription>
-                      Terima kasih telah menjadi pengguna premium. Nikmati semua fitur eksklusif SecretMe tanpa batasan.
-                    </AlertDescription>
-                  </div>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center mb-6">
+                <div className="bg-green-50 p-3 rounded-full border border-green-200">
+                  <Lock className="h-12 w-12 text-green-500" />
                 </div>
-              </Alert>
-              <div className="mt-6">
-                <h3 className="text-xl font-semibold mb-4">Fitur Premium Anda</h3>
-                <ul className="space-y-2">
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Tanpa iklan dan gangguan</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Akses ke semua fitur eksklusif</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Prioritas dukungan pelanggan</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Penyimpanan pesan tanpa batas</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>Fitur balasan publik</span>
-                  </li>
-                </ul>
+              </div>
+
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-semibold mb-2">Premium Aktif</h3>
+                <p className="text-muted-foreground">
+                  Terima kasih telah menjadi pengguna premium. Nikmati semua fitur eksklusif SecretMe tanpa batasan.
+                </p>
               </div>
 
               {/* Riwayat Transaksi untuk pengguna premium */}
               {renderTransactionHistory()}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="border-t bg-gradient-to-r from-green-50 to-green-100">
               <Button onClick={() => router.push("/dashboard")} className="w-full">
                 Kembali ke Dashboard
               </Button>
@@ -642,123 +597,34 @@ export function PremiumClient({
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-3xl mx-auto">
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
-              <CardDescription>
-                Nikmati fitur premium tanpa batasan dan tingkatkan pengalaman Anda dengan SecretMe
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                <div className="bg-muted/50 p-6 rounded-lg">
-                  <h3 className="text-xl font-semibold mb-4">Keuntungan Premium</h3>
-                  <ul className="space-y-2">
-                    <li className="flex items-start">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>Tanpa iklan dan gangguan</span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>Akses ke semua fitur eksklusif</span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>Prioritas dukungan pelanggan</span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>Penyimpanan pesan tanpa batas</span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span>Fitur balasan publik</span>
-                    </li>
-                  </ul>
+          <Card className="mb-8 border-2 shadow-lg">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
+                  <CardDescription>Akses seumur hidup, bayar sekali</CardDescription>
                 </div>
-
-                {/* Riwayat Transaksi */}
-                {renderTransactionHistory()}
-
-                {/* Metode Pembayaran */}
-                {renderPaymentMethods()}
-
-                <div className="border rounded-lg p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold">Premium Lifetime</h3>
-                      <p className="text-muted-foreground">Akses seumur hidup, bayar sekali</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                      <div className="text-sm text-muted-foreground">Harga sudah termasuk pajak</div>
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Berbagai metode pembayaran tersedia termasuk transfer bank, e-wallet, dan QRIS.
-                  </div>
-
-                  {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+                <div className="text-right">
+                  <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                  <div className="text-xs text-muted-foreground">Harga sudah termasuk pajak</div>
                 </div>
               </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Riwayat Transaksi */}
+              {renderTransactionHistory()}
+
+              {/* Metode Pembayaran */}
+              {renderPaymentMethods()}
+
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+                <Lock className="h-4 w-4 text-green-500" />
+                <span>Pembayaran aman & terenkripsi</span>
+              </div>
+
+              {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="border-t">
               <Button onClick={handlePayment} disabled={isLoading} className="w-full">
                 {isLoading ? <LoadingDots /> : "Lanjutkan ke Pembayaran"}
               </Button>
@@ -784,134 +650,48 @@ export function PremiumClient({
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-3xl mx-auto">
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
-            <CardDescription>
-              Nikmati fitur premium tanpa batasan dan tingkatkan pengalaman Anda dengan SecretMe
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6">
-              {/* Tampilkan status transaksi jika ada */}
-              {renderTransactionStatus()}
-
-              <div className="bg-muted/50 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-4">Keuntungan Premium</h3>
-                <ul className="space-y-2">
-                  <li className="flex items-start">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Tanpa iklan dan gangguan</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Akses ke semua fitur eksklusif</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Prioritas dukungan pelanggan</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Penyimpanan pesan tanpa batas</span>
-                  </li>
-                  <li className="flex items-start">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>Fitur balasan publik</span>
-                  </li>
-                </ul>
+        <Card className="mb-8 border-2 shadow-lg">
+          <CardHeader className="border-b">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
+                <CardDescription>Akses seumur hidup, bayar sekali</CardDescription>
               </div>
-
-              {/* Riwayat Transaksi */}
-              {renderTransactionHistory()}
-
-              {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
-              {transaction &&
-              (currentTransaction.status === "pending" || currentTransaction.status === "success") ? null : (
-                <>
-                  {/* Metode Pembayaran */}
-                  {renderPaymentMethods()}
-
-                  <div className="border rounded-lg p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <div>
-                        <h3 className="text-xl font-semibold">Premium Lifetime</h3>
-                        <p className="text-muted-foreground">Akses seumur hidup, bayar sekali</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                        <div className="text-sm text-muted-foreground">Harga sudah termasuk pajak</div>
-                      </div>
-                    </div>
-
-                    <div className="text-sm text-muted-foreground mt-2">
-                      Berbagai metode pembayaran tersedia termasuk transfer bank, e-wallet, dan QRIS.
-                    </div>
-
-                    {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
-                  </div>
-                </>
-              )}
+              <div className="text-right">
+                <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                <div className="text-xs text-muted-foreground">Harga sudah termasuk pajak</div>
+              </div>
             </div>
-          </CardContent>
-          <CardFooter>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {/* Tampilkan status transaksi jika ada */}
+            {renderTransactionStatus()}
+
+            {/* Riwayat Transaksi */}
+            {renderTransactionHistory()}
+
+            {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
             {transaction &&
             (currentTransaction.status === "pending" || currentTransaction.status === "success") ? null : (
+              <>
+                {/* Metode Pembayaran */}
+                {renderPaymentMethods()}
+
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
+                  <Lock className="h-4 w-4 text-green-500" />
+                  <span>Pembayaran aman & terenkripsi</span>
+                </div>
+              </>
+            )}
+
+            {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
+          </CardContent>
+          <CardFooter className="border-t">
+            {transaction && (currentTransaction.status === "pending" || currentTransaction.status === "success") ? (
+              <Button onClick={() => router.push("/")} className="w-full">
+                Kembali ke Beranda
+              </Button>
+            ) : (
               <Button onClick={handlePayment} disabled={isLoading} className="w-full">
                 {isLoading ? <LoadingDots /> : "Lanjutkan ke Pembayaran"}
               </Button>
