@@ -8,10 +8,25 @@ import { useToast } from "@/hooks/use-toast"
 import { LoadingDots } from "@/components/loading-dots"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle, AlertCircle, Clock, RefreshCw, Home, X, History } from "lucide-react"
+import {
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  RefreshCw,
+  Home,
+  X,
+  History,
+  CreditCard,
+  Wallet,
+  Building,
+  QrCode,
+} from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type Transaction = {
   id: string
@@ -34,6 +49,47 @@ type PremiumClientProps = {
   transaction?: Transaction | null
 }
 
+// Definisi metode pembayaran
+const paymentMethods = [
+  {
+    id: "bank",
+    name: "Transfer Bank",
+    methods: [
+      { id: "BC", name: "BCA", icon: "/payment-icons/bca.png" },
+      { id: "M2", name: "Mandiri", icon: "/payment-icons/mandiri.png" },
+      { id: "VA", name: "BNI", icon: "/payment-icons/bni.png" },
+      { id: "I1", name: "BRI", icon: "/payment-icons/bri.png" },
+      { id: "B1", name: "CIMB Niaga", icon: "/payment-icons/cimb.png" },
+      { id: "BR", name: "Permata Bank", icon: "/payment-icons/permata.png" },
+    ],
+  },
+  {
+    id: "ewallet",
+    name: "E-Wallet",
+    methods: [
+      { id: "OV", name: "OVO", icon: "/payment-icons/ovo.png" },
+      { id: "SA", name: "ShopeePay", icon: "/payment-icons/shopeepay.png" },
+      { id: "LF", name: "LinkAja", icon: "/payment-icons/linkaja.png" },
+      { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
+    ],
+  },
+  {
+    id: "retail",
+    name: "Retail",
+    methods: [{ id: "FT", name: "Alfamart", icon: "/payment-icons/alfamart.png" }],
+  },
+  {
+    id: "card",
+    name: "Kartu Kredit",
+    methods: [{ id: "VC", name: "Visa/Mastercard", icon: "/payment-icons/visa.png" }],
+  },
+  {
+    id: "qris",
+    name: "QRIS",
+    methods: [{ id: "QR", name: "QRIS", icon: "/payment-icons/qris.png" }],
+  },
+]
+
 export function PremiumClient({
   isLoggedIn,
   isPremium,
@@ -45,7 +101,8 @@ export function PremiumClient({
 }: PremiumClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("duitku")
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("VC")
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<string>("card")
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(transaction || null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -132,6 +189,16 @@ export function PremiumClient({
       })
     }
   }, [urlStatus, urlOrderId, toast])
+
+  // Fungsi untuk menangani perubahan tab metode pembayaran
+  const handlePaymentTabChange = (value: string) => {
+    setSelectedPaymentTab(value)
+    // Set default payment method for the selected tab
+    const category = paymentMethods.find((cat) => cat.id === value)
+    if (category && category.methods.length > 0) {
+      setSelectedPaymentMethod(category.methods[0].id)
+    }
+  }
 
   // Fungsi untuk menangani pembayaran
   const handlePayment = async () => {
@@ -474,6 +541,68 @@ export function PremiumClient({
     )
   }
 
+  // Render metode pembayaran
+  const renderPaymentMethods = () => {
+    return (
+      <div className="mt-6">
+        <h3 className="text-lg font-medium mb-4">Pilih Metode Pembayaran</h3>
+        <Tabs value={selectedPaymentTab} onValueChange={handlePaymentTabChange} className="w-full">
+          <TabsList className="grid grid-cols-5 mb-4">
+            <TabsTrigger value="bank" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span className="hidden sm:inline">Bank</span>
+            </TabsTrigger>
+            <TabsTrigger value="ewallet" className="flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">E-Wallet</span>
+            </TabsTrigger>
+            <TabsTrigger value="retail" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span className="hidden sm:inline">Retail</span>
+            </TabsTrigger>
+            <TabsTrigger value="card" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Kartu</span>
+            </TabsTrigger>
+            <TabsTrigger value="qris" className="flex items-center gap-2">
+              <QrCode className="h-4 w-4" />
+              <span className="hidden sm:inline">QRIS</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {paymentMethods.map((category) => (
+            <TabsContent key={category.id} value={category.id} className="mt-0">
+              <RadioGroup
+                value={selectedPaymentMethod}
+                onValueChange={setSelectedPaymentMethod}
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+              >
+                {category.methods.map((method) => (
+                  <div key={method.id} className="relative">
+                    <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
+                    <Label
+                      htmlFor={method.id}
+                      className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                    >
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <img
+                          src={method.icon || "/placeholder.svg"}
+                          alt={method.name}
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                      <span>{method.name}</span>
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+    )
+  }
+
   // Jika user sudah premium, tampilkan pesan sukses
   if (isPremium) {
     return (
@@ -635,6 +764,9 @@ export function PremiumClient({
                 {/* Riwayat Transaksi */}
                 {renderTransactionHistory()}
 
+                {/* Metode Pembayaran */}
+                {renderPaymentMethods()}
+
                 <div className="border rounded-lg p-6">
                   <div className="flex justify-between items-center mb-4">
                     <div>
@@ -780,24 +912,29 @@ export function PremiumClient({
               {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
               {transaction &&
               (currentTransaction.status === "pending" || currentTransaction.status === "success") ? null : (
-                <div className="border rounded-lg p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold">Premium Lifetime</h3>
-                      <p className="text-muted-foreground">Akses seumur hidup, bayar sekali</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                      <div className="text-sm text-muted-foreground">Harga sudah termasuk pajak</div>
-                    </div>
-                  </div>
+                <>
+                  {/* Metode Pembayaran */}
+                  {renderPaymentMethods()}
 
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Berbagai metode pembayaran tersedia termasuk transfer bank, e-wallet, dan QRIS.
-                  </div>
+                  <div className="border rounded-lg p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold">Premium Lifetime</h3>
+                        <p className="text-muted-foreground">Akses seumur hidup, bayar sekali</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                        <div className="text-sm text-muted-foreground">Harga sudah termasuk pajak</div>
+                      </div>
+                    </div>
 
-                  {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
-                </div>
+                    <div className="text-sm text-muted-foreground mt-2">
+                      Berbagai metode pembayaran tersedia termasuk transfer bank, e-wallet, dan QRIS.
+                    </div>
+
+                    {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
+                  </div>
+                </>
               )}
             </div>
           </CardContent>

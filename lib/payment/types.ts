@@ -31,6 +31,7 @@ export interface CreateTransactionParams {
   failureRedirectUrl: string
   pendingRedirectUrl: string
   notificationUrl: string
+  paymentMethod?: string // Tambahkan parameter metode pembayaran
 }
 
 export interface CreateTransactionResult {

@@ -94,7 +94,7 @@ export class DuitkuGateway implements PaymentGateway {
         returnUrl: successRedirectUrl,
         expiryPeriod: 60, // 60 menit
         signature: signature,
-        paymentMethod: "VC", // Set payment method to Credit Card
+        paymentMethod: params.paymentMethod || "VC", // Gunakan metode pembayaran dari parameter atau default ke VC
       }
 
       console.log("Sending request to Duitku API:", {

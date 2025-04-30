@@ -5,37 +5,43 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
-// Fungsi untuk membuat transaksi baru
-export async function createTransaction(gatewayName: string) {
+/**
+ * Membuat transaksi baru
+ */
+export async function createTransaction(paymentMethod = "VC"): Promise<{
+  success: boolean
+  redirectUrl?: string
+  error?: string
+  orderId?: string
+  token?: string
+}> {
   try {
-    // Verifikasi user
     const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized" }
+    // Get user session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      return { success: false, error: "Anda harus login terlebih dahulu" }
     }
 
-    // Dapatkan data user
-    const { data: userData, error: userError } = await supabase
+    // Get user data
+    const { data: userData } = await supabase
       .from("users")
       .select("name, email, is_premium")
-      .eq("id", user.id)
+      .eq("id", session.user.id)
       .single()
 
-    if (userError || !userData) {
-      return { success: false, error: "User not found" }
+    if (!userData) {
+      return { success: false, error: "Data pengguna tidak ditemukan" }
     }
 
-    // Periksa apakah user sudah premium
     if (userData.is_premium) {
-      return { success: false, error: "User already premium" }
+      return { success: false, error: "Anda sudah menjadi pengguna premium" }
     }
 
-    // Dapatkan harga premium dari config
+    // Get premium price from config or env
     const { data: configData } = await supabase
       .from("site_config")
       .select("config")
@@ -45,75 +51,79 @@ export async function createTransaction(gatewayName: string) {
     const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
 
     // Generate order ID
-    const orderId = generateOrderId(user.id)
+    const orderId = generateOrderId(session.user.id)
 
-    // Buat transaksi di database
-    const { error: transactionError } = await supabase.from("premium_transactions").insert({
-      user_id: user.id,
-      plan_id: orderId,
-      amount: premiumPrice,
-      status: "pending",
-      payment_gateway: gatewayName,
-    })
+    // Create transaction record
+    const { data: transaction, error: transactionError } = await supabase
+      .from("premium_transactions")
+      .insert({
+        user_id: session.user.id,
+        plan_id: orderId,
+        amount: premiumPrice,
+        status: "pending",
+        payment_gateway: "duitku",
+        payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
+      })
+      .select()
+      .single()
 
     if (transactionError) {
-      console.error("Error creating transaction:", transactionError)
-      return { success: false, error: "Failed to create transaction" }
+      console.error("Error creating transaction record:", transactionError)
+      return { success: false, error: "Gagal membuat catatan transaksi" }
     }
 
-    // Dapatkan payment gateway
-    const gateway = await getPaymentGateway(gatewayName)
+    // Get payment gateway
+    const gateway = await getPaymentGateway("duitku")
 
-    // Siapkan callback URLs
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
-
-    // Pastikan callbackUrl mengarah ke /premium
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/premium`
-
-    // Buat transaksi di payment gateway
+    // Create transaction in payment gateway
     const result = await gateway.createTransaction({
-      userId: user.id,
-      userEmail: userData.email,
+      userId: session.user.id,
+      userEmail: userData.email || session.user.email || "",
       userName: userData.name || "User",
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${callbackUrl}?status=success&order_id=${orderId}`,
-      failureRedirectUrl: `${callbackUrl}?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${callbackUrl}?status=pending&order_id=${orderId}`,
-      notificationUrl: `${appUrl}/api/payment/notification`,
+      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
+      notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
+      paymentMethod: paymentMethod, // Teruskan metode pembayaran ke gateway
     })
 
     if (!result.success) {
-      // Hapus transaksi dari database karena gagal
-      await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
-
-      return { success: false, error: result.error || "Failed to create payment transaction" }
-    }
-
-    // Update transaksi dengan gateway reference
-    if (result.gatewayReference) {
+      // Update transaction status to failed
       await supabase
         .from("premium_transactions")
         .update({
-          payment_details: {
-            gateway_reference: result.gatewayReference,
-            redirect_url: result.redirectUrl,
-            token: result.token,
-          },
+          status: "failed",
+          updated_at: new Date().toISOString(),
+          payment_details: { error: result.error },
         })
-        .eq("plan_id", orderId)
+        .eq("id", transaction.id)
+
+      return { success: false, error: result.error || "Gagal membuat transaksi" }
     }
+
+    // Update transaction with gateway reference
+    await supabase
+      .from("premium_transactions")
+      .update({
+        payment_details: {
+          gateway_reference: result.gatewayReference,
+          redirect_url: result.redirectUrl,
+        },
+      })
+      .eq("id", transaction.id)
 
     return {
       success: true,
       redirectUrl: result.redirectUrl,
-      token: result.token,
       orderId: orderId,
+      token: result.token,
     }
   } catch (error: any) {
-    console.error("Error in create transaction:", error)
-    return { success: false, error: error.message || "Internal server error" }
+    console.error("Error in createTransaction:", error)
+    return { success: false, error: error.message || "Terjadi kesalahan saat memproses pembayaran" }
   }
 }
 
