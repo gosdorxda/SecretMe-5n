@@ -23,13 +23,16 @@ export class DuitkuGateway implements PaymentGateway {
     // Initialize with environment variables
     this.merchantCode = process.env.DUITKU_MERCHANT_CODE || ""
     this.apiKey = process.env.DUITKU_API_KEY || ""
-    // Force sandbox URL for testing
-    this.isProduction = false
+
+    // Check if we're in production environment
+    const nodeEnv = process.env.NODE_ENV || "development"
+    this.isProduction = nodeEnv === "production" && process.env.DUITKU_USE_PRODUCTION === "true"
 
     console.log("Duitku Gateway initialized with:", {
       merchantCode: this.merchantCode ? "Set (hidden)" : "Not set",
       apiKey: this.apiKey ? "Set (hidden)" : "Not set",
       isProduction: this.isProduction,
+      environment: this.isProduction ? "PRODUCTION" : "SANDBOX",
     })
   }
 
@@ -37,8 +40,11 @@ export class DuitkuGateway implements PaymentGateway {
    * Mendapatkan base URL API Duitku
    */
   private getBaseUrl(): string {
-    // PENTING: Selalu gunakan sandbox URL untuk development
-    return "https://sandbox.duitku.com/webapi"
+    if (this.isProduction) {
+      return "https://passport.duitku.com/webapi"
+    } else {
+      return "https://sandbox.duitku.com/webapi"
+    }
   }
 
   /**
