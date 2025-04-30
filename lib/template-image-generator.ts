@@ -38,7 +38,7 @@ const PRIMARY_FONT =
 
 /**
  * Generates a shareable image using a design similar to the animated card on the homepage
- * but with project's background and font
+ * but with project's background and font, smaller card and larger message text
  */
 export async function generateTemplateImage({
   username,
@@ -74,9 +74,9 @@ export async function generateTemplateImage({
       ctx.fillStyle = colors.background
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      // Calculate card dimensions (centered in canvas)
-      const cardWidth = CANVAS_WIDTH * 0.8
-      const cardHeight = CANVAS_HEIGHT * 0.7
+      // Calculate card dimensions (centered in canvas but smaller)
+      const cardWidth = CANVAS_WIDTH * 0.7 // Reduced from 0.8 to 0.7
+      const cardHeight = CANVAS_HEIGHT * 0.6 // Reduced from 0.7 to 0.6
       const cardLeft = (CANVAS_WIDTH - cardWidth) / 2
       const cardTop = (CANVAS_HEIGHT - cardHeight) / 2
 
@@ -99,8 +99,8 @@ export async function generateTemplateImage({
       // Calculate positions relative to the card
       const padding = 40
 
-      // Draw avatar circle
-      const avatarSize = 96
+      // Draw avatar circle (slightly smaller to match smaller card)
+      const avatarSize = 80 // Reduced from 96 to 80
       const avatarX = cardLeft + padding + avatarSize / 2
       const avatarY = cardTop + padding + avatarSize / 2
 
@@ -158,37 +158,37 @@ export async function generateTemplateImage({
 
         // Draw "Pesan Anonim" text - NOT BOLD as requested
         ctx.fillStyle = "#000000"
-        ctx.font = `36px ${PRIMARY_FONT}` // Using project's font, not bold
+        ctx.font = `32px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
         ctx.textAlign = "left"
         ctx.textBaseline = "top"
         ctx.fillText("Pesan Anonim", headerX, headerY)
 
         // Draw dot separator
-        ctx.fillText("•", headerX + 220, headerY)
+        ctx.fillText("•", headerX + 200, headerY)
 
         // Draw date
         ctx.fillStyle = "#6b7280"
-        ctx.font = `32px ${PRIMARY_FONT}` // Using project's font
-        ctx.fillText(date, headerX + 250, headerY)
+        ctx.font = `28px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.fillText(date, headerX + 230, headerY)
 
         // Draw "Untuk: @username" text
         ctx.fillStyle = "#000000"
-        ctx.font = `32px ${PRIMARY_FONT}` // Using project's font
-        ctx.fillText("Untuk:", headerX, headerY + 50)
+        ctx.font = `28px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.fillText("Untuk:", headerX, headerY + 45)
 
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 32px ${PRIMARY_FONT}` // Using project's font, bold
-        ctx.fillText(`@${username}`, headerX + 100, headerY + 50)
+        ctx.font = `bold 28px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.fillText(`@${username}`, headerX + 90, headerY + 45)
 
-        // Draw message content
+        // Draw message content with LARGER text for better readability
         const messageX = cardLeft + padding
         const messageY = cardTop + padding * 3 + avatarSize / 2
         const messageWidth = cardWidth - padding * 2
 
         ctx.fillStyle = "#000000"
-        ctx.font = `36px ${PRIMARY_FONT}` // Using project's font
+        ctx.font = `44px ${PRIMARY_FONT}` // Increased from 36px to 44px for better readability
         ctx.textAlign = "left"
-        wrapText(ctx, message, messageX, messageY, messageWidth, 48)
+        wrapText(ctx, message, messageX, messageY, messageWidth, 56) // Increased line height from 48 to 56
 
         // Draw footer with reply button
         const footerY = cardTop + cardHeight - padding - 50
@@ -215,14 +215,14 @@ export async function generateTemplateImage({
 
         // Button text
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 28px ${PRIMARY_FONT}` // Using project's font, bold
+        ctx.font = `bold 28px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText("Balas", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
 
         // Draw SecretMe branding at the bottom
         ctx.fillStyle = "#6b7280"
-        ctx.font = `bold 28px ${PRIMARY_FONT}` // Using project's font, bold
+        ctx.font = `bold 28px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "bottom"
         ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 30)
