@@ -8,19 +8,7 @@ import { useToast } from "@/hooks/use-toast"
 import { LoadingDots } from "@/components/loading-dots"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import {
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  RefreshCw,
-  Home,
-  X,
-  History,
-  CreditCard,
-  Wallet,
-  Building,
-  QrCode,
-} from "lucide-react"
+import { CheckCircle, AlertCircle, Clock, RefreshCw, Home, X, History, Wallet, Building, QrCode } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -55,12 +43,13 @@ const paymentMethods = [
     id: "bank",
     name: "Transfer Bank",
     methods: [
-      { id: "BC", name: "BCA", icon: "/payment-icons/bca.png" },
-      { id: "M2", name: "Mandiri", icon: "/payment-icons/mandiri.png" },
-      { id: "VA", name: "BNI", icon: "/payment-icons/bni.png" },
-      { id: "I1", name: "BRI", icon: "/payment-icons/bri.png" },
-      { id: "B1", name: "CIMB Niaga", icon: "/payment-icons/cimb.png" },
-      { id: "BR", name: "Permata Bank", icon: "/payment-icons/permata.png" },
+      { id: "A1", name: "ATM Bersama", icon: "/payment-icons/atm-bersama.png" },
+      { id: "NC", name: "NEO", icon: "/payment-icons/neo.png" },
+      { id: "I1", name: "BNI", icon: "/payment-icons/bni.png" },
+      { id: "BR", name: "BRIVA", icon: "/payment-icons/bri.png" },
+      { id: "BV", name: "BSI", icon: "/payment-icons/bsi.png" },
+      { id: "M2", name: "MANDIRI", icon: "/payment-icons/mandiri.png" },
+      { id: "BT", name: "PERMATA", icon: "/payment-icons/permata.png" },
     ],
   },
   {
@@ -72,16 +61,6 @@ const paymentMethods = [
       { id: "LF", name: "LinkAja", icon: "/payment-icons/linkaja.png" },
       { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
     ],
-  },
-  {
-    id: "retail",
-    name: "Retail",
-    methods: [{ id: "FT", name: "Alfamart", icon: "/payment-icons/alfamart.png" }],
-  },
-  {
-    id: "card",
-    name: "Kartu Kredit",
-    methods: [{ id: "VC", name: "Visa/Mastercard", icon: "/payment-icons/visa.png" }],
   },
   {
     id: "qris",
@@ -101,8 +80,8 @@ export function PremiumClient({
 }: PremiumClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("VC")
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<string>("card")
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("BR")
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<string>("bank")
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(transaction || null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -547,26 +526,18 @@ export function PremiumClient({
       <div className="mt-6">
         <h3 className="text-lg font-medium mb-4">Pilih Metode Pembayaran</h3>
         <Tabs value={selectedPaymentTab} onValueChange={handlePaymentTabChange} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="bank" className="flex items-center gap-2">
               <Building className="h-4 w-4" />
-              <span className="hidden sm:inline">Bank</span>
+              <span>Bank</span>
             </TabsTrigger>
             <TabsTrigger value="ewallet" className="flex items-center gap-2">
               <Wallet className="h-4 w-4" />
-              <span className="hidden sm:inline">E-Wallet</span>
-            </TabsTrigger>
-            <TabsTrigger value="retail" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              <span className="hidden sm:inline">Retail</span>
-            </TabsTrigger>
-            <TabsTrigger value="card" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Kartu</span>
+              <span>E-Wallet</span>
             </TabsTrigger>
             <TabsTrigger value="qris" className="flex items-center gap-2">
               <QrCode className="h-4 w-4" />
-              <span className="hidden sm:inline">QRIS</span>
+              <span>QRIS</span>
             </TabsTrigger>
           </TabsList>
 
@@ -586,7 +557,7 @@ export function PremiumClient({
                     >
                       <div className="w-8 h-8 flex items-center justify-center">
                         <img
-                          src={method.icon || "/placeholder.svg"}
+                          src={method.icon || "/placeholder.svg?height=32&width=32&query=bank"}
                           alt={method.name}
                           className="max-w-full max-h-full object-contain"
                         />
