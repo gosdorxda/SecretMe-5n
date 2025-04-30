@@ -38,7 +38,7 @@ const PRIMARY_FONT =
 
 /**
  * Generates a shareable image using a design similar to the animated card on the homepage
- * but with project's background and font, smaller card and larger message text
+ * with dynamic card height based on message length
  */
 export async function generateTemplateImage({
   username,
@@ -74,10 +74,30 @@ export async function generateTemplateImage({
       ctx.fillStyle = colors.background
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      // Calculate card dimensions (centered in canvas but smaller)
-      const cardWidth = CANVAS_WIDTH * 0.7 // Reduced from 0.8 to 0.7
-      const cardHeight = CANVAS_HEIGHT * 0.6 // Reduced from 0.7 to 0.6
+      // Calculate card width (fixed)
+      const cardWidth = CANVAS_WIDTH * 0.7
       const cardLeft = (CANVAS_WIDTH - cardWidth) / 2
+
+      // Set up constants for layout
+      const padding = 40
+      const avatarSize = 80
+      const headerHeight = padding * 2 + avatarSize
+      const footerHeight = padding * 2 + 50 // Space for button + padding
+      const messageLineHeight = 56
+      const messageFont = `44px ${PRIMARY_FONT}`
+
+      // Calculate how many lines the message will take
+      ctx.font = messageFont
+      const messageWidth = cardWidth - padding * 2
+      const messageLines = calculateTextLines(ctx, message, messageWidth, 5) // Max 5 lines
+
+      // Calculate the dynamic card height based on message length
+      // Minimum height ensures there's always enough space for short messages
+      const minContentHeight = 200 // Minimum content height for very short messages
+      const contentHeight = Math.max(minContentHeight, messageLines.length * messageLineHeight + padding * 2)
+
+      // Calculate total card height
+      const cardHeight = headerHeight + contentHeight + footerHeight
       const cardTop = (CANVAS_HEIGHT - cardHeight) / 2
 
       // Draw the card (white background with black border)
@@ -96,11 +116,7 @@ export async function generateTemplateImage({
       ctx.lineWidth = 6
       roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, false, true)
 
-      // Calculate positions relative to the card
-      const padding = 40
-
-      // Draw avatar circle (slightly smaller to match smaller card)
-      const avatarSize = 80 // Reduced from 96 to 80
+      // Draw avatar circle
       const avatarX = cardLeft + padding + avatarSize / 2
       const avatarY = cardTop + padding + avatarSize / 2
 
@@ -158,7 +174,7 @@ export async function generateTemplateImage({
 
         // Draw "Pesan Anonim" text - NOT BOLD as requested
         ctx.fillStyle = "#000000"
-        ctx.font = `32px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.font = `32px ${PRIMARY_FONT}`
         ctx.textAlign = "left"
         ctx.textBaseline = "top"
         ctx.fillText("Pesan Anonim", headerX, headerY)
@@ -168,36 +184,36 @@ export async function generateTemplateImage({
 
         // Draw date
         ctx.fillStyle = "#6b7280"
-        ctx.font = `28px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.font = `28px ${PRIMARY_FONT}`
         ctx.fillText(date, headerX + 230, headerY)
 
         // Draw "Untuk: @username" text
         ctx.fillStyle = "#000000"
-        ctx.font = `28px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.font = `28px ${PRIMARY_FONT}`
         ctx.fillText("Untuk:", headerX, headerY + 45)
 
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 28px ${PRIMARY_FONT}` // Slightly smaller to match smaller card
+        ctx.font = `bold 28px ${PRIMARY_FONT}`
         ctx.fillText(`@${username}`, headerX + 90, headerY + 45)
 
         // Draw message content with LARGER text for better readability
         const messageX = cardLeft + padding
-        const messageY = cardTop + padding * 3 + avatarSize / 2
-        const messageWidth = cardWidth - padding * 2
+        const messageY = cardTop + headerHeight + padding
 
         ctx.fillStyle = "#000000"
-        ctx.font = `44px ${PRIMARY_FONT}` // Increased from 36px to 44px for better readability
+        ctx.font = messageFont
         ctx.textAlign = "left"
-        wrapText(ctx, message, messageX, messageY, messageWidth, 56) // Increased line height from 48 to 56
 
-        // Draw footer with reply button
-        const footerY = cardTop + cardHeight - padding - 50
+        // Draw each line of text
+        messageLines.forEach((line, index) => {
+          ctx.fillText(line, messageX, messageY + index * messageLineHeight)
+        })
 
-        // Draw reply button
+        // Draw reply button at the bottom right
         const buttonWidth = 120
         const buttonHeight = 50
         const buttonX = cardLeft + cardWidth - padding - buttonWidth
-        const buttonY = footerY
+        const buttonY = cardTop + cardHeight - padding - buttonHeight
 
         // Button background
         ctx.fillStyle = "#ffffff"
@@ -238,6 +254,63 @@ export async function generateTemplateImage({
   })
 }
 
+// Helper function to calculate text lines based on width constraints
+function calculateTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+  // Trim text and handle empty case
+  text = text.trim()
+  if (!text) {
+    return [""]
+  }
+
+  const words = text.split(" ")
+  const lines: string[] = []
+  let currentLine = ""
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    const testLine = currentLine ? `${currentLine} ${word}` : word
+    const metrics = ctx.measureText(testLine)
+    const testWidth = metrics.width
+
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine)
+      currentLine = word
+
+      // Check if we've reached the maximum number of lines
+      if (lines.length >= maxLines - 1) {
+        // If this is the last allowed line, we need to handle overflow
+        if (i < words.length - 1) {
+          // There are more words to come, so we'll add ellipsis
+          let lastLine = currentLine
+
+          // Keep adding words until we hit the width limit
+          for (let j = i + 1; j < words.length; j++) {
+            const testLastLine = `${lastLine} ${words[j]}`
+            if (ctx.measureText(`${testLastLine}...`).width <= maxWidth) {
+              lastLine = testLastLine
+              i = j
+            } else {
+              break
+            }
+          }
+
+          lines.push(`${lastLine}...`)
+          break
+        }
+      }
+    } else {
+      currentLine = testLine
+    }
+  }
+
+  // Add the last line if there's anything left
+  if (currentLine && lines.length < maxLines) {
+    lines.push(currentLine)
+  }
+
+  return lines
+}
+
 // Helper function to draw rounded rectangles with improved quality
 function roundRect(
   ctx: CanvasRenderingContext2D,
@@ -273,71 +346,6 @@ function roundRect(
 
   if (stroke) {
     ctx.stroke()
-  }
-}
-
-// Helper function to wrap text with improved quality
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-) {
-  // Trim text and handle empty case
-  text = text.trim()
-  if (!text) {
-    return
-  }
-
-  const words = text.split(" ")
-  let line = ""
-  let testLine = ""
-  let lineCount = 0
-
-  for (let n = 0; n < words.length; n++) {
-    testLine = line + words[n] + " "
-    const metrics = ctx.measureText(testLine)
-    const testWidth = metrics.width
-
-    if (testWidth > maxWidth && n > 0) {
-      ctx.fillText(line, x, y + lineCount * lineHeight)
-      line = words[n] + " "
-      lineCount++
-
-      // Limit to 5 lines and add ellipsis if needed
-      if (lineCount >= 5 && n < words.length - 1) {
-        // Get the current line with ellipsis
-        let lastLine = line.trim() + "..."
-
-        // Check if the last line with ellipsis is too long
-        if (ctx.measureText(lastLine).width > maxWidth) {
-          // Remove words until it fits
-          const lastWords = line.trim().split(" ")
-          lastLine = ""
-          for (let i = 0; i < lastWords.length; i++) {
-            const testLastLine = lastLine + lastWords[i] + " "
-            if (ctx.measureText(testLastLine + "...").width <= maxWidth) {
-              lastLine = testLastLine
-            } else {
-              break
-            }
-          }
-          lastLine = lastLine.trim() + "..."
-        }
-
-        ctx.fillText(lastLine, x, y + lineCount * lineHeight)
-        break
-      }
-    } else {
-      line = testLine
-    }
-  }
-
-  // Draw the last line if we haven't exceeded the line limit
-  if (lineCount < 5) {
-    ctx.fillText(line, x, y + lineCount * lineHeight)
   }
 }
 
