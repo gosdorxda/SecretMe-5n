@@ -1,60 +1,59 @@
-import type { PaymentGateway, CreateTransactionParams, CreateTransactionResult } from "./types"
+"use client"
 
-/**
- * Client-side version of the payment gateway
- * This is a simplified version that only supports redirecting to payment pages
- */
-class ClientPaymentGateway implements PaymentGateway {
-  name = "client"
+import type { PaymentMethod } from "./types"
 
-  async createTransaction(params: CreateTransactionParams): Promise<CreateTransactionResult> {
-    try {
-      // On the client, we'll make an API call to our server endpoint
-      const appUrl = typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || ""
-      const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          gatewayName: "duitku", // Default to Duitku
-          ...params,
-        }),
-      })
+export async function getAvailablePaymentMethods(): Promise<PaymentMethod[]> {
+  try {
+    const response = await fetch("/api/payment/methods?gateway=tripay", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        return {
-          success: false,
-          error: `Failed to create transaction: ${response.status} ${errorText}`,
-        }
-      }
-
-      const data = await response.json()
-      return data
-    } catch (error: any) {
-      console.error("Error in client payment gateway:", error)
-      return {
-        success: false,
-        error: error.message || "Unknown error occurred",
-      }
+    if (!response.ok) {
+      throw new Error("Failed to fetch payment methods")
     }
-  }
 
-  // These methods are not used on the client
-  async verifyTransaction(): Promise<any> {
-    throw new Error("verifyTransaction is not supported in client gateway")
-  }
-
-  async handleNotification(): Promise<any> {
-    throw new Error("handleNotification is not supported in client gateway")
+    const data = await response.json()
+    return data.methods || []
+  } catch (error) {
+    console.error("Error fetching payment methods:", error)
+    return []
   }
 }
 
-/**
- * Get a client-side payment gateway
- * This is safe to use in client components
- */
-export function getClientGateway(): PaymentGateway {
-  return new ClientPaymentGateway()
+export async function createTransaction(
+  paymentMethod: string,
+  amount: number,
+  customerName: string,
+  customerEmail: string,
+  customerPhone: string,
+) {
+  try {
+    const response = await fetch("/api/payment/create-transaction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        gateway: "tripay",
+        method: paymentMethod,
+        amount,
+        customerName,
+        customerEmail,
+        customerPhone,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Failed to create transaction")
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error creating transaction:", error)
+    throw error
+  }
 }
