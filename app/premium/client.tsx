@@ -19,6 +19,9 @@ import {
   QrCode,
   Lock,
   Store,
+  ExternalLink,
+  Copy,
+  Info,
 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -36,6 +39,7 @@ type Transaction = {
   createdAt: string
   updatedAt: string
   gateway: string
+  paymentDetails?: any // Tambahkan field untuk payment details
 }
 
 // Tambahkan activeGateway ke props
@@ -128,6 +132,7 @@ export function PremiumClient({
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [cancellingTransaction, setCancellingTransaction] = useState(false)
+  const [copiedText, setCopiedText] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
 
@@ -147,59 +152,65 @@ export function PremiumClient({
 
   // Efek untuk memeriksa status transaksi secara berkala jika ada transaksi pending
   useEffect(() => {
-    if (!currentTransaction || currentTransaction.status !== "pending") return
+    let interval: NodeJS.Timeout | null = null
 
-    const checkStatus = async () => {
-      try {
-        setCheckingStatus(true)
-        const result = await getLatestTransaction()
-        setCheckingStatus(false)
+    if (currentTransaction && currentTransaction.status === "pending") {
+      const checkStatus = async () => {
+        try {
+          setCheckingStatus(true)
+          const result = await getLatestTransaction()
+          setCheckingStatus(false)
 
-        if (result.success) {
-          if (result.isPremium) {
-            toast({
-              title: "Pembayaran Berhasil!",
-              description: "Akun Anda telah diupgrade ke Premium.",
-              variant: "default",
-            })
-            // Refresh halaman untuk menampilkan status premium
-            router.refresh()
-          } else if (result.hasTransaction) {
-            setCurrentTransaction(result.transaction)
-
-            // Jika status berubah menjadi success, refresh halaman
-            if (result.transaction.status === "success" && currentTransaction.status !== "success") {
+          if (result.success) {
+            if (result.isPremium) {
               toast({
                 title: "Pembayaran Berhasil!",
                 description: "Akun Anda telah diupgrade ke Premium.",
                 variant: "default",
               })
+              // Refresh halaman untuk menampilkan status premium
               router.refresh()
-            }
+            } else if (result.hasTransaction) {
+              setCurrentTransaction(result.transaction)
 
-            // Jika status berubah menjadi failed, tampilkan pesan error
-            if (result.transaction.status === "failed" && currentTransaction.status !== "failed") {
-              toast({
-                title: "Pembayaran Gagal",
-                description: "Silakan coba lagi atau gunakan metode pembayaran lain.",
-                variant: "destructive",
-              })
+              // Jika status berubah menjadi success, refresh halaman
+              if (result.transaction.status === "success" && currentTransaction.status !== "success") {
+                toast({
+                  title: "Pembayaran Berhasil!",
+                  description: "Akun Anda telah diupgrade ke Premium.",
+                  variant: "default",
+                })
+                router.refresh()
+              }
+
+              // Jika status berubah menjadi failed, tampilkan pesan error
+              if (result.transaction.status === "failed" && currentTransaction.status !== "failed") {
+                toast({
+                  title: "Pembayaran Gagal",
+                  description: "Silakan coba lagi atau gunakan metode pembayaran lain.",
+                  variant: "destructive",
+                })
+              }
             }
           }
+        } catch (error) {
+          console.error("Error checking transaction status:", error)
+          setCheckingStatus(false)
         }
-      } catch (error) {
-        console.error("Error checking transaction status:", error)
-        setCheckingStatus(false)
       }
+
+      // Periksa status setiap 10 detik
+      interval = setInterval(checkStatus, 10000)
+
+      // Periksa status segera saat komponen dimuat
+      checkStatus()
     }
 
-    // Periksa status setiap 10 detik
-    const interval = setInterval(checkStatus, 10000)
-
-    // Periksa status segera saat komponen dimuat
-    checkStatus()
-
-    return () => clearInterval(interval)
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
   }, [currentTransaction, router, toast])
 
   // Efek untuk menampilkan toast berdasarkan status URL
@@ -426,6 +437,142 @@ export function PremiumClient({
     }
   }
 
+  // Fungsi untuk menyalin teks ke clipboard
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopiedText(label)
+        toast({
+          title: "Berhasil disalin!",
+          description: `${label} telah disalin ke clipboard.`,
+          variant: "default",
+        })
+        setTimeout(() => setCopiedText(null), 3000)
+      },
+      (err) => {
+        console.error("Gagal menyalin teks: ", err)
+        toast({
+          title: "Gagal menyalin",
+          description: "Tidak dapat menyalin teks ke clipboard.",
+          variant: "destructive",
+        })
+      },
+    )
+  }
+
+  // Render detail transaksi pending
+  const renderPendingTransactionDetails = () => {
+    if (!currentTransaction || currentTransaction.status !== "pending") return null
+
+    // Ekstrak detail pembayaran dari payment_details
+    const paymentDetails = currentTransaction.paymentDetails || {}
+    const paymentUrl = paymentDetails.checkout_url || paymentDetails.pay_url || paymentDetails.payment_url || ""
+    const vaNumber = paymentDetails.pay_code || paymentDetails.va_number || ""
+    const expiredTime = paymentDetails.expired_time || paymentDetails.expired_at || ""
+    const instructions = paymentDetails.instructions || []
+
+    return (
+      <div className="mt-4 border rounded-lg p-4 bg-yellow-50">
+        <h3 className="text-lg font-medium mb-3 flex items-center">
+          <Info className="h-5 w-5 text-yellow-500 mr-2" />
+          Detail Pembayaran
+        </h3>
+
+        <div className="space-y-4">
+          {/* Nomor Virtual Account atau Kode Pembayaran */}
+          {vaNumber && (
+            <div className="bg-white p-3 rounded-md border">
+              <div className="text-sm text-muted-foreground mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-lg font-bold">{vaNumber}</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
+                  className="h-8"
+                >
+                  <Copy className={`h-4 w-4 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Waktu Kadaluarsa */}
+          {expiredTime && (
+            <div className="bg-white p-3 rounded-md border">
+              <div className="text-sm text-muted-foreground mb-1">Batas Waktu Pembayaran:</div>
+              <div className="font-medium">{formatDate(expiredTime)}</div>
+            </div>
+          )}
+
+          {/* URL Pembayaran */}
+          {paymentUrl && (
+            <div className="bg-white p-3 rounded-md border">
+              <div className="text-sm text-muted-foreground mb-1">Link Pembayaran:</div>
+              <div className="flex items-center justify-between">
+                <div className="truncate max-w-[200px]">{paymentUrl}</div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(paymentUrl, "Link pembayaran")}
+                    className="h-8"
+                  >
+                    <Copy className={`h-4 w-4 ${copiedText === "Link pembayaran" ? "text-green-500" : ""}`} />
+                  </Button>
+                  <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Buka
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Instruksi Pembayaran */}
+          {instructions && instructions.length > 0 && (
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="instructions">
+                <AccordionTrigger>Instruksi Pembayaran</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    {instructions.map((instruction: any, index: number) => (
+                      <div key={index} className="space-y-2">
+                        <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          {instruction.steps &&
+                            instruction.steps.map((step: string, stepIndex: number) => <li key={stepIndex}>{step}</li>)}
+                        </ol>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
+
+          {/* Tombol Tindakan */}
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkTransactionStatus}
+              disabled={checkingStatus}
+              className="flex-1"
+            >
+              {checkingStatus ? <LoadingDots /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Periksa Status
+            </Button>
+            {paymentUrl && (
+              <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="flex-1">
+                <ExternalLink className="h-4 w-4 mr-2" /> Lanjutkan Pembayaran
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Render status transaksi
   const renderTransactionStatus = () => {
     if (!currentTransaction) return null
@@ -458,35 +605,40 @@ export function PremiumClient({
     }
 
     return (
-      <div className={`mb-4 flex justify-between items-center p-3 rounded-lg ${statusColor}`}>
-        <div className="flex items-center gap-2">
-          {statusIcon}
-          <span className="font-medium">{statusTitle}</span>
+      <div className="mb-4">
+        <div className={`flex justify-between items-center p-3 rounded-lg ${statusColor}`}>
+          <div className="flex items-center gap-2">
+            {statusIcon}
+            <span className="font-medium">{statusTitle}</span>
+          </div>
+          <div className="flex gap-2">
+            {currentTransaction.status === "pending" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={checkTransactionStatus}
+                  disabled={checkingStatus}
+                  className="h-8 px-2"
+                >
+                  {checkingStatus ? <LoadingDots /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelTransaction}
+                  disabled={cancellingTransaction}
+                  className="h-8 px-2"
+                >
+                  {cancellingTransaction ? <LoadingDots /> : <X className="h-4 w-4" />}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {currentTransaction.status === "pending" && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={checkTransactionStatus}
-                disabled={checkingStatus}
-                className="h-8 px-2"
-              >
-                {checkingStatus ? <LoadingDots /> : <RefreshCw className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelTransaction}
-                disabled={cancellingTransaction}
-                className="h-8 px-2"
-              >
-                {cancellingTransaction ? <LoadingDots /> : <X className="h-4 w-4" />}
-              </Button>
-            </>
-          )}
-        </div>
+
+        {/* Tampilkan detail transaksi pending */}
+        {currentTransaction.status === "pending" && renderPendingTransactionDetails()}
       </div>
     )
   }
@@ -708,7 +860,15 @@ export function PremiumClient({
     createdAt: transaction.created_at,
     updatedAt: transaction.updated_at,
     gateway: transaction.payment_gateway,
+    paymentDetails: transaction.payment_details || {},
   }
+
+  // Update currentTransaction dengan data yang diformat
+  useEffect(() => {
+    if (transaction) {
+      setCurrentTransaction(formattedTransaction)
+    }
+  }, [transaction])
 
   return (
     <div className="container mx-auto py-8 px-4">
