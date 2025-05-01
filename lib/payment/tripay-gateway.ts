@@ -5,6 +5,7 @@ import type {
   VerifyTransactionResult,
   NotificationResult,
   PaymentStatus,
+  CancelTransactionResult,
 } from "./types"
 
 // Tambahkan import untuk logger
@@ -430,6 +431,102 @@ export class TriPayGateway implements PaymentGateway {
   }
 
   /**
+   * Membatalkan transaksi di TriPay
+   * @param reference Nomor referensi transaksi TriPay
+   */
+  async cancelTransaction(reference: string): Promise<CancelTransactionResult> {
+    const logger = createPaymentLogger("tripay")
+    logger.info("Cancelling transaction", { reference })
+
+    try {
+      // Validasi parameter yang diperlukan
+      if (!this.apiKey || !this.merchantCode) {
+        logger.error("Missing API Key or Merchant Code")
+        throw new Error("TriPay API Key dan Merchant Code diperlukan")
+      }
+
+      // Kirim request ke TriPay API untuk membatalkan transaksi
+      const url = `${this.baseUrl}/transaction/close`
+      logger.debug(`Sending request to ${url}`)
+
+      // Siapkan payload untuk request pembatalan
+      const payload = {
+        reference: reference,
+      }
+
+      // Log HTTP request
+      logger.logRequest(
+        url,
+        "POST",
+        {
+          Authorization: `Bearer ${this.apiKey.substring(0, 4)}****${this.apiKey.substring(this.apiKey.length - 4)}`,
+          "Content-Type": "application/json",
+        },
+        payload,
+      )
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await response.json()
+
+      // Log HTTP response
+      logger.logResponse(url, response.status, data)
+
+      // Periksa apakah request berhasil
+      if (!response.ok || data.success !== true) {
+        logger.error(`Cancellation failed: ${data.message || "Unknown error"}`, null, {
+          status: response.status,
+          responseData: data,
+        })
+
+        // Jika transaksi sudah dibayar atau sudah dibatalkan, anggap berhasil
+        if (
+          data.message &&
+          (data.message.includes("already paid") ||
+            data.message.includes("already closed") ||
+            data.message.includes("already expired"))
+        ) {
+          logger.info("Transaction already in final state, considering cancellation successful", {
+            reference,
+            message: data.message,
+          })
+
+          return {
+            success: true,
+            message: data.message || "Transaksi sudah dalam status final",
+          }
+        }
+
+        throw new Error(data.message || "Gagal membatalkan transaksi di TriPay")
+      }
+
+      // Log transaction cancellation
+      logger.logTransaction("cancelled", reference, "failed", {
+        reference: reference,
+        gateway: "tripay",
+      })
+
+      return {
+        success: true,
+        message: data.message || "Transaksi berhasil dibatalkan",
+      }
+    } catch (error: any) {
+      logger.error("Error cancelling transaction", error, { reference })
+      return {
+        success: false,
+        error: error.message || "Gagal membatalkan transaksi di TriPay",
+      }
+    }
+  }
+
+  /**
    * Memetakan status dari TriPay ke status internal
    */
   private mapTriPayStatus(tripayStatus: string): PaymentStatus {
@@ -439,7 +536,7 @@ export class TriPayGateway implements PaymentGateway {
       REFUND: "refunded",
       EXPIRED: "expired",
       FAILED: "failed",
-      CANCELED: "failed",
+      CANCELED: "cancelled", // Tambahkan mapping untuk CANCELED
     }
 
     return statusMap[tripayStatus] || "unknown"

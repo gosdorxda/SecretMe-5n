@@ -18,6 +18,11 @@ export interface PaymentGateway {
    * Menangani notifikasi webhook dari gateway pembayaran
    */
   handleNotification(payload: any): Promise<NotificationResult>
+
+  /**
+   * Membatalkan transaksi
+   */
+  cancelTransaction(reference: string): Promise<CancelTransactionResult>
 }
 
 export interface CreateTransactionParams {
@@ -62,8 +67,16 @@ export interface NotificationResult {
   eventType?: string // Tambahkan field untuk jenis event
 }
 
-// Tambahkan tipe refund ke PaymentStatus
-export type PaymentStatus = "pending" | "success" | "failed" | "expired" | "refunded" | "unknown"
+// Tambahkan interface CancelTransactionResult setelah interface NotificationResult
+
+export interface CancelTransactionResult {
+  success: boolean
+  message?: string
+  error?: string
+}
+
+// Perbarui tipe PaymentStatus untuk menambahkan "cancelled"
+export type PaymentStatus = "pending" | "success" | "failed" | "expired" | "refunded" | "cancelled" | "unknown"
 
 /**
  * Fungsi untuk menghasilkan ID pesanan unik

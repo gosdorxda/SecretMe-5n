@@ -325,8 +325,12 @@ export async function POST(request: NextRequest) {
             status = "success"
           } else if (tripayStatus === "UNPAID") {
             status = "pending"
-          } else if (tripayStatus === "EXPIRED" || tripayStatus === "FAILED" || tripayStatus === "CANCELED") {
+          } else if (tripayStatus === "EXPIRED" || tripayStatus === "FAILED") {
             status = "failed"
+          } else if (tripayStatus === "CANCELED") {
+            // Tambahkan penanganan khusus untuk CANCELED
+            status = "cancelled"
+            logger.info("Transaction was cancelled", { tripayStatus, orderId })
           } else if (tripayStatus === "REFUND") {
             status = "refunded"
           }

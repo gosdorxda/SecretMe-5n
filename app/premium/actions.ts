@@ -277,15 +277,59 @@ export async function cancelTransaction(transactionId: string) {
       return { success: false, error: "Only pending transactions can be cancelled" }
     }
 
-    // Update status transaksi
+    // Buat logger untuk tracking
+    const requestId = `cancel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    console.log(`[${requestId}] 🔄 Cancelling transaction ${transactionId} for user ${user.id}`)
+    console.log(
+      `[${requestId}] 📋 Transaction details: gateway=${transactionData.payment_gateway}, plan_id=${transactionData.plan_id}`,
+    )
+
+    // Jika transaksi menggunakan TriPay, batalkan di TriPay
+    if (transactionData.payment_gateway === "tripay" && transactionData.payment_details?.gateway_reference) {
+      try {
+        console.log(
+          `[${requestId}] 🔄 Cancelling transaction in TriPay: ${transactionData.payment_details.gateway_reference}`,
+        )
+
+        // Dapatkan gateway TriPay
+        const gateway = await getPaymentGateway("tripay")
+
+        // Batalkan transaksi di TriPay
+        const cancelResult = await gateway.cancelTransaction(transactionData.payment_details.gateway_reference)
+
+        if (!cancelResult.success) {
+          console.error(`[${requestId}] ⚠️ Warning: Failed to cancel transaction in TriPay: ${cancelResult.error}`)
+          // Lanjutkan proses meskipun gagal di TriPay, karena kita masih ingin mengubah status di database lokal
+        } else {
+          console.log(`[${requestId}] ✅ Successfully cancelled transaction in TriPay: ${cancelResult.message}`)
+        }
+      } catch (error: any) {
+        console.error(`[${requestId}] ⚠️ Error cancelling transaction in TriPay:`, error)
+        // Lanjutkan proses meskipun gagal di TriPay
+      }
+    }
+
+    // Update status transaksi di database lokal
+    console.log(`[${requestId}] 📝 Updating transaction status to cancelled in database`)
     const { error: updateError } = await supabase
       .from("premium_transactions")
-      .update({ status: "cancelled" })
+      .update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+        payment_details: {
+          ...transactionData.payment_details,
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: "user",
+        },
+      })
       .eq("id", transactionId)
 
     if (updateError) {
+      console.error(`[${requestId}] ❌ Failed to update transaction status:`, updateError)
       return { success: false, error: "Failed to cancel transaction" }
     }
+
+    console.log(`[${requestId}] ✅ Transaction successfully cancelled`)
 
     // Revalidasi path
     revalidatePath("/premium")
