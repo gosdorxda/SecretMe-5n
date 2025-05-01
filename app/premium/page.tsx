@@ -1,9 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
 import { PremiumClient } from "./client"
-import { getLatestTransaction } from "./actions"
-
-export const dynamic = "force-dynamic"
-export const revalidate = 0
 
 export default async function PremiumPage({
   searchParams,
@@ -21,11 +17,9 @@ export default async function PremiumPage({
   const isLoggedIn = !!session
 
   // Get user data if logged in
-  let userName = ""
   let isPremium = false
+  let userName = ""
   let transaction = null
-  // Add this line to the existing code to get the user email
-  const userEmail = session?.user?.email || ""
 
   if (isLoggedIn) {
     // Get user data
@@ -36,14 +30,21 @@ export default async function PremiumPage({
       .single()
 
     if (userData) {
-      userName = userData.name || session.user.email?.split("@")[0] || "User"
       isPremium = userData.is_premium || false
+      userName = userData.name || ""
     }
 
     // Get latest transaction
-    const result = await getLatestTransaction()
-    if (result.success && result.hasTransaction) {
-      transaction = result.transaction
+    const { data: transactionData } = await supabase
+      .from("premium_transactions")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (transactionData) {
+      transaction = transactionData
     }
   }
 
@@ -56,21 +57,30 @@ export default async function PremiumPage({
 
   const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
 
-  // Get URL parameters
+  // Get active gateway from config
+  const { data: gatewayConfigData } = await supabase
+    .from("site_config")
+    .select("config")
+    .eq("type", "premium_settings")
+    .single()
+
+  // Default to duitku if no config found
+  const activeGateway = gatewayConfigData?.config?.activeGateway || "duitku"
+
+  // Get URL parameters for status
   const urlStatus = searchParams.status as string | undefined
   const urlOrderId = searchParams.order_id as string | undefined
 
-  // Then update the return statement to include userEmail in the props
   return (
     <PremiumClient
       isLoggedIn={isLoggedIn}
       isPremium={isPremium}
       userName={userName}
-      userEmail={userEmail}
       premiumPrice={premiumPrice}
       urlStatus={urlStatus}
       urlOrderId={urlOrderId}
       transaction={transaction}
+      activeGateway={activeGateway} // Pass the active gateway to the client
     />
   )
 }

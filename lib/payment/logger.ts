@@ -244,17 +244,3 @@ export function createNotificationLogger(): PaymentLogger {
   const requestId = `payment-notify-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
   return new PaymentLogger(requestId)
 }
-
-/**
- * Fungsi helper untuk mencatat transaksi
- */
-export function logTransaction(
-  transactionId: string,
-  action: string,
-  status: string,
-  gateway = "tripay",
-  details?: any,
-): void {
-  const logger = createPaymentLogger(gateway)
-  logger.logTransaction(action, transactionId, status, details)
-}

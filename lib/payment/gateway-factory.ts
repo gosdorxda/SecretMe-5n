@@ -1,4 +1,7 @@
 import type { PaymentGateway } from "./types"
+import { DuitkuGateway } from "./duitku-gateway"
+import { MidtransGateway } from "./midtrans-gateway"
+// Tambahkan import untuk TriPayGateway
 import { TriPayGateway } from "./tripay-gateway"
 
 // Cache for payment config
@@ -10,6 +13,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
  * Mendapatkan konfigurasi pembayaran
  * Fungsi ini bekerja di server
  */
+// Perbarui getPaymentConfig untuk menambahkan tripay
 export async function getPaymentConfig() {
   try {
     const now = Date.now()
@@ -21,8 +25,14 @@ export async function getPaymentConfig() {
 
     // Default config - only include public values
     const config = {
-      activeGateway: "tripay",
+      activeGateway: "duitku",
       gateways: {
+        duitku: {
+          isProduction: process.env.NODE_ENV === "production",
+        },
+        midtrans: {
+          isProduction: process.env.NODE_ENV === "production",
+        },
         tripay: {
           isProduction: process.env.TRIPAY_USE_PRODUCTION === "true",
         },
@@ -37,8 +47,14 @@ export async function getPaymentConfig() {
   } catch (error) {
     console.error("Error in getPaymentConfig:", error)
     return {
-      activeGateway: "tripay",
+      activeGateway: "duitku",
       gateways: {
+        duitku: {
+          isProduction: process.env.NODE_ENV === "production",
+        },
+        midtrans: {
+          isProduction: process.env.NODE_ENV === "production",
+        },
         tripay: {
           isProduction: process.env.TRIPAY_USE_PRODUCTION === "true",
         },
@@ -70,21 +86,25 @@ export async function savePaymentConfig(config: any) {
  * Factory untuk mendapatkan gateway pembayaran
  * Catatan: Ini hanya boleh digunakan di server
  */
-export async function getPaymentGateway(): Promise<PaymentGateway> {
+// Perbarui getPaymentGateway untuk menambahkan tripay
+export async function getPaymentGateway(gatewayName = "duitku"): Promise<PaymentGateway> {
   // This should only be called on the server
   if (typeof window !== "undefined") {
     throw new Error("getPaymentGateway should only be called on the server")
   }
 
-  return new TriPayGateway()
+  switch (gatewayName.toLowerCase()) {
+    case "midtrans":
+      return new MidtransGateway()
+    case "tripay":
+      return new TriPayGateway()
+    case "duitku":
+    default:
+      return new DuitkuGateway()
+  }
 }
 
 // Add an empty createGateway function to satisfy the deployment check
 export function createGateway(): PaymentGateway {
   throw new Error("createGateway is not implemented")
-}
-
-export function createPaymentGateway(type: string): PaymentGateway {
-  // Hanya mendukung TriPay
-  return new TriPayGateway()
 }

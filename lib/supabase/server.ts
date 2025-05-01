@@ -25,8 +25,6 @@ export const createClient = () => {
   })
 }
 
-export const createServerClient = createClient
-
 // Fungsi helper untuk mendapatkan user terverifikasi
 export const getVerifiedUser = async () => {
   const supabase = createClient()

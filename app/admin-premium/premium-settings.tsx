@@ -165,7 +165,7 @@ export default function PremiumSettings() {
       console.error("Error loading premium settings:", error)
       toast({
         title: "Gagal memuat pengaturan",
-        description: "Terjadi kesalahan saat memuat pengaturan",
+        description: "Terjadi kesalahan saat memuat pengaturan premium",
         variant: "destructive",
       })
     } finally {

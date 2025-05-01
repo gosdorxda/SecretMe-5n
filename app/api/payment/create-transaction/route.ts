@@ -1,88 +1,156 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server"
-import { createPaymentGateway } from "@/lib/payment/gateway-factory"
-import { logTransaction } from "@/lib/payment/logger"
-
-// Fungsi untuk menghasilkan ID unik tanpa menggunakan paket uuid
-function generateUniqueId(length = 8) {
-  const timestamp = Date.now().toString(36)
-  const randomStr = Math.random()
-    .toString(36)
-    .substring(2, 2 + length)
-  return `${timestamp}${randomStr}`.substring(0, length)
-}
+import { createClient } from "@/lib/supabase/server"
+import { getPaymentGateway } from "@/lib/payment/gateway-factory"
+import { generateOrderId } from "@/lib/payment/types"
 
 export async function POST(request: NextRequest) {
+  const requestId = `payment-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+  console.log(`[${requestId}] 🚀 Payment: Creating new transaction`)
+
   try {
-    const supabase = createServerClient()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
-    }
-
+    // Get the request body
     const body = await request.json()
-    const { method, amount, customerName, customerEmail, customerPhone } = body
+    const gatewayName = body.gatewayName || "duitku"
 
-    if (!method || !amount || !customerName || !customerEmail || !customerPhone) {
-      return NextResponse.json({ message: "Missing required fields" }, { status: 400 })
+    console.log(`[${requestId}] 📋 Payment gateway: ${gatewayName}`)
+    console.log(`[${requestId}] 📋 Request body:`, JSON.stringify(body, null, 2))
+
+    // Verify user - SECURITY FIX: Use getUser() instead of getSession()
+    const supabase = createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    // Hanya menggunakan TriPay
-    const gateway = createPaymentGateway("tripay")
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("name, email, is_premium")
+      .eq("id", user.id)
+      .single()
 
-    // Generate reference ID tanpa menggunakan uuid
-    const reference = `TRX-${Date.now()}-${generateUniqueId()}`
-
-    // Buat transaksi di gateway pembayaran
-    const transaction = await gateway.createTransaction({
-      method,
-      amount,
-      customerName,
-      customerEmail,
-      customerPhone,
-      reference,
-      userId: session.user.id,
-    })
-
-    // Simpan transaksi ke database
-    const { error } = await supabase.from("premium_transactions").insert({
-      user_id: session.user.id,
-      reference: transaction.reference,
-      amount: amount,
-      payment_method: method,
-      status: "pending",
-      gateway: "tripay",
-      payment_url: transaction.paymentUrl,
-      payment_details: transaction.details || {},
-    })
-
-    if (error) {
-      console.error("Error saving transaction to database:", error)
-      return NextResponse.json({ message: "Failed to save transaction" }, { status: 500 })
+    if (userError || !userData) {
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    // Log transaksi
-    await logTransaction({
-      type: "create",
-      gateway: "tripay",
-      reference: transaction.reference,
-      userId: session.user.id,
-      amount,
-      method,
+    // Check if user is already premium
+    if (userData.is_premium) {
+      return NextResponse.json({ success: false, error: "User already premium" }, { status: 400 })
+    }
+
+    // Get premium price from config
+    const { data: configData } = await supabase
+      .from("site_config")
+      .select("config")
+      .eq("type", "premium_settings")
+      .single()
+
+    const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+
+    // Generate order ID
+    const orderId = generateOrderId(user.id)
+
+    // Create transaction in database
+    const { error: transactionError } = await supabase.from("premium_transactions").insert({
+      user_id: user.id,
+      plan_id: orderId,
+      amount: premiumPrice,
       status: "pending",
+      payment_gateway: gatewayName,
     })
+
+    if (transactionError) {
+      console.error("Error creating transaction:", transactionError)
+      return NextResponse.json({ success: false, error: "Failed to create transaction" }, { status: 500 })
+    }
+
+    // Get payment gateway
+    const gateway = await getPaymentGateway(gatewayName)
+
+    // Prepare callback URLs
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
+
+    // Ambil konfigurasi gateway dari database
+    const { data: gatewayConfigData } = await supabase
+      .from("site_config")
+      .select("config")
+      .eq("type", "payment_gateway_config")
+      .single()
+
+    console.log("Gateway config from database:", gatewayConfigData?.config)
+
+    // Jika ada konfigurasi di database, gunakan untuk override environment variables
+    if (gatewayConfigData?.config?.gateways?.[gatewayName]) {
+      const gatewayConfig = gatewayConfigData.config.gateways[gatewayName]
+
+      // Set environment variables untuk digunakan oleh gateway
+      if (gatewayName === "duitku") {
+        if (gatewayConfig.merchantCode) {
+          process.env.DUITKU_MERCHANT_CODE = gatewayConfig.merchantCode
+        }
+        if (gatewayConfig.apiKey) {
+          process.env.DUITKU_API_KEY = gatewayConfig.apiKey
+        }
+      }
+
+      console.log("Using gateway config from database for", gatewayName)
+    }
+
+    // Log the Duitku merchant code and API key being used
+    console.log("Duitku Merchant Code:", process.env.DUITKU_MERCHANT_CODE)
+    console.log("Duitku API Key:", process.env.DUITKU_API_KEY)
+
+    // Create transaction in payment gateway
+    const result = await gateway.createTransaction({
+      userId: user.id,
+      userEmail: userData.email,
+      userName: userData.name || "User",
+      amount: premiumPrice,
+      orderId: orderId,
+      description: "SecretMe Premium Lifetime",
+      successRedirectUrl: `${appUrl}/dashboard?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${appUrl}/premium?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
+      notificationUrl: `${appUrl}/api/payment/notification`,
+    })
+
+    if (!result.success) {
+      // Delete transaction from database because it failed
+      await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
+
+      return NextResponse.json(
+        { success: false, error: result.error || "Failed to create payment transaction" },
+        { status: 500 },
+      )
+    }
+
+    // Update transaction with gateway reference - FIXED: Store in payment_details instead
+    if (result.gatewayReference) {
+      await supabase
+        .from("premium_transactions")
+        .update({
+          payment_details: {
+            gateway_reference: result.gatewayReference,
+            redirect_url: result.redirectUrl,
+            token: result.token,
+          },
+        })
+        .eq("plan_id", orderId)
+    }
 
     return NextResponse.json({
       success: true,
-      reference: transaction.reference,
-      paymentUrl: transaction.paymentUrl,
-      details: transaction.details,
+      redirectUrl: result.redirectUrl,
+      token: result.token,
+      orderId: orderId,
     })
   } catch (error: any) {
-    console.error("Error creating transaction:", error)
-    return NextResponse.json({ message: error.message || "Failed to create transaction" }, { status: 500 })
+    console.error(`[${requestId}] 💥 Error in create transaction API:`, error)
+    console.error(`[${requestId}] 📋 Error stack:`, error.stack || "No stack trace available")
+    return NextResponse.json({ success: false, error: error.message || "Internal server error" }, { status: 500 })
   }
 }
