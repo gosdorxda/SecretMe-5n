@@ -294,7 +294,9 @@ export async function cancelTransaction(transactionId: string) {
 
     // Periksa apakah ada referensi gateway
     const gatewayReference = transactionData.payment_details?.gateway_reference
-    if (gatewayReference) {
+
+    // Untuk TriPay, kita tidak memanggil API cancel dan membiarkan transaksi expired dengan sendirinya
+    if (gatewayName !== "tripay" && gatewayReference) {
       try {
         console.log(`[${requestId}] 🔄 Attempting to cancel transaction in ${gatewayName}: ${gatewayReference}`)
 
@@ -323,6 +325,8 @@ export async function cancelTransaction(transactionId: string) {
         console.error(`[${requestId}] ⚠️ Error cancelling transaction in ${gatewayName}:`, error)
         // Lanjutkan proses meskipun gagal di gateway
       }
+    } else if (gatewayName === "tripay") {
+      console.log(`[${requestId}] ℹ️ Skipping TriPay API cancel call, letting transaction expire naturally`)
     } else {
       console.log(`[${requestId}] ℹ️ No gateway reference found, skipping gateway cancellation`)
     }
