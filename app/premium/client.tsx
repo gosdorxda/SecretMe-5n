@@ -153,52 +153,58 @@ export function PremiumClient({
   // Efek untuk memeriksa status transaksi secara berkala jika ada transaksi pending
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
+    let isMounted = true // Flag to track if the component is mounted
 
-    if (currentTransaction && currentTransaction.status === "pending") {
-      const checkStatus = async () => {
-        try {
-          setCheckingStatus(true)
-          const result = await getLatestTransaction()
-          setCheckingStatus(false)
+    const checkStatus = async () => {
+      if (!isMounted) return // Prevent state updates if the component is unmounted
 
-          if (result.success) {
-            if (result.isPremium) {
+      try {
+        setCheckingStatus(true)
+        const result = await getLatestTransaction()
+        if (!isMounted) return // Prevent state updates if the component is unmounted
+        setCheckingStatus(false)
+
+        if (result.success) {
+          if (result.isPremium) {
+            toast({
+              title: "Pembayaran Berhasil!",
+              description: "Akun Anda telah diupgrade ke Premium.",
+              variant: "default",
+            })
+            // Refresh halaman untuk menampilkan status premium
+            router.refresh()
+          } else if (result.hasTransaction) {
+            if (!isMounted) return // Prevent state updates if the component is unmounted
+            setCurrentTransaction(result.transaction)
+
+            // Jika status berubah menjadi success, refresh halaman
+            if (result.transaction.status === "success" && currentTransaction?.status !== "success") {
               toast({
                 title: "Pembayaran Berhasil!",
                 description: "Akun Anda telah diupgrade ke Premium.",
                 variant: "default",
               })
-              // Refresh halaman untuk menampilkan status premium
               router.refresh()
-            } else if (result.hasTransaction) {
-              setCurrentTransaction(result.transaction)
+            }
 
-              // Jika status berubah menjadi success, refresh halaman
-              if (result.transaction.status === "success" && currentTransaction.status !== "success") {
-                toast({
-                  title: "Pembayaran Berhasil!",
-                  description: "Akun Anda telah diupgrade ke Premium.",
-                  variant: "default",
-                })
-                router.refresh()
-              }
-
-              // Jika status berubah menjadi failed, tampilkan pesan error
-              if (result.transaction.status === "failed" && currentTransaction.status !== "failed") {
-                toast({
-                  title: "Pembayaran Gagal",
-                  description: "Silakan coba lagi atau gunakan metode pembayaran lain.",
-                  variant: "destructive",
-                })
-              }
+            // Jika status berubah menjadi failed, tampilkan pesan error
+            if (result.transaction.status === "failed" && currentTransaction?.status !== "failed") {
+              toast({
+                title: "Pembayaran Gagal",
+                description: "Silakan coba lagi atau gunakan metode pembayaran lain.",
+                variant: "destructive",
+              })
             }
           }
-        } catch (error) {
-          console.error("Error checking transaction status:", error)
-          setCheckingStatus(false)
         }
+      } catch (error) {
+        console.error("Error checking transaction status:", error)
+        if (!isMounted) return // Prevent state updates if the component is unmounted
+        setCheckingStatus(false)
       }
+    }
 
+    if (currentTransaction && currentTransaction.status === "pending") {
       // Periksa status setiap 10 detik
       interval = setInterval(checkStatus, 10000)
 
@@ -207,6 +213,7 @@ export function PremiumClient({
     }
 
     return () => {
+      isMounted = false // Set the flag to false when the component unmounts
       if (interval) {
         clearInterval(interval)
       }
@@ -559,7 +566,7 @@ export function PremiumClient({
               disabled={checkingStatus}
               className="flex-1"
             >
-              {checkingStatus ? <LoadingDots /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              {checkingStatus ? <Clock className="h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
               Periksa Status
             </Button>
             {paymentUrl && (
@@ -621,7 +628,7 @@ export function PremiumClient({
                   disabled={checkingStatus}
                   className="h-8 px-2"
                 >
-                  {checkingStatus ? <LoadingDots /> : <RefreshCw className="h-4 w-4" />}
+                  {checkingStatus ? <Clock className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
                 </Button>
                 <Button
                   variant="outline"
@@ -630,7 +637,7 @@ export function PremiumClient({
                   disabled={cancellingTransaction}
                   className="h-8 px-2"
                 >
-                  {cancellingTransaction ? <LoadingDots /> : <X className="h-4 w-4" />}
+                  {cancellingTransaction ? <Clock className="h-4 w-4" /> : <X className="h-4 w-4" />}
                 </Button>
               </>
             )}
