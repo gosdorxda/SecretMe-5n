@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { LoadingDots } from "@/components/loading-dots"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
 import {
   CheckCircle,
@@ -204,19 +203,15 @@ export function PremiumClient({
       }
     }
 
-    if (currentTransaction && currentTransaction.status === "pending") {
-      // Periksa status setiap 10 detik
+    // Always set up the interval, but only start it if the condition is met
+    if (currentTransaction?.status === "pending") {
       interval = setInterval(checkStatus, 10000)
-
-      // Periksa status segera saat komponen dimuat
-      checkStatus()
+      checkStatus() // Initial check
     }
 
     return () => {
       isMounted = false // Set the flag to false when the component unmounts
-      if (interval) {
-        clearInterval(interval)
-      }
+      if (interval) clearInterval(interval)
     }
   }, [currentTransaction, router, toast])
 
@@ -620,26 +615,15 @@ export function PremiumClient({
           </div>
           <div className="flex gap-2">
             {currentTransaction.status === "pending" && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={checkTransactionStatus}
-                  disabled={checkingStatus}
-                  className="h-8 px-2"
-                >
-                  {checkingStatus ? <Clock className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelTransaction}
-                  disabled={cancellingTransaction}
-                  className="h-8 px-2"
-                >
-                  {cancellingTransaction ? <Clock className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelTransaction}
+                disabled={cancellingTransaction}
+                className="h-8 px-2"
+              >
+                {cancellingTransaction ? <Clock className="h-4 w-4" /> : <X className="h-4 w-4" />}
+              </Button>
             )}
           </div>
         </div>
@@ -664,7 +648,7 @@ export function PremiumClient({
           <AccordionContent>
             {loadingHistory ? (
               <div className="flex justify-center py-4">
-                <LoadingDots />
+                <Clock className="h-6 w-6 text-muted-foreground animate-pulse" />
               </div>
             ) : transactions.length === 0 ? (
               <p className="text-center py-4 text-muted-foreground">Tidak ada riwayat transaksi</p>
@@ -848,7 +832,7 @@ export function PremiumClient({
             </CardContent>
             <CardFooter className="border-t">
               <Button onClick={handlePayment} disabled={isLoading} className="w-full">
-                {isLoading ? <LoadingDots /> : "Lanjutkan ke Pembayaran"}
+                {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
               </Button>
             </CardFooter>
           </Card>
@@ -923,7 +907,7 @@ export function PremiumClient({
               </Button>
             ) : (
               <Button onClick={handlePayment} disabled={isLoading} className="w-full">
-                {isLoading ? <LoadingDots /> : "Lanjutkan ke Pembayaran"}
+                {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
               </Button>
             )}
           </CardFooter>
