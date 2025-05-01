@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Copy,
   Info,
+  Star,
 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -79,7 +80,7 @@ const duitkuPaymentMethods = [
   {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS", icon: "/payment-icons/qris.png" }],
+    methods: [{ id: "QR", name: "QRIS", icon: "/payment-icons/qris.png", recommended: true }],
   },
 ]
 
@@ -105,7 +106,7 @@ const tripayPaymentMethods = [
   {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png" }],
+    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png", recommended: true }],
   },
 ]
 
@@ -666,22 +667,22 @@ export function PremiumClient({
   // Render riwayat transaksi
   const renderTransactionHistory = () => {
     return (
-      <div className="mb-6">
+      <div className="p-6">
         <h3 className="text-lg font-medium mb-4 flex items-center">
           <History className="mr-2 h-5 w-5" />
           Riwayat Transaksi
         </h3>
 
         {!transactions.length && !loadingHistory ? (
-          <div className="text-center py-6 border rounded-lg bg-gray-50">
+          <div className="text-center py-6 border-2 border-dashed rounded-lg bg-gray-50">
             <p className="text-muted-foreground">Belum ada riwayat transaksi</p>
           </div>
         ) : loadingHistory ? (
-          <div className="flex justify-center py-6 border rounded-lg bg-gray-50">
+          <div className="flex justify-center py-6 border-2 border-dashed rounded-lg bg-gray-50">
             <Clock className="h-6 w-6 text-muted-foreground animate-pulse" />
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border-2 rounded-lg overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -715,7 +716,7 @@ export function PremiumClient({
           </div>
         )}
 
-        <div className="mt-4 flex justify-center">
+        <div className="mt-6 flex justify-center">
           <Button variant="outline" size="sm" onClick={loadTransactionHistory} disabled={loadingHistory}>
             {loadingHistory ? <Clock className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             {loadingHistory ? "Memuat..." : "Muat Riwayat"}
@@ -769,8 +770,8 @@ export function PremiumClient({
                 htmlFor={method.id}
                 className="flex items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-100 rounded-md">
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0 w-24 h-12 flex items-center justify-center bg-gray-50 rounded-md">
                     {method.icon ? (
                       <img
                         src={method.icon || "/placeholder.svg"}
@@ -795,6 +796,16 @@ export function PremiumClient({
                   <div className="text-xs text-muted-foreground">Sekali bayar</div>
                 </div>
               </Label>
+
+              {/* Badge untuk metode yang direkomendasikan */}
+              {method.recommended && (
+                <div className="absolute -top-2 -right-2 z-10">
+                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1 animate-pulse">
+                    <Star className="h-3 w-3" />
+                    Rekomendasi
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </RadioGroup>
@@ -812,8 +823,8 @@ export function PremiumClient({
             <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
           </div>
 
-          <Card className="mb-8 border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-black text-white">
+          <Card className="mb-8 neo-card border-2 shadow-lg overflow-hidden">
+            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl">Status Premium</CardTitle>
@@ -832,7 +843,7 @@ export function PremiumClient({
               </div>
 
               <div className="flex items-center justify-center mb-6">
-                <div className="bg-black p-8 rounded-full shadow-lg">
+                <div className="bg-gradient-to-r from-gray-800 to-black p-8 rounded-full shadow-lg">
                   <Lock className="h-12 w-12 text-white" />
                 </div>
               </div>
@@ -845,17 +856,14 @@ export function PremiumClient({
               </div>
             </CardContent>
             <CardFooter className="border-t">
-              <Button
-                onClick={() => router.push("/dashboard")}
-                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
-              >
+              <Button onClick={() => router.push("/dashboard")} variant="default" className="w-full neo-btn">
                 Kembali ke Dashboard
               </Button>
             </CardFooter>
           </Card>
 
           {/* Riwayat Transaksi untuk pengguna premium */}
-          <Card className="mb-8 border shadow">{renderTransactionHistory()}</Card>
+          <Card className="mb-8 neo-card border-2">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -872,12 +880,12 @@ export function PremiumClient({
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <Card className="mb-8 border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-black text-white">
+          <Card className="mb-8 neo-card border-2 shadow-lg overflow-hidden">
+            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex flex-col items-center justify-center">
                 <div className="text-center">
                   <div className="text-3xl font-bold mb-1">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                  <div className="text-xs text-gray-300">Sekali bayar seumur hidup</div>
+                  <div className="text-xs text-gray-500">Sekali bayar seumur hidup</div>
                 </div>
               </div>
             </CardHeader>
@@ -900,18 +908,14 @@ export function PremiumClient({
               {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
             </CardContent>
             <CardFooter className="border-t">
-              <Button
-                onClick={handlePayment}
-                disabled={isLoading}
-                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
-              >
+              <Button onClick={handlePayment} disabled={isLoading} variant="default" className="w-full neo-btn">
                 {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
               </Button>
             </CardFooter>
           </Card>
 
           {/* Riwayat Transaksi di bawah card utama */}
-          <Card className="mb-8 border shadow">{renderTransactionHistory()}</Card>
+          <Card className="mb-8 neo-card border-2">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -925,12 +929,12 @@ export function PremiumClient({
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <Card className="mb-8 border-2 shadow-lg overflow-hidden">
-          <CardHeader className="border-b bg-black text-white">
+        <Card className="mb-8 neo-card border-2 shadow-lg overflow-hidden">
+          <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
             <div className="flex flex-col items-center justify-center">
               <div className="text-center">
                 <div className="text-3xl font-bold mb-1">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                <div className="text-xs text-gray-300">Sekali bayar seumur hidup</div>
+                <div className="text-xs text-gray-500">Sekali bayar seumur hidup</div>
               </div>
             </div>
           </CardHeader>
@@ -971,18 +975,11 @@ export function PremiumClient({
           </CardContent>
           <CardFooter className="border-t">
             {currentTransaction && currentTransaction.status === "pending" ? (
-              <Button
-                onClick={() => router.push("/")}
-                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
-              >
+              <Button onClick={() => router.push("/")} variant="default" className="w-full neo-btn">
                 Kembali ke Beranda
               </Button>
             ) : (
-              <Button
-                onClick={handlePayment}
-                disabled={isLoading}
-                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
-              >
+              <Button onClick={handlePayment} disabled={isLoading} variant="default" className="w-full neo-btn">
                 {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
               </Button>
             )}
@@ -990,7 +987,7 @@ export function PremiumClient({
         </Card>
 
         {/* Riwayat Transaksi di bawah card utama */}
-        <Card className="mb-8 border shadow">{renderTransactionHistory()}</Card>
+        <Card className="mb-8 neo-card border-2">{renderTransactionHistory()}</Card>
       </div>
     </div>
   )
