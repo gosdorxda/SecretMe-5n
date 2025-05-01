@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
@@ -134,6 +134,7 @@ export function PremiumClient({
   const [copiedText, setCopiedText] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
+  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null)
 
   // Pilih metode pembayaran berdasarkan gateway aktif
   const getPaymentMethodsForGateway = () => {
@@ -151,7 +152,6 @@ export function PremiumClient({
 
   // Efek untuk memeriksa status transaksi secara berkala jika ada transaksi pending
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
     let isMounted = true // Flag to track if the component is mounted
 
     const checkStatus = async () => {
@@ -203,17 +203,26 @@ export function PremiumClient({
       }
     }
 
-    // Always set up the interval, but only start it if the condition is met
+    // Always clear the existing interval before setting up a new one
+    if (intervalId) {
+      clearInterval(intervalId)
+    }
+
+    // Set up the interval only if the condition is met
     if (currentTransaction?.status === "pending") {
-      interval = setInterval(checkStatus, 10000)
+      const id = setInterval(checkStatus, 10000)
+      setIntervalId(id)
       checkStatus() // Initial check
+    } else {
+      // If the transaction is not pending, clear the interval ID
+      setIntervalId(null)
     }
 
     return () => {
       isMounted = false // Set the flag to false when the component unmounts
-      if (interval) clearInterval(interval)
+      if (intervalId) clearInterval(intervalId)
     }
-  }, [currentTransaction, router, toast])
+  }, [currentTransaction, router, toast, intervalId])
 
   // Efek untuk menampilkan toast berdasarkan status URL
   useEffect(() => {
@@ -474,102 +483,105 @@ export function PremiumClient({
     const instructions = paymentDetails.instructions || []
 
     return (
-      <div className="mt-4 border rounded-lg p-4 bg-yellow-50">
-        <h3 className="text-lg font-medium mb-3 flex items-center">
-          <Info className="h-5 w-5 text-yellow-500 mr-2" />
-          Detail Pembayaran
-        </h3>
+      <div className="mt-4 space-y-4">
+        {/* Nomor Virtual Account atau Kode Pembayaran */}
+        {vaNumber && (
+          <div className="bg-white p-3 rounded-md border">
+            <div className="text-sm text-muted-foreground mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
+            <div className="flex items-center justify-between">
+              <div className="font-mono text-lg font-bold">{vaNumber}</div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
+                className="h-8"
+              >
+                <Copy className={`h-4 w-4 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
+              </Button>
+            </div>
+          </div>
+        )}
 
-        <div className="space-y-4">
-          {/* Nomor Virtual Account atau Kode Pembayaran */}
-          {vaNumber && (
-            <div className="bg-white p-3 rounded-md border">
-              <div className="text-sm text-muted-foreground mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
-              <div className="flex items-center justify-between">
-                <div className="font-mono text-lg font-bold">{vaNumber}</div>
+        {/* Waktu Kadaluarsa */}
+        {expiredTime && (
+          <div className="bg-white p-3 rounded-md border">
+            <div className="text-sm text-muted-foreground mb-1">Batas Waktu Pembayaran:</div>
+            <div className="font-medium">{formatDate(expiredTime)}</div>
+          </div>
+        )}
+
+        {/* URL Pembayaran */}
+        {paymentUrl && (
+          <div className="bg-white p-3 rounded-md border">
+            <div className="text-sm text-muted-foreground mb-1">Link Pembayaran:</div>
+            <div className="flex items-center justify-between">
+              <div className="truncate max-w-[200px]">{paymentUrl}</div>
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
+                  onClick={() => copyToClipboard(paymentUrl, "Link pembayaran")}
                   className="h-8"
                 >
-                  <Copy className={`h-4 w-4 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
+                  <Copy className={`h-4 w-4 ${copiedText === "Link pembayaran" ? "text-green-500" : ""}`} />
+                </Button>
+                <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
+                  <ExternalLink className="h-4 w-4 mr-1" /> Buka
                 </Button>
               </div>
             </div>
-          )}
-
-          {/* Waktu Kadaluarsa */}
-          {expiredTime && (
-            <div className="bg-white p-3 rounded-md border">
-              <div className="text-sm text-muted-foreground mb-1">Batas Waktu Pembayaran:</div>
-              <div className="font-medium">{formatDate(expiredTime)}</div>
-            </div>
-          )}
-
-          {/* URL Pembayaran */}
-          {paymentUrl && (
-            <div className="bg-white p-3 rounded-md border">
-              <div className="text-sm text-muted-foreground mb-1">Link Pembayaran:</div>
-              <div className="flex items-center justify-between">
-                <div className="truncate max-w-[200px]">{paymentUrl}</div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(paymentUrl, "Link pembayaran")}
-                    className="h-8"
-                  >
-                    <Copy className={`h-4 w-4 ${copiedText === "Link pembayaran" ? "text-green-500" : ""}`} />
-                  </Button>
-                  <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
-                    <ExternalLink className="h-4 w-4 mr-1" /> Buka
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Instruksi Pembayaran */}
-          {instructions && instructions.length > 0 && (
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="instructions">
-                <AccordionTrigger>Instruksi Pembayaran</AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4">
-                    {instructions.map((instruction: any, index: number) => (
-                      <div key={index} className="space-y-2">
-                        <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
-                        <ol className="list-decimal pl-5 space-y-1">
-                          {instruction.steps &&
-                            instruction.steps.map((step: string, stepIndex: number) => <li key={stepIndex}>{step}</li>)}
-                        </ol>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
-
-          {/* Tombol Tindakan */}
-          <div className="flex gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={checkTransactionStatus}
-              disabled={checkingStatus}
-              className="flex-1"
-            >
-              {checkingStatus ? <Clock className="h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Periksa Status
-            </Button>
-            {paymentUrl && (
-              <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="flex-1">
-                <ExternalLink className="h-4 w-4 mr-2" /> Lanjutkan Pembayaran
-              </Button>
-            )}
           </div>
+        )}
+
+        {/* Instruksi Pembayaran */}
+        {instructions && instructions.length > 0 && (
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="instructions">
+              <AccordionTrigger>Instruksi Pembayaran</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  {instructions.map((instruction: any, index: number) => (
+                    <div key={index} className="space-y-2">
+                      <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
+                      <ol className="list-decimal pl-5 space-y-1">
+                        {instruction.steps &&
+                          instruction.steps.map((step: string, stepIndex: number) => <li key={stepIndex}>{step}</li>)}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
+
+        {/* Tombol Tindakan */}
+        <div className="flex gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={checkTransactionStatus}
+            disabled={checkingStatus}
+            className="flex-1"
+          >
+            {checkingStatus ? <Clock className="h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Periksa Status
+          </Button>
+          {paymentUrl && (
+            <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="flex-1">
+              <ExternalLink className="h-4 w-4 mr-2" /> Lanjutkan Pembayaran
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCancelTransaction}
+            disabled={cancellingTransaction}
+            className="flex-1"
+          >
+            {cancellingTransaction ? <Clock className="h-4 w-4 mr-2" /> : <X className="h-4 w-4 mr-2" />}
+            Batalkan
+          </Button>
         </div>
       </div>
     )
@@ -637,59 +649,62 @@ export function PremiumClient({
   // Render riwayat transaksi
   const renderTransactionHistory = () => {
     return (
-      <Accordion type="single" collapsible className="mb-6">
-        <AccordionItem value="history">
-          <AccordionTrigger className="flex items-center">
-            <div className="flex items-center">
-              <History className="mr-2 h-4 w-4" />
-              Riwayat Transaksi
-            </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            {loadingHistory ? (
-              <div className="flex justify-center py-4">
-                <Clock className="h-6 w-6 text-muted-foreground animate-pulse" />
-              </div>
-            ) : transactions.length === 0 ? (
-              <p className="text-center py-4 text-muted-foreground">Tidak ada riwayat transaksi</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Jumlah</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Metode</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell className="whitespace-nowrap">{formatDate(tx.createdAt)}</TableCell>
-                        <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
-                        <TableCell>Rp {tx.amount.toLocaleString("id-ID")}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusBadgeColor(tx.status)}>{getStatusLabel(tx.status)}</Badge>
-                        </TableCell>
-                        <TableCell>{tx.paymentMethod || tx.gateway || "-"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            {!loadingHistory && (
-              <div className="mt-4 flex justify-center">
-                <Button variant="outline" size="sm" onClick={loadTransactionHistory}>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Muat Ulang
-                </Button>
-              </div>
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      <div className="mb-6">
+        <h3 className="text-lg font-medium mb-4 flex items-center">
+          <History className="mr-2 h-5 w-5" />
+          Riwayat Transaksi
+        </h3>
+
+        {!transactions.length && !loadingHistory ? (
+          <div className="text-center py-6 border rounded-lg bg-gray-50">
+            <p className="text-muted-foreground">Belum ada riwayat transaksi</p>
+          </div>
+        ) : loadingHistory ? (
+          <div className="flex justify-center py-6 border rounded-lg bg-gray-50">
+            <Clock className="h-6 w-6 text-muted-foreground animate-pulse" />
+          </div>
+        ) : (
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[180px]">Tanggal</TableHead>
+                  <TableHead>Order ID</TableHead>
+                  <TableHead>Jumlah</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Metode</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="font-medium">{formatDate(tx.createdAt)}</TableCell>
+                    <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
+                    <TableCell>Rp {tx.amount.toLocaleString("id-ID")}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          tx.status === "success" ? "success" : tx.status === "pending" ? "warning" : "destructive"
+                        }
+                      >
+                        {getStatusLabel(tx.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{tx.paymentMethod || tx.gateway || "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-center">
+          <Button variant="outline" size="sm" onClick={loadTransactionHistory} disabled={loadingHistory}>
+            {loadingHistory ? <Clock className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {loadingHistory ? "Memuat..." : "Muat Riwayat"}
+          </Button>
+        </div>
+      </div>
     )
   }
 
@@ -761,15 +776,30 @@ export function PremiumClient({
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-3xl mx-auto">
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold mb-2">Akun Premium</h1>
+            <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
+          </div>
+
           <Card className="mb-8 border-2 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-6 w-6 text-green-500" />
-                <CardTitle className="text-2xl">Akun Premium</CardTitle>
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl">Status Premium</CardTitle>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold">Aktif</div>
+                </div>
               </div>
-              <CardDescription>Selamat! Anda telah berhasil mengupgrade ke akun Premium.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
+              <div className="mb-6 p-3 rounded-lg border-green-200 bg-green-50">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium">Akun Anda sudah Premium</span>
+                </div>
+              </div>
+
               <div className="flex items-center justify-center mb-6">
                 <div className="bg-green-50 p-3 rounded-full border border-green-200">
                   <Lock className="h-12 w-12 text-green-500" />
@@ -786,7 +816,7 @@ export function PremiumClient({
               {/* Riwayat Transaksi untuk pengguna premium */}
               {renderTransactionHistory()}
             </CardContent>
-            <CardFooter className="border-t bg-gradient-to-r from-green-50 to-green-100">
+            <CardFooter className="border-t">
               <Button onClick={() => router.push("/dashboard")} className="w-full">
                 Kembali ke Dashboard
               </Button>
@@ -803,12 +833,16 @@ export function PremiumClient({
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-3xl mx-auto">
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
+            <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
+          </div>
+
           <Card className="mb-8 border-2 shadow-lg">
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
-                  <CardDescription>Akses seumur hidup, bayar sekali</CardDescription>
+                  <CardTitle className="text-2xl">Harga Premium</CardTitle>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
@@ -817,6 +851,13 @@ export function PremiumClient({
               </div>
             </CardHeader>
             <CardContent className="pt-6">
+              <div className="mb-6 p-3 rounded-lg border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <Info className="h-5 w-5 text-gray-500" />
+                  <span className="font-medium">Status Akun: Free</span>
+                </div>
+              </div>
+
               {/* Riwayat Transaksi */}
               {renderTransactionHistory()}
 
@@ -864,12 +905,16 @@ export function PremiumClient({
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="max-w-3xl mx-auto">
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
+          <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
+        </div>
+
         <Card className="mb-8 border-2 shadow-lg">
           <CardHeader className="border-b">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-2xl">Upgrade ke Premium</CardTitle>
-                <CardDescription>Akses seumur hidup, bayar sekali</CardDescription>
+                <CardTitle className="text-2xl">Harga Premium</CardTitle>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
@@ -878,15 +923,30 @@ export function PremiumClient({
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            {/* Tampilkan status transaksi jika ada */}
-            {renderTransactionStatus()}
+            {/* Status akun dan pembayaran */}
+            {currentTransaction && currentTransaction.status === "pending" ? (
+              <div className="mb-6 p-3 rounded-lg border-yellow-200 bg-yellow-50">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-yellow-500" />
+                  <span className="font-medium">Pembayaran Tertunda</span>
+                </div>
+                {/* Tampilkan detail transaksi pending */}
+                {renderPendingTransactionDetails()}
+              </div>
+            ) : (
+              <div className="mb-6 p-3 rounded-lg border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <Info className="h-5 w-5 text-gray-500" />
+                  <span className="font-medium">Status Akun: Free</span>
+                </div>
+              </div>
+            )}
 
             {/* Riwayat Transaksi */}
             {renderTransactionHistory()}
 
             {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
-            {transaction &&
-            (currentTransaction.status === "pending" || currentTransaction.status === "success") ? null : (
+            {currentTransaction && currentTransaction.status === "pending" ? null : (
               <>
                 {/* Metode Pembayaran */}
                 {renderPaymentMethods()}
@@ -901,7 +961,7 @@ export function PremiumClient({
             {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
           </CardContent>
           <CardFooter className="border-t">
-            {transaction && (currentTransaction.status === "pending" || currentTransaction.status === "success") ? (
+            {currentTransaction && currentTransaction.status === "pending" ? (
               <Button onClick={() => router.push("/")} className="w-full">
                 Kembali ke Beranda
               </Button>
