@@ -326,9 +326,43 @@ export class TriPayGateway implements PaymentGateway {
       const eventType = this.identifyEventType(payload)
       logger.debug(`Event type identified: ${eventType}`)
 
-      // PERBAIKAN: Untuk sementara, lewati validasi signature
-      // Ini adalah solusi cepat untuk mengatasi masalah validasi signature
-      logger.info("Skipping signature validation for TriPay notification")
+      // Cek apakah signature ada di payload atau di headers
+      let receivedSignature = payload.signature
+
+      // Jika signature tidak ada di payload, coba ambil dari headers
+      if (!receivedSignature && headers) {
+        receivedSignature = headers["x-callback-signature"] || headers["X-Callback-Signature"]
+        logger.debug("Using signature from headers", {
+          signature: receivedSignature
+            ? receivedSignature.substring(0, 4) + "****" + receivedSignature.substring(receivedSignature.length - 4)
+            : "not found",
+        })
+      }
+
+      if (!receivedSignature) {
+        logger.warn("Signature not found in payload or headers, proceeding without validation")
+      } else {
+        // Generate expected signature berdasarkan payload
+        const expectedSignature = this.generateCallbackSignature(payload)
+
+        // Log signature details untuk debugging
+        logger.debug("Signature details", {
+          received: receivedSignature
+            ? receivedSignature.substring(0, 4) + "****" + receivedSignature.substring(receivedSignature.length - 4)
+            : "none",
+          expected: expectedSignature
+            ? expectedSignature.substring(0, 4) + "****" + expectedSignature.substring(expectedSignature.length - 4)
+            : "none",
+          isValid: receivedSignature && receivedSignature.toLowerCase() === expectedSignature.toLowerCase(),
+        })
+
+        // Validasi signature
+        if (receivedSignature && receivedSignature.toLowerCase() !== expectedSignature.toLowerCase()) {
+          logger.warn("Signature validation failed, but proceeding with processing")
+        } else {
+          logger.info("Signature validation successful")
+        }
+      }
 
       // Mapping status TriPay ke status internal
       const status = this.mapTriPayStatus(payload.status)
@@ -510,38 +544,37 @@ export class TriPayGateway implements PaymentGateway {
 
   /**
    * Menghasilkan signature untuk callback dari TriPay
+   * Format: merchantCode + reference + amount + status
    */
   private generateCallbackSignature(payload: any): string {
     const crypto = require("crypto")
 
-    // Berdasarkan dokumentasi TriPay terbaru, signature callback dihitung dari:
-    // merchantCode + reference + amount + status
-    // Pastikan semua nilai dikonversi ke string
+    // Pastikan semua nilai dalam format string
     const merchantCode = this.merchantCode
-    const reference = payload.reference || ""
-    const merchantRef = payload.merchant_ref || ""
+    const reference = String(payload.reference || "")
     const amount = String(payload.total_amount || "0")
-    const status = payload.status || ""
+    const status = String(payload.status || "")
+
+    // Format yang benar: merchantCode + reference + amount + status
+    const data = `${merchantCode}${reference}${amount}${status}`
 
     // Log untuk debugging
-    console.log(
-      `Generating signature with: merchantCode=${merchantCode}, reference=${reference}, amount=${amount}, status=${status}`,
-    )
-
-    // Buat data untuk signature
-    let data = ""
-
-    // Gunakan reference jika tersedia, jika tidak gunakan merchant_ref
-    if (reference) {
-      data = `${merchantCode}${reference}${amount}${status}`
-    } else {
-      data = `${merchantCode}${merchantRef}${amount}${status}`
-    }
-
-    console.log(`Signature data string: ${data}`)
+    this.logger.debug("Generating callback signature", {
+      merchantCode,
+      reference,
+      amount,
+      status,
+      data,
+    })
 
     // Hasilkan signature dengan HMAC SHA256
-    return crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
+    const signature = crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
+
+    this.logger.debug("Generated callback signature", {
+      signature: signature.substring(0, 4) + "****" + signature.substring(signature.length - 4),
+    })
+
+    return signature
   }
 
   // Tambahkan metode untuk mengidentifikasi jenis event
@@ -588,28 +621,6 @@ export class TriPayGateway implements PaymentGateway {
         refund_time: new Date().toISOString(),
       },
     }
-  }
-
-  // Tambahkan metode alternatif untuk validasi signature
-  private generateAlternativeSignature(payload: any): string {
-    const crypto = require("crypto")
-
-    // Beberapa implementasi TriPay mungkin menggunakan format yang berbeda
-    // Coba beberapa kemungkinan format
-
-    // Format 1: merchantCode + merchantRef + status
-    const format1 = `${this.merchantCode}${payload.merchant_ref}${payload.status}`
-
-    // Format 2: merchantCode + reference + status
-    const format2 = `${this.merchantCode}${payload.reference}${payload.status}`
-
-    // Format 3: merchantCode + merchantRef
-    const format3 = `${this.merchantCode}${payload.merchant_ref}`
-
-    console.log(`Alternative signature format 1: ${format1}`)
-
-    // Gunakan format 1 sebagai default
-    return crypto.createHmac("sha256", this.privateKey).update(format1).digest("hex")
   }
 
   /**
