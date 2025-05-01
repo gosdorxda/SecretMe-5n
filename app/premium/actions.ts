@@ -75,7 +75,7 @@ export async function createTransaction(paymentMethod: string, gatewayName = "du
         plan_id: orderId,
         amount: premiumPrice,
         status: "pending",
-        payment_gateway: "duitku",
+        payment_gateway: gatewayName, // Gunakan gatewayName yang dipilih
         payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
       })
       .select()
@@ -249,6 +249,10 @@ export async function getTransactionHistory() {
 // Fungsi untuk membatalkan transaksi
 export async function cancelTransaction(transactionId: string) {
   try {
+    // Buat logger untuk tracking
+    const requestId = `cancel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    console.log(`[${requestId}] 🔄 Cancelling transaction ${transactionId}`)
+
     // Verifikasi user
     const supabase = createClient()
     const {
@@ -257,6 +261,7 @@ export async function cancelTransaction(transactionId: string) {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.log(`[${requestId}] ❌ Unauthorized user`)
       return { success: false, error: "Unauthorized" }
     }
 
@@ -269,44 +274,57 @@ export async function cancelTransaction(transactionId: string) {
       .single()
 
     if (transactionError) {
+      console.log(`[${requestId}] ❌ Transaction not found: ${transactionError.message}`)
       return { success: false, error: "Transaction not found" }
     }
 
     // Periksa apakah transaksi bisa dibatalkan
     if (transactionData.status !== "pending") {
+      console.log(`[${requestId}] ❌ Transaction cannot be cancelled: status is ${transactionData.status}`)
       return { success: false, error: "Only pending transactions can be cancelled" }
     }
 
-    // Buat logger untuk tracking
-    const requestId = `cancel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-    console.log(`[${requestId}] 🔄 Cancelling transaction ${transactionId} for user ${user.id}`)
     console.log(
       `[${requestId}] 📋 Transaction details: gateway=${transactionData.payment_gateway}, plan_id=${transactionData.plan_id}`,
     )
 
-    // Jika transaksi menggunakan TriPay, batalkan di TriPay
-    if (transactionData.payment_gateway === "tripay" && transactionData.payment_details?.gateway_reference) {
+    // Coba batalkan transaksi di gateway pembayaran
+    const gatewayName = transactionData.payment_gateway || "duitku"
+    console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
+
+    // Periksa apakah ada referensi gateway
+    const gatewayReference = transactionData.payment_details?.gateway_reference
+    if (gatewayReference) {
       try {
-        console.log(
-          `[${requestId}] 🔄 Cancelling transaction in TriPay: ${transactionData.payment_details.gateway_reference}`,
-        )
+        console.log(`[${requestId}] 🔄 Attempting to cancel transaction in ${gatewayName}: ${gatewayReference}`)
 
-        // Dapatkan gateway TriPay
-        const gateway = await getPaymentGateway("tripay")
+        // Dapatkan gateway
+        const gateway = await getPaymentGateway(gatewayName)
 
-        // Batalkan transaksi di TriPay
-        const cancelResult = await gateway.cancelTransaction(transactionData.payment_details.gateway_reference)
+        // Periksa apakah gateway mendukung pembatalan
+        if (typeof gateway.cancelTransaction === "function") {
+          // Batalkan transaksi di gateway
+          const cancelResult = await gateway.cancelTransaction(gatewayReference)
 
-        if (!cancelResult.success) {
-          console.error(`[${requestId}] ⚠️ Warning: Failed to cancel transaction in TriPay: ${cancelResult.error}`)
-          // Lanjutkan proses meskipun gagal di TriPay, karena kita masih ingin mengubah status di database lokal
+          if (!cancelResult.success) {
+            console.error(
+              `[${requestId}] ⚠️ Warning: Failed to cancel transaction in ${gatewayName}: ${cancelResult.error}`,
+            )
+            // Lanjutkan proses meskipun gagal di gateway, karena kita masih ingin mengubah status di database lokal
+          } else {
+            console.log(
+              `[${requestId}] ✅ Successfully cancelled transaction in ${gatewayName}: ${cancelResult.message}`,
+            )
+          }
         } else {
-          console.log(`[${requestId}] ✅ Successfully cancelled transaction in TriPay: ${cancelResult.message}`)
+          console.log(`[${requestId}] ℹ️ Gateway ${gatewayName} does not support cancellation API`)
         }
       } catch (error: any) {
-        console.error(`[${requestId}] ⚠️ Error cancelling transaction in TriPay:`, error)
-        // Lanjutkan proses meskipun gagal di TriPay
+        console.error(`[${requestId}] ⚠️ Error cancelling transaction in ${gatewayName}:`, error)
+        // Lanjutkan proses meskipun gagal di gateway
       }
+    } else {
+      console.log(`[${requestId}] ℹ️ No gateway reference found, skipping gateway cancellation`)
     }
 
     // Update status transaksi di database lokal

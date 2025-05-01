@@ -4,6 +4,7 @@ import {
   type CreateTransactionResult,
   type VerifyTransactionResult,
   type NotificationResult,
+  type CancelTransactionResult,
   formatPaymentStatus,
 } from "./types"
 import crypto from "crypto"
@@ -312,7 +313,7 @@ export class DuitkuGateway implements PaymentGateway {
         return {
           orderId: merchantOrderId,
           status: verificationResult.status,
-          isSuccess: verificationResult.isSuccess,
+          isSuccess: verificationResult.status === "success",
           amount: Number(verificationResult.amount || payload.amount || 0),
           paymentMethod: verificationResult.paymentMethod || payload.paymentCode || "unknown",
           details: verificationResult.details || payload,
@@ -331,6 +332,73 @@ export class DuitkuGateway implements PaymentGateway {
     } catch (error) {
       console.error("Error handling Duitku notification:", error)
       throw error
+    }
+  }
+
+  /**
+   * Membatalkan transaksi di Duitku
+   * @param reference Nomor referensi transaksi Duitku
+   */
+  async cancelTransaction(reference: string): Promise<CancelTransactionResult> {
+    // Buat ID unik untuk request ini
+    const requestId = `duitku-cancel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    console.log(`[${requestId}] 🔄 Attempting to cancel Duitku transaction: ${reference}`)
+
+    try {
+      // Validasi kredensial
+      if (!this.merchantCode || !this.apiKey) {
+        console.error(`[${requestId}] ❌ Duitku credentials not set`)
+        return {
+          success: false,
+          error: "Duitku credentials not set. Please check your environment variables or configuration.",
+        }
+      }
+
+      // Duitku tidak memiliki API resmi untuk membatalkan transaksi
+      // Kita akan mencoba memverifikasi status transaksi terlebih dahulu
+      console.log(`[${requestId}] ℹ️ Duitku does not have an official cancellation API`)
+      console.log(`[${requestId}] 🔍 Checking current transaction status`)
+
+      // Coba verifikasi status transaksi
+      const verificationResult = await this.verifyTransaction(reference)
+
+      if (!verificationResult.isValid) {
+        console.log(`[${requestId}] ⚠️ Could not verify transaction status`)
+        return {
+          success: false,
+          error: "Could not verify transaction status",
+        }
+      }
+
+      // Periksa status transaksi
+      const status = verificationResult.status
+      console.log(`[${requestId}] 📊 Current transaction status: ${status}`)
+
+      // Jika transaksi sudah dalam status final (success, failed, expired), tidak perlu dibatalkan
+      if (status === "success" || status === "failed" || status === "expired") {
+        console.log(`[${requestId}] ℹ️ Transaction already in final state (${status}), no need to cancel`)
+        return {
+          success: true,
+          message: `Transaction already in final state: ${status}`,
+        }
+      }
+
+      // Jika transaksi masih pending, kita tidak bisa membatalkannya melalui API
+      // Kita hanya bisa menandainya sebagai dibatalkan di database lokal
+      console.log(`[${requestId}] ℹ️ Transaction is still pending, but Duitku does not support cancellation via API`)
+      console.log(`[${requestId}] ℹ️ Transaction will be marked as cancelled in local database only`)
+
+      return {
+        success: true,
+        message:
+          "Transaction marked as cancelled in local database only. Duitku does not support cancellation via API.",
+      }
+    } catch (error: any) {
+      console.error(`[${requestId}] ❌ Error cancelling Duitku transaction:`, error)
+      return {
+        success: false,
+        error: error.message || "Unknown error occurred",
+      }
     }
   }
 }

@@ -103,6 +103,8 @@ export function formatPaymentStatus(status: string): PaymentStatus {
     expired: "expired",
     refund: "refunded",
     refunded: "refunded",
+    cancelled: "cancelled",
+    canceled: "cancelled",
   }
 
   return statusMap[status.toLowerCase()] || "unknown"
