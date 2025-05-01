@@ -244,7 +244,7 @@ export function PremiumClient({
         intervalRef.current = null
       }
     }
-  }, [currentTransaction?.id, currentTransaction?.status, router, toast])
+  }, [currentTransaction, router, toast])
 
   // Efek untuk menampilkan toast berdasarkan status URL
   useEffect(() => {
@@ -810,8 +810,8 @@ export function PremiumClient({
             <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
           </div>
 
-          <Card className="mb-8 border-2 shadow-lg">
-            <CardHeader className="border-b">
+          <Card className="mb-8 border-2 shadow-lg overflow-hidden">
+            <CardHeader className="border-b bg-black text-white">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl">Status Premium</CardTitle>
@@ -821,7 +821,7 @@ export function PremiumClient({
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 relative">
               <div className="mb-6 p-3 rounded-lg border-green-200 bg-green-50">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -830,8 +830,8 @@ export function PremiumClient({
               </div>
 
               <div className="flex items-center justify-center mb-6">
-                <div className="bg-green-50 p-3 rounded-full border border-green-200">
-                  <Lock className="h-12 w-12 text-green-500" />
+                <div className="bg-black p-8 rounded-full shadow-lg">
+                  <Lock className="h-12 w-12 text-white" />
                 </div>
               </div>
 
@@ -841,16 +841,19 @@ export function PremiumClient({
                   Terima kasih telah menjadi pengguna premium. Nikmati semua fitur eksklusif SecretMe tanpa batasan.
                 </p>
               </div>
-
-              {/* Riwayat Transaksi untuk pengguna premium */}
-              {renderTransactionHistory()}
             </CardContent>
             <CardFooter className="border-t">
-              <Button onClick={() => router.push("/dashboard")} className="w-full">
+              <Button
+                onClick={() => router.push("/dashboard")}
+                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
+              >
                 Kembali ke Dashboard
               </Button>
             </CardFooter>
           </Card>
+
+          {/* Riwayat Transaksi untuk pengguna premium */}
+          <Card className="mb-8 border shadow">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -867,28 +870,22 @@ export function PremiumClient({
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <Card className="mb-8 border-2 shadow-lg">
-            <CardHeader className="border-b">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">Harga Premium</CardTitle>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                  <div className="text-xs text-muted-foreground">Harga sudah termasuk pajak</div>
+          <Card className="mb-8 border-2 shadow-lg overflow-hidden">
+            <CardHeader className="border-b bg-black text-white">
+              <div className="flex flex-col items-center justify-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-1">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                  <div className="text-xs text-gray-300">Sekali bayar seumur hidup</div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 relative">
               <div className="mb-6 p-3 rounded-lg border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-2">
                   <Info className="h-5 w-5 text-gray-500" />
                   <span className="font-medium">Status Akun: Free</span>
                 </div>
               </div>
-
-              {/* Riwayat Transaksi */}
-              {renderTransactionHistory()}
 
               {/* Metode Pembayaran */}
               {renderPaymentMethods()}
@@ -901,11 +898,18 @@ export function PremiumClient({
               {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
             </CardContent>
             <CardFooter className="border-t">
-              <Button onClick={handlePayment} disabled={isLoading} className="w-full">
+              <Button
+                onClick={handlePayment}
+                disabled={isLoading}
+                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
+              >
                 {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
               </Button>
             </CardFooter>
           </Card>
+
+          {/* Riwayat Transaksi di bawah card utama */}
+          <Card className="mb-8 border shadow">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -919,19 +923,16 @@ export function PremiumClient({
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <Card className="mb-8 border-2 shadow-lg">
-          <CardHeader className="border-b">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">Harga Premium</CardTitle>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                <div className="text-xs text-muted-foreground">Harga sudah termasuk pajak</div>
+        <Card className="mb-8 border-2 shadow-lg overflow-hidden">
+          <CardHeader className="border-b bg-black text-white">
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-center">
+                <div className="text-3xl font-bold mb-1">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                <div className="text-xs text-gray-300">Sekali bayar seumur hidup</div>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 relative">
             {/* Status akun dan pembayaran */}
             {currentTransaction && currentTransaction.status === "pending" ? (
               <div className="mb-6 p-3 rounded-lg border-yellow-200 bg-yellow-50">
@@ -951,9 +952,6 @@ export function PremiumClient({
               </div>
             )}
 
-            {/* Riwayat Transaksi */}
-            {renderTransactionHistory()}
-
             {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
             {currentTransaction && currentTransaction.status === "pending" ? null : (
               <>
@@ -971,16 +969,26 @@ export function PremiumClient({
           </CardContent>
           <CardFooter className="border-t">
             {currentTransaction && currentTransaction.status === "pending" ? (
-              <Button onClick={() => router.push("/")} className="w-full">
+              <Button
+                onClick={() => router.push("/")}
+                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
+              >
                 Kembali ke Beranda
               </Button>
             ) : (
-              <Button onClick={handlePayment} disabled={isLoading} className="w-full">
+              <Button
+                onClick={handlePayment}
+                disabled={isLoading}
+                className="w-full shadow-md hover:shadow-lg transition-all duration-300"
+              >
                 {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
               </Button>
             )}
           </CardFooter>
         </Card>
+
+        {/* Riwayat Transaksi di bawah card utama */}
+        <Card className="mb-8 border shadow">{renderTransactionHistory()}</Card>
       </div>
     </div>
   )
