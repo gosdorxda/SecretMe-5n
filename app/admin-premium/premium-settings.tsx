@@ -39,6 +39,7 @@ interface PremiumSettings {
   enabled: boolean
   description: string
   features: string[]
+  activeGateway?: string
 }
 
 interface Transaction {
@@ -176,11 +177,14 @@ export default function PremiumSettings() {
   const saveSettings = async () => {
     setIsSaving(true)
     try {
-      const { error } = await supabase.from("site_config").upsert({
-        type: "premium_settings",
-        config: settings,
-        updated_at: new Date().toISOString(),
-      })
+      const { error } = await supabase.from("site_config").upsert(
+        {
+          type: "premium_settings",
+          config: settings,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "type" },
+      )
 
       if (error) throw error
 
@@ -679,6 +683,7 @@ export default function PremiumSettings() {
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Pengaturan Premium</h1>
 
+      {/* Tambahkan tab untuk pengaturan gateway di dalam komponen Tabs */}
       <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="transactions">
@@ -693,7 +698,166 @@ export default function PremiumSettings() {
             <Settings className="h-4 w-4 mr-2" />
             Pengaturan
           </TabsTrigger>
+          <TabsTrigger value="gateways">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Gateway
+          </TabsTrigger>
         </TabsList>
+
+        {/* Tambahkan TabsContent untuk gateway */}
+        <TabsContent value="gateways">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pengaturan Gateway Pembayaran</CardTitle>
+              <CardDescription>Konfigurasi gateway pembayaran yang digunakan</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="active-gateway">Gateway Pembayaran Aktif</Label>
+                  <Select
+                    value={settings.activeGateway || "duitku"}
+                    onValueChange={(value) => setSettings((prev) => ({ ...prev, activeGateway: value }))}
+                  >
+                    <SelectTrigger id="active-gateway">
+                      <SelectValue placeholder="Pilih Gateway" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="duitku">Duitku</SelectItem>
+                      <SelectItem value="midtrans">Midtrans</SelectItem>
+                      <SelectItem value="tripay">TriPay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Gateway yang dipilih akan digunakan untuk semua transaksi baru
+                  </p>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-medium mb-4">Konfigurasi Gateway</h3>
+
+                  <Tabs defaultValue="duitku" className="mt-4">
+                    <TabsList>
+                      <TabsTrigger value="duitku">Duitku</TabsTrigger>
+                      <TabsTrigger value="midtrans">Midtrans</TabsTrigger>
+                      <TabsTrigger value="tripay">TriPay</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="duitku" className="space-y-4 mt-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="duitku-merchant-code">Merchant Code</Label>
+                        <Input id="duitku-merchant-code" value={process.env.DUITKU_MERCHANT_CODE || ""} disabled />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="duitku-api-key">API Key</Label>
+                        <Input id="duitku-api-key" value="••••••••••••••••••••••••••••••" disabled />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Konfigurasi Duitku diatur melalui environment variables. Hubungi administrator untuk
+                        mengubahnya.
+                      </p>
+                    </TabsContent>
+
+                    <TabsContent value="midtrans" className="space-y-4 mt-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="midtrans-server-key">Server Key</Label>
+                        <Input id="midtrans-server-key" value="••••••••••••••••••••••••••••••" disabled />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="midtrans-client-key">Client Key</Label>
+                        <Input id="midtrans-client-key" value="••••••••••••••••••••••••••••••" disabled />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Konfigurasi Midtrans diatur melalui environment variables. Hubungi administrator untuk
+                        mengubahnya.
+                      </p>
+                    </TabsContent>
+
+                    <TabsContent value="tripay" className="space-y-4 mt-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="tripay-merchant-code">Merchant Code</Label>
+                        <Input id="tripay-merchant-code" value={process.env.TRIPAY_MERCHANT_CODE || ""} disabled />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="tripay-api-key">API Key</Label>
+                        <Input id="tripay-api-key" value="••••••••••••••••••••••••••••••" disabled />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="tripay-private-key">Private Key</Label>
+                        <Input id="tripay-private-key" value="••••••••••••••••••••••••••••••" disabled />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Konfigurasi TriPay diatur melalui environment variables. Hubungi administrator untuk
+                        mengubahnya.
+                      </p>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2 mt-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-amber-500 mt-0.5"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium">Pengaturan Gateway Pembayaran</p>
+                    <p className="text-xs mt-1">
+                      Perubahan gateway aktif akan memengaruhi semua transaksi baru. Transaksi yang sudah dibuat akan
+                      tetap menggunakan gateway yang dipilih saat transaksi dibuat.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={loadSettings} disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                Reset
+              </Button>
+              <Button onClick={saveSettings} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Simpan Pengaturan"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="settings">
           <Card>
