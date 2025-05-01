@@ -16,16 +16,31 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get("content-type") || ""
 
     let notificationData: any = {}
+    let gatewayName = "duitku" // Default to Duitku
 
     if (contentType.includes("application/json")) {
       // Parse JSON data
       notificationData = await request.json()
+      console.log(`[${requestId}] 📦 Parsed JSON payload:`, JSON.stringify(notificationData))
+
+      // Try to determine if this is a TriPay notification
+      if (notificationData.reference || notificationData.merchant_ref) {
+        gatewayName = "tripay"
+        console.log(`[${requestId}] 🔍 Detected TriPay notification based on payload structure`)
+      }
     } else if (contentType.includes("application/x-www-form-urlencoded")) {
       // Parse form data
       const formData = await request.formData()
       // Convert FormData to plain object
       for (const [key, value] of formData.entries()) {
         notificationData[key] = value
+      }
+      console.log(`[${requestId}] 📦 Parsed form data payload:`, JSON.stringify(notificationData))
+
+      // Try to determine if this is a TriPay notification
+      if (notificationData.reference || notificationData.merchant_ref) {
+        gatewayName = "tripay"
+        console.log(`[${requestId}] 🔍 Detected TriPay notification based on payload structure`)
       }
     } else {
       // Fallback: try to get text and parse it
@@ -35,30 +50,51 @@ export async function POST(request: NextRequest) {
       try {
         // Try to parse as JSON first
         notificationData = JSON.parse(text)
+        console.log(`[${requestId}] 📦 Parsed JSON from text:`, JSON.stringify(notificationData))
+
+        // Try to determine if this is a TriPay notification
+        if (notificationData.reference || notificationData.merchant_ref) {
+          gatewayName = "tripay"
+          console.log(`[${requestId}] 🔍 Detected TriPay notification based on payload structure`)
+        }
       } catch (e) {
         // If not JSON, try to parse as URL encoded form data
         const params = new URLSearchParams(text)
         for (const [key, value] of params.entries()) {
           notificationData[key] = value
         }
+        console.log(`[${requestId}] 📦 Parsed URL params from text:`, JSON.stringify(notificationData))
+
+        // Try to determine if this is a TriPay notification
+        if (notificationData.reference || notificationData.merchant_ref) {
+          gatewayName = "tripay"
+          console.log(`[${requestId}] 🔍 Detected TriPay notification based on payload structure`)
+        }
       }
     }
 
-    console.log(`[${requestId}] 📦 Parsed payload:`, JSON.stringify(notificationData))
-
     // Determine which gateway to use based on the notification data
     // This could be determined by headers, payload structure, or a query parameter
-    const gatewayName = "duitku" // Default to Duitku
+    console.log(`[${requestId}] 🔄 Using payment gateway: ${gatewayName}`)
 
     // Get the appropriate payment gateway
     const gateway = await getPaymentGateway(gatewayName)
 
     // Extract order ID for error handling
-    const orderId = notificationData.merchantOrderId || notificationData.order_id || "unknown"
+    // Different gateways use different field names
+    let orderId = "unknown"
+    if (gatewayName === "tripay") {
+      orderId = notificationData.merchant_ref || notificationData.reference || "unknown"
+      console.log(`[${requestId}] 🔑 TriPay order ID (merchant_ref): ${orderId}`)
+      console.log(`[${requestId}] 🔑 TriPay reference: ${notificationData.reference || "not provided"}`)
+    } else {
+      orderId = notificationData.merchantOrderId || notificationData.order_id || "unknown"
+      console.log(`[${requestId}] 🔑 Duitku order ID: ${orderId}`)
+    }
 
     try {
       // Process the notification with the gateway
-      console.log(`[${requestId}] ⚙️ Processing notification with gateway`)
+      console.log(`[${requestId}] ⚙️ Processing notification with ${gatewayName} gateway`)
       const result = await gateway.handleNotification(notificationData)
 
       // Extract important data
@@ -74,7 +110,7 @@ export async function POST(request: NextRequest) {
       const supabase = createClient()
       const { data: transaction, error: findError } = await supabase
         .from("premium_transactions")
-        .select("id, user_id, status")
+        .select("id, user_id, status, payment_gateway")
         .eq("plan_id", orderId)
         .single()
 
@@ -84,7 +120,7 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(
-        `[${requestId}] ✅ Found transaction in database: ID=${transaction.id}, UserID=${transaction.user_id}, CurrentStatus=${transaction.status}`,
+        `[${requestId}] ✅ Found transaction in database: ID=${transaction.id}, UserID=${transaction.user_id}, CurrentStatus=${transaction.status}, Gateway=${transaction.payment_gateway || "unknown"}`,
       )
 
       // Determine new status
@@ -158,6 +194,30 @@ export async function POST(request: NextRequest) {
         console.log(`[${requestId}] 🎊 User ${transaction.user_id} is now premium!`)
       }
 
+      // Log transaction to payment notification logs table
+      try {
+        console.log(`[${requestId}] 📝 Logging notification to payment_notification_logs table`)
+        const { error: logError } = await supabase.from("payment_notification_logs").insert({
+          request_id: requestId,
+          gateway: gatewayName,
+          raw_payload: notificationData,
+          parsed_payload: result.details,
+          headers: headers,
+          status: newStatus,
+          transaction_id: transaction.id,
+          order_id: orderId,
+        })
+
+        if (logError) {
+          console.error(`[${requestId}] ⚠️ Failed to log notification, but transaction was processed:`, logError)
+        } else {
+          console.log(`[${requestId}] ✅ Notification logged successfully`)
+        }
+      } catch (logError) {
+        console.error(`[${requestId}] ⚠️ Error logging notification:`, logError)
+        // Continue processing even if logging fails
+      }
+
       console.log(
         `[${requestId}] ✅ Notification processing completed successfully. Payment Method: ${result.paymentMethod}`,
       )
@@ -165,6 +225,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: `Transaction ${orderId} updated to ${newStatus}`,
         requestId: requestId,
+        gateway: gatewayName,
       })
     } catch (error) {
       console.error(`[${requestId}] ❌ Error processing notification with gateway:`, error)
@@ -176,14 +237,31 @@ export async function POST(request: NextRequest) {
 
         // Determine status from notification data
         let status = "unknown"
-        const resultCode = notificationData.resultCode
 
-        if (resultCode === "00" || resultCode === "01") {
-          status = "success"
-        } else if (resultCode === "02") {
-          status = "pending"
+        if (gatewayName === "tripay") {
+          // TriPay specific fallback
+          const tripayStatus = notificationData.status
+          console.log(`[${requestId}] 🔍 TriPay fallback - Raw status: ${tripayStatus}`)
+
+          if (tripayStatus === "PAID") {
+            status = "success"
+          } else if (tripayStatus === "UNPAID") {
+            status = "pending"
+          } else if (tripayStatus === "EXPIRED" || tripayStatus === "FAILED" || tripayStatus === "CANCELED") {
+            status = "failed"
+          }
         } else {
-          status = "failed"
+          // Duitku fallback
+          const resultCode = notificationData.resultCode
+          console.log(`[${requestId}] 🔍 Duitku fallback - Result code: ${resultCode}`)
+
+          if (resultCode === "00" || resultCode === "01") {
+            status = "success"
+          } else if (resultCode === "02") {
+            status = "pending"
+          } else {
+            status = "failed"
+          }
         }
 
         console.log(`[${requestId}] 📊 Determined status from notification: ${status}`)
@@ -220,7 +298,10 @@ export async function POST(request: NextRequest) {
           .from("premium_transactions")
           .update({
             status: status,
-            payment_method: notificationData.paymentCode || "unknown",
+            payment_method:
+              gatewayName === "tripay"
+                ? notificationData.payment_method || "unknown"
+                : notificationData.paymentCode || "unknown",
             payment_details: notificationData,
             updated_at: new Date().toISOString(),
           })
@@ -252,11 +333,37 @@ export async function POST(request: NextRequest) {
           console.log(`[${requestId}] 🎊 User ${transaction.user_id} is now premium!`)
         }
 
+        // Log transaction to payment notification logs table
+        try {
+          console.log(`[${requestId}] 📝 Logging fallback notification to payment_notification_logs table`)
+          const { error: logError } = await supabase.from("payment_notification_logs").insert({
+            request_id: requestId,
+            gateway: gatewayName,
+            raw_payload: notificationData,
+            parsed_payload: null,
+            headers: headers,
+            status: status,
+            error: "Processed via fallback",
+            transaction_id: transaction.id,
+            order_id: orderId,
+          })
+
+          if (logError) {
+            console.error(`[${requestId}] ⚠️ Failed to log notification, but transaction was processed:`, logError)
+          } else {
+            console.log(`[${requestId}] ✅ Fallback notification logged successfully`)
+          }
+        } catch (logError) {
+          console.error(`[${requestId}] ⚠️ Error logging notification:`, logError)
+          // Continue processing even if logging fails
+        }
+
         console.log(`[${requestId}] ✅ Fallback processing completed successfully`)
         return NextResponse.json({
           success: true,
           message: `Transaction ${orderId} updated to ${status} (fallback processing)`,
           requestId: requestId,
+          gateway: gatewayName,
         })
       } catch (fallbackError) {
         console.error(`[${requestId}] 💥 Fallback processing failed:`, fallbackError)

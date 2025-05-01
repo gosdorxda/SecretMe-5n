@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Transaction not found", details: findError.message }, { status: 404 })
     }
 
-    console.log(`[${requestId}] ✅ Found transaction: ${transaction.id}, Status: ${transaction.status}`)
+    console.log(
+      `[${requestId}] ✅ Found transaction: ${transaction.id}, Status: ${transaction.status}, Gateway: ${transaction.payment_gateway || "duitku"}`,
+    )
 
     // Verifikasi bahwa transaksi milik user yang sedang login
     if (transaction.user_id !== user.id) {
@@ -70,11 +72,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Jika masih pending, cek status di gateway
-    console.log(`[${requestId}] 🔄 Checking status with payment gateway: ${transaction.payment_gateway || "duitku"}`)
-    const gateway = await getPaymentGateway(transaction.payment_gateway || "duitku")
+    const gatewayName = transaction.payment_gateway || "duitku"
+    console.log(`[${requestId}] 🔄 Checking status with payment gateway: ${gatewayName}`)
+
+    // Log additional info for TriPay
+    if (gatewayName === "tripay") {
+      console.log(`[${requestId}] 🔍 TriPay transaction check - Order ID: ${orderId}`)
+      console.log(`[${requestId}] 🔍 TriPay payment details:`, JSON.stringify(transaction.payment_details || {}))
+    }
+
+    const gateway = await getPaymentGateway(gatewayName)
     const result = await gateway.verifyTransaction(orderId)
 
     console.log(`[${requestId}] 📊 Gateway verification result: isValid=${result.isValid}, status=${result.status}`)
+
+    // Log additional details for debugging
+    if (gatewayName === "tripay") {
+      console.log(`[${requestId}] 📊 TriPay verification details:`, JSON.stringify(result.details || {}))
+    }
 
     // Update status transaksi jika berbeda
     if (result.isValid && result.status !== "unknown" && result.status !== transaction.status) {
@@ -131,6 +146,31 @@ export async function GET(request: NextRequest) {
 
     console.log(`[${requestId}] 🏁 Final transaction status: ${finalStatus}`)
 
+    // Log transaction check to database
+    try {
+      console.log(`[${requestId}] 📝 Logging transaction check to payment_notification_logs table`)
+      const { error: logError } = await supabase.from("payment_notification_logs").insert({
+        request_id: requestId,
+        gateway: gatewayName,
+        raw_payload: null,
+        parsed_payload: result.details,
+        headers: Object.fromEntries(request.headers.entries()),
+        status: finalStatus,
+        transaction_id: transaction.id,
+        order_id: orderId,
+        error: result.isValid ? null : "Verification failed",
+      })
+
+      if (logError) {
+        console.error(`[${requestId}] ⚠️ Failed to log transaction check:`, logError)
+      } else {
+        console.log(`[${requestId}] ✅ Transaction check logged successfully`)
+      }
+    } catch (logError) {
+      console.error(`[${requestId}] ⚠️ Error logging transaction check:`, logError)
+      // Continue processing even if logging fails
+    }
+
     return NextResponse.json({
       success: true,
       status: finalStatus,
@@ -146,6 +186,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error(`[${requestId}] 💥 Error checking transaction status:`, error)
+    console.error(`[${requestId}] 📋 Error details:`, error.stack || "No stack trace available")
     return NextResponse.json(
       {
         error: "Internal server error",

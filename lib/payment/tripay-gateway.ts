@@ -24,20 +24,33 @@ export class TriPayGateway implements PaymentGateway {
     this.privateKey = process.env.TRIPAY_PRIVATE_KEY || ""
     this.isProduction = process.env.NODE_ENV === "production"
     this.baseUrl = this.isProduction ? "https://tripay.co.id/api" : "https://tripay.co.id/api-sandbox"
+
+    // Log environment setup
+    console.log(`[TriPay] Initializing TriPay gateway. Production mode: ${this.isProduction}`)
+    console.log(`[TriPay] Using API URL: ${this.baseUrl}`)
+    console.log(`[TriPay] Merchant Code: ${this.merchantCode}`)
+    console.log(`[TriPay] API Key configured: ${this.apiKey ? "Yes" : "No"}`)
+    console.log(`[TriPay] Private Key configured: ${this.privateKey ? "Yes" : "No"}`)
   }
 
   /**
    * Membuat transaksi baru di TriPay
    */
   async createTransaction(params: CreateTransactionParams): Promise<CreateTransactionResult> {
+    const requestId = `tripay-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    console.log(`[${requestId}] 🚀 TriPay: Creating new transaction for user ${params.userId}`)
+    console.log(`[${requestId}] 📋 Order ID: ${params.orderId}, Amount: ${params.amount}`)
+
     try {
       // Validasi parameter yang diperlukan
       if (!this.apiKey || !this.merchantCode) {
+        console.error(`[${requestId}] ❌ TriPay: Missing API Key or Merchant Code`)
         throw new Error("TriPay API Key dan Merchant Code diperlukan")
       }
 
       // Map payment method dari UI ke kode TriPay
       const tripayMethod = this.mapPaymentMethodToTriPay(params.paymentMethod || "QR")
+      console.log(`[${requestId}] 🔄 TriPay: Mapped payment method from ${params.paymentMethod} to ${tripayMethod}`)
 
       // Siapkan data untuk request ke TriPay
       const payload = {
@@ -60,9 +73,11 @@ export class TriPayGateway implements PaymentGateway {
       }
 
       // Log payload untuk debugging
-      console.log("TriPay payload:", JSON.stringify(payload, null, 2))
+      console.log(`[${requestId}] 📦 TriPay payload:`, JSON.stringify(payload, null, 2))
+      console.log(`[${requestId}] 🔐 TriPay signature generated: ${payload.signature.substring(0, 10)}...`)
 
       // Kirim request ke TriPay API
+      console.log(`[${requestId}] 📡 Sending request to TriPay API: ${this.baseUrl}/transaction/create`)
       const response = await fetch(`${this.baseUrl}/transaction/create`, {
         method: "POST",
         headers: {
@@ -75,12 +90,19 @@ export class TriPayGateway implements PaymentGateway {
       const data = await response.json()
 
       // Log response untuk debugging
-      console.log("TriPay create transaction response:", data)
+      console.log(`[${requestId}] ⬅️ TriPay response status: ${response.status}`)
+      console.log(`[${requestId}] ⬅️ TriPay response body:`, JSON.stringify(data, null, 2))
 
       // Periksa apakah transaksi berhasil dibuat
       if (!response.ok || data.success !== true) {
+        console.error(`[${requestId}] ❌ TriPay transaction creation failed: ${data.message || "Unknown error"}`)
         throw new Error(data.message || "Gagal membuat transaksi di TriPay")
       }
+
+      // Log success details
+      console.log(`[${requestId}] ✅ TriPay transaction created successfully!`)
+      console.log(`[${requestId}] 📝 Reference: ${data.data.reference}`)
+      console.log(`[${requestId}] 🔗 Checkout URL: ${data.data.checkout_url}`)
 
       // Return hasil transaksi
       return {
@@ -90,7 +112,8 @@ export class TriPayGateway implements PaymentGateway {
         gatewayReference: data.data.reference,
       }
     } catch (error: any) {
-      console.error("Error creating TriPay transaction:", error)
+      console.error(`[${requestId}] 💥 Error creating TriPay transaction:`, error)
+      console.error(`[${requestId}] 📋 Error details:`, error.stack || "No stack trace available")
       return {
         success: false,
         error: error.message || "Gagal membuat transaksi di TriPay",
@@ -102,13 +125,20 @@ export class TriPayGateway implements PaymentGateway {
    * Memverifikasi status transaksi di TriPay
    */
   async verifyTransaction(orderId: string): Promise<VerifyTransactionResult> {
+    const requestId = `tripay-verify-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    console.log(`[${requestId}] 🔍 TriPay: Verifying transaction with order ID: ${orderId}`)
+
     try {
       // Validasi parameter yang diperlukan
       if (!this.apiKey || !this.merchantCode) {
+        console.error(`[${requestId}] ❌ TriPay: Missing API Key or Merchant Code`)
         throw new Error("TriPay API Key dan Merchant Code diperlukan")
       }
 
       // Kirim request ke TriPay API untuk memeriksa status transaksi
+      console.log(
+        `[${requestId}] 📡 Sending request to TriPay API: ${this.baseUrl}/transaction/detail?reference=${orderId}`,
+      )
       const response = await fetch(`${this.baseUrl}/transaction/detail?reference=${orderId}`, {
         method: "GET",
         headers: {
@@ -119,15 +149,19 @@ export class TriPayGateway implements PaymentGateway {
       const data = await response.json()
 
       // Log response untuk debugging
-      console.log("TriPay verify transaction response:", data)
+      console.log(`[${requestId}] ⬅️ TriPay verify response status: ${response.status}`)
+      console.log(`[${requestId}] ⬅️ TriPay verify response body:`, JSON.stringify(data, null, 2))
 
       // Periksa apakah request berhasil
       if (!response.ok || data.success !== true) {
+        console.error(`[${requestId}] ❌ TriPay verification failed: ${data.message || "Unknown error"}`)
         throw new Error(data.message || "Gagal memverifikasi transaksi di TriPay")
       }
 
       // Mapping status TriPay ke status internal
       const status = this.mapTriPayStatus(data.data.status)
+      console.log(`[${requestId}] 🔄 TriPay status "${data.data.status}" mapped to internal status "${status}"`)
+      console.log(`[${requestId}] ✅ TriPay verification completed successfully`)
 
       return {
         isValid: true,
@@ -137,7 +171,8 @@ export class TriPayGateway implements PaymentGateway {
         details: data.data,
       }
     } catch (error: any) {
-      console.error("Error verifying TriPay transaction:", error)
+      console.error(`[${requestId}] 💥 Error verifying TriPay transaction:`, error)
+      console.error(`[${requestId}] 📋 Error details:`, error.stack || "No stack trace available")
       return {
         isValid: false,
         status: "unknown",
@@ -149,17 +184,34 @@ export class TriPayGateway implements PaymentGateway {
    * Menangani notifikasi webhook dari TriPay
    */
   async handleNotification(payload: any): Promise<NotificationResult> {
+    const requestId = `tripay-notify-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    console.log(`[${requestId}] 📣 TriPay: Received notification webhook`)
+    console.log(`[${requestId}] 📦 TriPay notification payload:`, JSON.stringify(payload, null, 2))
+
     try {
       // Validasi signature dari TriPay
       const signature = payload.signature
       const expectedSignature = this.generateCallbackSignature(payload.merchant_ref, payload.status)
 
+      console.log(`[${requestId}] 🔐 TriPay received signature: ${signature}`)
+      console.log(`[${requestId}] 🔐 TriPay expected signature: ${expectedSignature}`)
+      console.log(`[${requestId}] 🔐 TriPay signature match: ${signature === expectedSignature}`)
+
       if (signature !== expectedSignature) {
+        console.error(`[${requestId}] ❌ TriPay invalid signature!`)
         throw new Error("Invalid signature from TriPay")
       }
 
       // Mapping status TriPay ke status internal
       const status = this.mapTriPayStatus(payload.status)
+      console.log(`[${requestId}] 🔄 TriPay status "${payload.status}" mapped to internal status "${status}"`)
+
+      // Log transaction details
+      console.log(`[${requestId}] 📋 TriPay merchant_ref: ${payload.merchant_ref}`)
+      console.log(`[${requestId}] 📋 TriPay reference: ${payload.reference}`)
+      console.log(`[${requestId}] 📋 TriPay payment_method: ${payload.payment_method}`)
+      console.log(`[${requestId}] 📋 TriPay amount: ${payload.total_amount}`)
+      console.log(`[${requestId}] ✅ TriPay notification processed successfully`)
 
       return {
         orderId: payload.merchant_ref,
@@ -170,7 +222,8 @@ export class TriPayGateway implements PaymentGateway {
         details: payload,
       }
     } catch (error: any) {
-      console.error("Error handling TriPay notification:", error)
+      console.error(`[${requestId}] 💥 Error handling TriPay notification:`, error)
+      console.error(`[${requestId}] 📋 Error details:`, error.stack || "No stack trace available")
       throw error
     }
   }
