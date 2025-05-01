@@ -82,7 +82,7 @@ const duitkuPaymentMethods = [
   },
 ]
 
-// Definisi metode pembayaran untuk TriPay berdasarkan dokumentasi resmi
+// Definisi metode pembayaran untuk TriPay berdasarkan permintaan spesifik
 const tripayPaymentMethods = [
   {
     id: "bank",
@@ -90,10 +90,7 @@ const tripayPaymentMethods = [
     methods: [
       { id: "BR", name: "BRI Virtual Account", icon: "/payment-icons/bri.png" },
       { id: "M2", name: "Mandiri Virtual Account", icon: "/payment-icons/mandiri.png" },
-      { id: "I1", name: "BNI Virtual Account", icon: "/payment-icons/bni.png" },
-      { id: "BV", name: "BSI Virtual Account", icon: "/payment-icons/bsi.png" },
-      { id: "BT", name: "Permata Virtual Account", icon: "/payment-icons/permata.png" },
-      { id: "NC", name: "CIMB Virtual Account", icon: "/payment-icons/cimb.png" },
+      { id: "BC", name: "BCA Virtual Account", icon: "/payment-icons/bca.png" }, // Tambahkan BCA VA
     ],
   },
   {
@@ -101,8 +98,6 @@ const tripayPaymentMethods = [
     name: "E-Wallet",
     methods: [
       { id: "OV", name: "OVO", icon: "/payment-icons/ovo.png" },
-      { id: "SA", name: "ShopeePay", icon: "/payment-icons/shopeepay.png" },
-      { id: "LF", name: "LinkAja", icon: "/payment-icons/linkaja.png" },
       { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
     ],
   },
@@ -110,14 +105,6 @@ const tripayPaymentMethods = [
     id: "qris",
     name: "QRIS",
     methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png" }],
-  },
-  {
-    id: "retail",
-    name: "Retail",
-    methods: [
-      { id: "A1", name: "Alfamart", icon: "/payment-icons/alfamart.png" },
-      { id: "IR", name: "Indomaret", icon: "/payment-icons/indomaret.png" },
-    ],
   },
 ]
 

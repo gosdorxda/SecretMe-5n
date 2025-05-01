@@ -711,6 +711,7 @@ export class TriPayGateway implements PaymentGateway {
       BV: "BSIVA", // BSI Virtual Account
       BT: "PERMATAVA", // Permata Virtual Account
       NC: "CIMBVA", // CIMB Virtual Account
+      BC: "BCAVA", // BCA Virtual Account - Tambahkan ini
 
       // E-Wallet
       QR: "QRIS", // QRIS by ShopeePay
