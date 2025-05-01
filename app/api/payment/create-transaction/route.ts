@@ -2,7 +2,15 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 import { createPaymentGateway } from "@/lib/payment/gateway-factory"
 import { logTransaction } from "@/lib/payment/logger"
-import { v4 as uuidv4 } from "uuid"
+
+// Fungsi untuk menghasilkan ID unik tanpa menggunakan paket uuid
+function generateUniqueId(length = 8) {
+  const timestamp = Date.now().toString(36)
+  const randomStr = Math.random()
+    .toString(36)
+    .substring(2, 2 + length)
+  return `${timestamp}${randomStr}`.substring(0, length)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,8 +33,8 @@ export async function POST(request: NextRequest) {
     // Hanya menggunakan TriPay
     const gateway = createPaymentGateway("tripay")
 
-    // Generate reference ID
-    const reference = `TRX-${Date.now()}-${uuidv4().substring(0, 8)}`
+    // Generate reference ID tanpa menggunakan uuid
+    const reference = `TRX-${Date.now()}-${generateUniqueId()}`
 
     // Buat transaksi di gateway pembayaran
     const transaction = await gateway.createTransaction({
