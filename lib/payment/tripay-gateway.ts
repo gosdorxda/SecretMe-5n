@@ -73,7 +73,7 @@ export class TriPayGateway implements PaymentGateway {
           },
         ],
         return_url: params.successRedirectUrl,
-        expired_time: 24 * 60, // 24 jam dalam menit
+        expired_time: 24 * 60 * 60, // 24 jam dalam detik (bukan menit)
         signature: this.generateSignature(params.orderId, params.amount),
       }
 
