@@ -10,7 +10,8 @@ class ClientPaymentGateway implements PaymentGateway {
   async createTransaction(params: CreateTransactionParams): Promise<CreateTransactionResult> {
     try {
       // On the client, we'll make an API call to our server endpoint
-      const response = await fetch("/api/payment/create-transaction", {
+      const appUrl = typeof window !== "undefined" ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || ""
+      const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

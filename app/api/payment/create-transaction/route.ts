@@ -4,10 +4,16 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 
 export async function POST(request: NextRequest) {
+  const requestId = `payment-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+  console.log(`[${requestId}] 🚀 Payment: Creating new transaction`)
+
   try {
     // Get the request body
     const body = await request.json()
     const gatewayName = body.gatewayName || "duitku"
+
+    console.log(`[${requestId}] 📋 Payment gateway: ${gatewayName}`)
+    console.log(`[${requestId}] 📋 Request body:`, JSON.stringify(body, null, 2))
 
     // Verify user - SECURITY FIX: Use getUser() instead of getSession()
     const supabase = createClient()
@@ -143,7 +149,8 @@ export async function POST(request: NextRequest) {
       orderId: orderId,
     })
   } catch (error: any) {
-    console.error("Error in create transaction API:", error)
+    console.error(`[${requestId}] 💥 Error in create transaction API:`, error)
+    console.error(`[${requestId}] 📋 Error stack:`, error.stack || "No stack trace available")
     return NextResponse.json({ success: false, error: error.message || "Internal server error" }, { status: 500 })
   }
 }

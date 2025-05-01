@@ -20,7 +20,8 @@ export async function createTransaction(paymentMethod: string, gatewayName = "du
     }
 
     // Kirim request ke API dengan gatewayName
-    const response = await fetch("/api/payment/create-transaction", {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
+    const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -86,7 +87,7 @@ export async function createTransaction(paymentMethod: string, gatewayName = "du
     }
 
     // Get payment gateway
-    const gateway = await getPaymentGateway("duitku")
+    const gateway = await getPaymentGateway(gatewayName || "duitku")
 
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
