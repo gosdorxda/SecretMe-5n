@@ -50,6 +50,8 @@ export interface VerifyTransactionResult {
   details?: any
 }
 
+// Tambahkan tipe untuk event callback
+
 export interface NotificationResult {
   orderId: string
   status: PaymentStatus
@@ -57,8 +59,10 @@ export interface NotificationResult {
   amount: number
   paymentMethod: string
   details: any
+  eventType?: string // Tambahkan field untuk jenis event
 }
 
+// Tambahkan tipe refund ke PaymentStatus
 export type PaymentStatus = "pending" | "success" | "failed" | "expired" | "refunded" | "unknown"
 
 /**
