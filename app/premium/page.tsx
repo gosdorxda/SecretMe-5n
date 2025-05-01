@@ -24,6 +24,8 @@ export default async function PremiumPage({
   let userName = ""
   let isPremium = false
   let transaction = null
+  // Add this line to the existing code to get the user email
+  const userEmail = session?.user?.email || ""
 
   if (isLoggedIn) {
     // Get user data
@@ -58,11 +60,13 @@ export default async function PremiumPage({
   const urlStatus = searchParams.status as string | undefined
   const urlOrderId = searchParams.order_id as string | undefined
 
+  // Then update the return statement to include userEmail in the props
   return (
     <PremiumClient
       isLoggedIn={isLoggedIn}
       isPremium={isPremium}
       userName={userName}
+      userEmail={userEmail}
       premiumPrice={premiumPrice}
       urlStatus={urlStatus}
       urlOrderId={urlOrderId}

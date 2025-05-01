@@ -27,22 +27,32 @@ type Transaction = {
 }
 
 interface PremiumClientProps {
-  user: {
-    id: string
-    email: string
-    name?: string
-    phone?: string
-  }
+  isLoggedIn: boolean
+  isPremium: boolean
+  userName: string
+  userEmail: string
   premiumPrice: number
+  urlStatus?: string
+  urlOrderId?: string
+  transaction: Transaction | null
 }
 
-export function PremiumClient({ user, premiumPrice }: PremiumClientProps) {
+export function PremiumClient({
+  isLoggedIn,
+  isPremium,
+  userName,
+  userEmail,
+  premiumPrice,
+  urlStatus,
+  urlOrderId,
+  transaction,
+}: PremiumClientProps) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedMethod, setSelectedMethod] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
-  const [name, setName] = useState(user.name || "")
-  const [phone, setPhone] = useState(user.phone || "")
+  const [name, setName] = useState(userName || "")
+  const [phone, setPhone] = useState("")
   const { toast } = useToast()
   const router = useRouter()
 
@@ -92,7 +102,10 @@ export function PremiumClient({ user, premiumPrice }: PremiumClientProps) {
     setLoading(true)
 
     try {
-      const result = await createTransaction(selectedMethod, premiumPrice, name, user.email, phone)
+      // We need to get the user email from the session
+      // For now, we'll use a placeholder
+
+      const result = await createTransaction(selectedMethod, premiumPrice, name, userEmail, phone)
 
       if (result.redirectUrl) {
         router.push(result.redirectUrl)
@@ -109,6 +122,38 @@ export function PremiumClient({ user, premiumPrice }: PremiumClientProps) {
       })
       setLoading(false)
     }
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="text-center">Upgrade ke Premium</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center mb-4">Silakan login terlebih dahulu untuk melanjutkan</p>
+          <Button className="w-full" onClick={() => router.push("/login")}>
+            Login
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (isPremium) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle className="text-center">Status Premium</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center mb-4">Akun Anda sudah Premium. Terima kasih!</p>
+          <Button className="w-full" onClick={() => router.push("/dashboard")}>
+            Kembali ke Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (initialLoading) {
