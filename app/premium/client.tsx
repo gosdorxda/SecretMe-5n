@@ -614,13 +614,6 @@ export function PremiumClient({
                       htmlFor={method.id}
                       className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                     >
-                      <div className="w-8 h-8 flex items-center justify-center">
-                        <img
-                          src={method.icon || "/placeholder.svg?height=32&width=32&query=bank"}
-                          alt={method.name}
-                          className="max-w-full max-h-full object-contain"
-                        />
-                      </div>
                       <span>{method.name}</span>
                     </Label>
                   </div>
