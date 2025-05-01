@@ -90,23 +90,23 @@ const tripayPaymentMethods = [
     id: "bank",
     name: "Transfer Bank",
     methods: [
-      { id: "BR", name: "BRI Virtual Account", icon: "/payment-icons/bri.png" },
-      { id: "M2", name: "Mandiri Virtual Account", icon: "/payment-icons/mandiri.png" },
-      { id: "BC", name: "BCA Virtual Account", icon: "/payment-icons/bca.png" }, // Tambahkan BCA VA
+      { id: "BR", name: "BRI Virtual Account", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//briva.webp" },
+      { id: "M2", name: "Mandiri Virtual Account", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//mandiri.webp" },
+      { id: "BC", name: "BCA Virtual Account", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp" }, // Tambahkan BCA VA
     ],
   },
   {
     id: "ewallet",
     name: "E-Wallet",
     methods: [
-      { id: "OV", name: "OVO", icon: "/payment-icons/ovo.png" },
-      { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
+      { id: "OV", name: "OVO", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//OVO_ID_CHNL_LOGO.webp" },
+      { id: "DA", name: "DANA", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//DANA_ID_CHNL_LOGO.webp" },
     ],
   },
   {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png", recommended: true }],
+    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//QRIS_ID_CHNL_LOGO.webp", recommended: true }],
   },
 ]
 
