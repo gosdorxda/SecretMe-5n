@@ -17,7 +17,6 @@ import {
   Building,
   QrCode,
   Lock,
-  Store,
   ExternalLink,
   Copy,
   Info,
@@ -27,7 +26,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type Transaction = {
   id: string
@@ -124,7 +122,7 @@ export function PremiumClient({
 }: PremiumClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("BR")
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("QR")
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<string>("bank")
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
@@ -267,16 +265,6 @@ export function PremiumClient({
       })
     }
   }, [urlStatus, urlOrderId, toast])
-
-  // Fungsi untuk menangani perubahan tab metode pembayaran
-  const handlePaymentTabChange = (value: string) => {
-    setSelectedPaymentTab(value)
-    // Set default payment method for the selected tab
-    const category = currentPaymentMethods.find((cat) => cat.id === value)
-    if (category && category.methods.length > 0) {
-      setSelectedPaymentMethod(category.methods[0].id)
-    }
-  }
 
   // Perbarui fungsi handlePayment untuk mengirim activeGateway
   const handlePayment = async () => {
@@ -739,21 +727,25 @@ export function PremiumClient({
 
   // Render metode pembayaran
   const renderPaymentMethods = () => {
-    // Buat array tab berdasarkan metode pembayaran yang tersedia
-    const tabs = currentPaymentMethods.map((category) => ({
-      id: category.id,
-      name: category.name,
-      icon:
-        category.id === "bank"
-          ? Building
-          : category.id === "ewallet"
-            ? Wallet
-            : category.id === "qris"
-              ? QrCode
-              : category.id === "retail"
-                ? Store
-                : Building,
-    }))
+    // Urutkan metode pembayaran: QRIS, E-Wallet, Transfer Bank
+    const orderedCategories = ["qris", "ewallet", "bank"]
+
+    // Flatten semua metode pembayaran dari semua kategori
+    const allMethods = []
+
+    // Urutkan kategori sesuai urutan yang diinginkan
+    orderedCategories.forEach((categoryId) => {
+      const category = currentPaymentMethods.find((cat) => cat.id === categoryId)
+      if (category) {
+        category.methods.forEach((method) => {
+          allMethods.push({
+            ...method,
+            categoryName: category.name,
+            categoryId: category.id,
+          })
+        })
+      }
+    })
 
     return (
       <div className="mb-6">
@@ -764,38 +756,48 @@ export function PremiumClient({
             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">TriPay</span>
           )}
         </h3>
-        <Tabs value={selectedPaymentTab} onValueChange={handlePaymentTabChange} className="w-full">
-          <TabsList className={`grid w-full grid-cols-${tabs.length} mb-4`}>
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
-                <tab.icon className="h-4 w-4" />
-                <span>{tab.name}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
 
-          {currentPaymentMethods.map((category) => (
-            <TabsContent key={category.id} value={category.id} className="mt-0">
-              <RadioGroup
-                value={selectedPaymentMethod}
-                onValueChange={setSelectedPaymentMethod}
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+        <RadioGroup
+          value={selectedPaymentMethod}
+          onValueChange={setSelectedPaymentMethod}
+          className="grid grid-cols-1 gap-4"
+        >
+          {allMethods.map((method) => (
+            <div key={method.id} className="relative">
+              <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
+              <Label
+                htmlFor={method.id}
+                className="flex items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
               >
-                {category.methods.map((method) => (
-                  <div key={method.id} className="relative">
-                    <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
-                    <Label
-                      htmlFor={method.id}
-                      className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                    >
-                      <span>{method.name}</span>
-                    </Label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gray-100 rounded-md">
+                    {method.icon ? (
+                      <img
+                        src={method.icon || "/placeholder.svg"}
+                        alt={method.name}
+                        className="max-w-full max-h-full p-1"
+                      />
+                    ) : method.categoryId === "bank" ? (
+                      <Building className="h-6 w-6 text-gray-500" />
+                    ) : method.categoryId === "ewallet" ? (
+                      <Wallet className="h-6 w-6 text-gray-500" />
+                    ) : (
+                      <QrCode className="h-6 w-6 text-gray-500" />
+                    )}
                   </div>
-                ))}
-              </RadioGroup>
-            </TabsContent>
+                  <div>
+                    <div className="font-medium">{method.name}</div>
+                    <div className="text-xs text-muted-foreground">{method.categoryName}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                  <div className="text-xs text-muted-foreground">Sekali bayar</div>
+                </div>
+              </Label>
+            </div>
           ))}
-        </Tabs>
+        </RadioGroup>
       </div>
     )
   }
