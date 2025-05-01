@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -126,7 +126,7 @@ export function PremiumClient({
   const [error, setError] = useState<string | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("BR")
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<string>("bank")
-  const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(transaction || null)
+  const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -134,7 +134,8 @@ export function PremiumClient({
   const [copiedText, setCopiedText] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const initializedRef = useRef(false)
 
   // Pilih metode pembayaran berdasarkan gateway aktif
   const getPaymentMethodsForGateway = () => {
@@ -150,17 +151,31 @@ export function PremiumClient({
   // Gunakan metode pembayaran yang sesuai dengan gateway aktif
   const currentPaymentMethods = getPaymentMethodsForGateway()
 
+  // Format transaksi untuk client
+  useEffect(() => {
+    if (transaction && !initializedRef.current) {
+      const formattedTransaction = {
+        id: transaction.id,
+        orderId: transaction.plan_id,
+        status: transaction.status,
+        amount: transaction.amount,
+        paymentMethod: transaction.payment_method || "",
+        createdAt: transaction.created_at,
+        updatedAt: transaction.updated_at,
+        gateway: transaction.payment_gateway,
+        paymentDetails: transaction.payment_details || {},
+      }
+      setCurrentTransaction(formattedTransaction)
+      initializedRef.current = true
+    }
+  }, [transaction])
+
   // Efek untuk memeriksa status transaksi secara berkala jika ada transaksi pending
   useEffect(() => {
-    let isMounted = true // Flag to track if the component is mounted
-
     const checkStatus = async () => {
-      if (!isMounted) return // Prevent state updates if the component is unmounted
-
       try {
         setCheckingStatus(true)
         const result = await getLatestTransaction()
-        if (!isMounted) return // Prevent state updates if the component is unmounted
         setCheckingStatus(false)
 
         if (result.success) {
@@ -173,8 +188,14 @@ export function PremiumClient({
             // Refresh halaman untuk menampilkan status premium
             router.refresh()
           } else if (result.hasTransaction) {
-            if (!isMounted) return // Prevent state updates if the component is unmounted
-            setCurrentTransaction(result.transaction)
+            // Hanya update jika status berbeda untuk menghindari loop
+            if (
+              !currentTransaction ||
+              currentTransaction.status !== result.transaction.status ||
+              currentTransaction.id !== result.transaction.id
+            ) {
+              setCurrentTransaction(result.transaction)
+            }
 
             // Jika status berubah menjadi success, refresh halaman
             if (result.transaction.status === "success" && currentTransaction?.status !== "success") {
@@ -198,31 +219,32 @@ export function PremiumClient({
         }
       } catch (error) {
         console.error("Error checking transaction status:", error)
-        if (!isMounted) return // Prevent state updates if the component is unmounted
         setCheckingStatus(false)
       }
     }
 
-    // Always clear the existing interval before setting up a new one
-    if (intervalId) {
-      clearInterval(intervalId)
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
 
-    // Set up the interval only if the condition is met
+    // Set up interval only if there's a pending transaction
     if (currentTransaction?.status === "pending") {
-      const id = setInterval(checkStatus, 10000)
-      setIntervalId(id)
-      checkStatus() // Initial check
-    } else {
-      // If the transaction is not pending, clear the interval ID
-      setIntervalId(null)
+      // Initial check
+      checkStatus()
+      // Set up interval for subsequent checks
+      intervalRef.current = setInterval(checkStatus, 10000)
     }
 
+    // Cleanup function
     return () => {
-      isMounted = false // Set the flag to false when the component unmounts
-      if (intervalId) clearInterval(intervalId)
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
-  }, [currentTransaction, router, toast, intervalId])
+  }, [currentTransaction?.id, currentTransaction?.status, router, toast])
 
   // Efek untuk menampilkan toast berdasarkan status URL
   useEffect(() => {
@@ -304,7 +326,14 @@ export function PremiumClient({
           })
           router.refresh()
         } else if (result.hasTransaction) {
-          setCurrentTransaction(result.transaction)
+          // Hanya update jika status berbeda untuk menghindari loop
+          if (
+            !currentTransaction ||
+            currentTransaction.status !== result.transaction.status ||
+            currentTransaction.id !== result.transaction.id
+          ) {
+            setCurrentTransaction(result.transaction)
+          }
 
           if (result.transaction.status === "success") {
             toast({
@@ -881,26 +910,6 @@ export function PremiumClient({
       </div>
     )
   }
-
-  // Format transaksi untuk client
-  const formattedTransaction = {
-    id: transaction.id,
-    orderId: transaction.plan_id,
-    status: transaction.status,
-    amount: transaction.amount,
-    paymentMethod: transaction.payment_method || "",
-    createdAt: transaction.created_at,
-    updatedAt: transaction.updated_at,
-    gateway: transaction.payment_gateway,
-    paymentDetails: transaction.payment_details || {},
-  }
-
-  // Update currentTransaction dengan data yang diformat
-  useEffect(() => {
-    if (transaction) {
-      setCurrentTransaction(formattedTransaction)
-    }
-  }, [transaction])
 
   return (
     <div className="container mx-auto py-8 px-4">
