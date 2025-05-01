@@ -84,7 +84,7 @@ export class TriPayGateway implements PaymentGateway {
           },
         ],
         return_url: params.successRedirectUrl,
-        callback_url: "https://secretme.site/api/payment/notification", // Hardcode callback URL
+        callback_url: params.notificationUrl, // Tambahkan callback_url
         signature: this.generateSignature(params.orderId, params.amount),
       }
 
@@ -99,133 +99,90 @@ export class TriPayGateway implements PaymentGateway {
         amount: params.amount,
       })
 
-      // Kirim request ke TriPay API dengan retry mechanism
-      const maxRetries = 2
-      let retryCount = 0
-      let lastError = null
+      // Kirim request ke TriPay API
+      const url = `${this.baseUrl}/transaction/create`
+      logger.debug(`Sending request to ${url}`)
 
-      while (retryCount <= maxRetries) {
+      // Log HTTP request
+      logger.logRequest(
+        url,
+        "POST",
+        {
+          Authorization: `Bearer ${this.apiKey.substring(0, 4)}****${this.apiKey.substring(this.apiKey.length - 4)}`,
+          "Content-Type": "application/json",
+        },
+        payload,
+      )
+
+      // Tambahkan timeout yang lebih lama (30 detik)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId))
+
+      // Periksa status HTTP terlebih dahulu
+      if (!response.ok) {
+        const errorText = await response.text()
+        logger.error(`HTTP Error: ${response.status} ${response.statusText}`, null, {
+          responseText: errorText.substring(0, 500), // Batasi panjang log
+        })
+
+        // Coba parse sebagai JSON jika mungkin
         try {
-          const url = `${this.baseUrl}/transaction/create`
-          logger.debug(`Sending request to ${url} (Attempt ${retryCount + 1}/${maxRetries + 1})`)
-
-          // Log HTTP request
-          logger.logRequest(
-            url,
-            "POST",
-            {
-              Authorization: `Bearer ${this.apiKey.substring(0, 4)}****${this.apiKey.substring(this.apiKey.length - 4)}`,
-              "Content-Type": "application/json",
-            },
-            payload,
-          )
-
-          // Gunakan timeout yang lebih lama (60 detik)
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 60000)
-
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${this.apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          }).finally(() => clearTimeout(timeoutId))
-
-          // Periksa status HTTP terlebih dahulu
-          if (!response.ok) {
-            const errorText = await response.text()
-            logger.error(`HTTP Error: ${response.status} ${response.statusText}`, null, {
-              responseText: errorText.substring(0, 500), // Batasi panjang log
-            })
-
-            // Coba parse sebagai JSON jika mungkin
-            try {
-              const errorData = JSON.parse(errorText)
-              logger.error(`Transaction creation failed with error response`, null, {
-                status: response.status,
-                errorData,
-              })
-
-              // Jika error terkait expired_time, coba tanpa parameter tersebut
-              if (errorData.message && errorData.message.includes("expired time")) {
-                logger.debug("Error related to expired_time, will retry without it")
-                delete payload.expired_time
-                // Lanjutkan ke retry berikutnya
-                throw new Error(errorData.message)
-              } else {
-                throw new Error(errorData.message || `HTTP Error: ${response.status}`)
-              }
-            } catch (parseError) {
-              // Jika bukan JSON, gunakan text error
-              throw new Error(`HTTP Error: ${response.status} - ${errorText.substring(0, 100)}`)
-            }
-          }
-
-          // Parse response JSON
-          const data = await response.json()
-
-          // Log HTTP response
-          logger.logResponse(url, response.status, data)
-
-          // Periksa apakah transaksi berhasil dibuat
-          if (!data.success) {
-            logger.error(`Transaction creation failed: ${data.message || "Unknown error"}`, null, {
-              responseData: data,
-            })
-            throw new Error(data.message || "Gagal membuat transaksi di TriPay")
-          }
-
-          // Log success details
-          logger.info("Transaction created successfully", {
-            reference: data.data.reference,
-            checkoutUrl: data.data.checkout_url,
+          const errorData = JSON.parse(errorText)
+          logger.error(`Transaction creation failed with error response`, null, {
+            status: response.status,
+            errorData,
           })
-
-          // Log transaction
-          logger.logTransaction("created", params.orderId, "pending", {
-            reference: data.data.reference,
-            gateway: "tripay",
-            method: tripayMethod,
-          })
-
-          // Return hasil transaksi
-          return {
-            success: true,
-            redirectUrl: data.data.checkout_url,
-            token: data.data.reference,
-            gatewayReference: data.data.reference,
-          }
-        } catch (error: any) {
-          lastError = error
-          logger.warn(`Attempt ${retryCount + 1}/${maxRetries + 1} failed: ${error.message}`)
-
-          // Jika ini adalah timeout atau network error, coba lagi
-          if (
-            error.name === "AbortError" ||
-            error.message.includes("network") ||
-            error.message.includes("timeout") ||
-            error.message.includes("expired time")
-          ) {
-            retryCount++
-            if (retryCount <= maxRetries) {
-              // Tunggu sebelum retry (exponential backoff)
-              const waitTime = Math.min(1000 * Math.pow(2, retryCount), 10000)
-              logger.debug(`Waiting ${waitTime}ms before retry`)
-              await new Promise((resolve) => setTimeout(resolve, waitTime))
-              continue
-            }
-          } else {
-            // Jika bukan error yang bisa di-retry, langsung throw
-            break
-          }
+          throw new Error(errorData.message || `HTTP Error: ${response.status}`)
+        } catch (parseError) {
+          // Jika bukan JSON, gunakan text error
+          throw new Error(`HTTP Error: ${response.status} - ${errorText.substring(0, 100)}`)
         }
       }
 
-      // Jika sampai di sini, berarti semua retry gagal
-      throw lastError || new Error("Gagal membuat transaksi di TriPay setelah beberapa percobaan")
+      // Parse response JSON
+      const data = await response.json()
+
+      // Log HTTP response
+      logger.logResponse(url, response.status, data)
+
+      // Periksa apakah transaksi berhasil dibuat
+      if (!data.success) {
+        logger.error(`Transaction creation failed: ${data.message || "Unknown error"}`, null, {
+          responseData: data,
+        })
+        throw new Error(data.message || "Gagal membuat transaksi di TriPay")
+      }
+
+      // Log success details
+      logger.info("Transaction created successfully", {
+        reference: data.data.reference,
+        checkoutUrl: data.data.checkout_url,
+      })
+
+      // Log transaction
+      logger.logTransaction("created", params.orderId, "pending", {
+        reference: data.data.reference,
+        gateway: "tripay",
+        method: tripayMethod,
+      })
+
+      // Return hasil transaksi
+      return {
+        success: true,
+        redirectUrl: data.data.checkout_url,
+        token: data.data.reference,
+        gatewayReference: data.data.reference,
+      }
     } catch (error: any) {
       logger.error("Error creating transaction", error, {
         userId: params.userId,
@@ -262,26 +219,12 @@ export class TriPayGateway implements PaymentGateway {
         Authorization: `Bearer ${this.apiKey.substring(0, 4)}****${this.apiKey.substring(this.apiKey.length - 4)}`,
       })
 
-      // Gunakan timeout yang lebih lama (30 detik)
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
-
       const response = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
         },
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId))
-
-      // Periksa status HTTP terlebih dahulu
-      if (!response.ok) {
-        const errorText = await response.text()
-        logger.error(`HTTP Error: ${response.status} ${response.statusText}`, null, {
-          responseText: errorText.substring(0, 500), // Batasi panjang log
-        })
-        throw new Error(`HTTP Error: ${response.status} - ${errorText.substring(0, 100)}`)
-      }
+      })
 
       const data = await response.json()
 
@@ -289,8 +232,9 @@ export class TriPayGateway implements PaymentGateway {
       logger.logResponse(url, response.status, data)
 
       // Periksa apakah request berhasil
-      if (!data.success) {
+      if (!response.ok || data.success !== true) {
         logger.error(`Verification failed: ${data.message || "Unknown error"}`, null, {
+          status: response.status,
           responseData: data,
         })
         throw new Error(data.message || "Gagal memverifikasi transaksi di TriPay")
@@ -470,10 +414,6 @@ export class TriPayGateway implements PaymentGateway {
         payload,
       )
 
-      // Gunakan timeout yang lebih lama (30 detik)
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
-
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -481,44 +421,7 @@ export class TriPayGateway implements PaymentGateway {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId))
-
-      // Periksa status HTTP terlebih dahulu
-      if (!response.ok) {
-        const errorText = await response.text()
-        logger.error(`HTTP Error: ${response.status} ${response.statusText}`, null, {
-          responseText: errorText.substring(0, 500), // Batasi panjang log
-        })
-
-        // Coba parse sebagai JSON jika mungkin
-        try {
-          const errorData = JSON.parse(errorText)
-
-          // Jika transaksi sudah dibayar atau sudah dibatalkan, anggap berhasil
-          if (
-            errorData.message &&
-            (errorData.message.includes("already paid") ||
-              errorData.message.includes("already closed") ||
-              errorData.message.includes("already expired"))
-          ) {
-            logger.info("Transaction already in final state, considering cancellation successful", {
-              reference,
-              message: errorData.message,
-            })
-
-            return {
-              success: true,
-              message: errorData.message || "Transaksi sudah dalam status final",
-            }
-          }
-
-          throw new Error(errorData.message || `HTTP Error: ${response.status}`)
-        } catch (parseError) {
-          // Jika bukan JSON, gunakan text error
-          throw new Error(`HTTP Error: ${response.status} - ${errorText.substring(0, 100)}`)
-        }
-      }
+      })
 
       const data = await response.json()
 
@@ -526,8 +429,9 @@ export class TriPayGateway implements PaymentGateway {
       logger.logResponse(url, response.status, data)
 
       // Periksa apakah request berhasil
-      if (!data.success) {
+      if (!response.ok || data.success !== true) {
         logger.error(`Cancellation failed: ${data.message || "Unknown error"}`, null, {
+          status: response.status,
           responseData: data,
         })
 
