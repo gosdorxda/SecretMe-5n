@@ -57,6 +57,14 @@ export class TriPayGateway implements PaymentGateway {
       const tripayMethod = this.mapPaymentMethodToTriPay(params.paymentMethod || "QR")
       console.log(`[${requestId}] 🔄 TriPay: Mapped payment method from ${params.paymentMethod} to ${tripayMethod}`)
 
+      // Hitung waktu kedaluwarsa (24 jam dari sekarang dalam format Unix timestamp)
+      const now = Math.floor(Date.now() / 1000) // Waktu sekarang dalam detik
+      const expiredTime = now + 24 * 60 * 60 // 24 jam dari sekarang dalam detik
+
+      console.log(`[${requestId}] ⏱️ Current time (Unix): ${now}`)
+      console.log(`[${requestId}] ⏱️ Expiry time (Unix): ${expiredTime}`)
+      console.log(`[${requestId}] ⏱️ Expiry duration: ${expiredTime - now} seconds`)
+
       // Siapkan data untuk request ke TriPay
       const payload = {
         method: tripayMethod, // Gunakan hasil mapping
@@ -64,7 +72,7 @@ export class TriPayGateway implements PaymentGateway {
         amount: params.amount,
         customer_name: params.userName || "Pengguna",
         customer_email: params.userEmail || "user@example.com",
-        customer_phone: "", // Opsional, bisa ditambahkan jika tersedia
+        customer_phone: params.userPhone || "", // Tambahkan nomor telepon jika tersedia
         order_items: [
           {
             name: "Premium Membership",
@@ -73,7 +81,7 @@ export class TriPayGateway implements PaymentGateway {
           },
         ],
         return_url: params.successRedirectUrl,
-        expired_time: 24 * 60 * 60, // 24 jam dalam detik (bukan menit)
+        expired_time: expiredTime, // Gunakan Unix timestamp
         signature: this.generateSignature(params.orderId, params.amount),
       }
 
@@ -101,6 +109,45 @@ export class TriPayGateway implements PaymentGateway {
       // Periksa apakah transaksi berhasil dibuat
       if (!response.ok || data.success !== true) {
         console.error(`[${requestId}] ❌ TriPay transaction creation failed: ${data.message || "Unknown error"}`)
+
+        // Coba alternatif jika masih error dengan expired_time
+        if (data.message && data.message.includes("expired time")) {
+          console.log(`[${requestId}] 🔄 Trying alternative approach for expired_time...`)
+
+          // Coba dengan format yang berbeda atau tanpa expired_time
+          delete payload.expired_time
+
+          console.log(`[${requestId}] 📦 TriPay payload (alternative):`, JSON.stringify(payload, null, 2))
+
+          const altResponse = await fetch(`${this.baseUrl}/transaction/create`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          })
+
+          const altData = await altResponse.json()
+
+          console.log(`[${requestId}] ⬅️ TriPay alternative response status: ${altResponse.status}`)
+          console.log(`[${requestId}] ⬅️ TriPay alternative response body:`, JSON.stringify(altData, null, 2))
+
+          if (altResponse.ok && altData.success === true) {
+            // Log success details
+            console.log(`[${requestId}] ✅ TriPay transaction created successfully with alternative approach!`)
+            console.log(`[${requestId}] 📝 Reference: ${altData.data.reference}`)
+            console.log(`[${requestId}] 🔗 Checkout URL: ${altData.data.checkout_url}`)
+
+            return {
+              success: true,
+              redirectUrl: altData.data.checkout_url,
+              token: altData.data.reference,
+              gatewayReference: altData.data.reference,
+            }
+          }
+        }
+
         throw new Error(data.message || "Gagal membuat transaksi di TriPay")
       }
 
