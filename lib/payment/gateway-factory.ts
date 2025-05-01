@@ -34,7 +34,7 @@ export async function getPaymentConfig() {
           isProduction: process.env.NODE_ENV === "production",
         },
         tripay: {
-          isProduction: process.env.NODE_ENV === "production",
+          isProduction: process.env.TRIPAY_USE_PRODUCTION === "true",
         },
       },
     }
@@ -56,7 +56,7 @@ export async function getPaymentConfig() {
           isProduction: process.env.NODE_ENV === "production",
         },
         tripay: {
-          isProduction: process.env.NODE_ENV === "production",
+          isProduction: process.env.TRIPAY_USE_PRODUCTION === "true",
         },
       },
     }

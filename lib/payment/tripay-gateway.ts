@@ -22,7 +22,11 @@ export class TriPayGateway implements PaymentGateway {
     this.apiKey = process.env.TRIPAY_API_KEY || ""
     this.merchantCode = process.env.TRIPAY_MERCHANT_CODE || ""
     this.privateKey = process.env.TRIPAY_PRIVATE_KEY || ""
-    this.isProduction = process.env.NODE_ENV === "production"
+
+    // Gunakan environment variable khusus untuk menentukan mode
+    this.isProduction = process.env.TRIPAY_USE_PRODUCTION === "true"
+
+    // Tentukan baseUrl berdasarkan mode
     this.baseUrl = this.isProduction ? "https://tripay.co.id/api" : "https://tripay.co.id/api-sandbox"
 
     // Log environment setup
@@ -40,6 +44,7 @@ export class TriPayGateway implements PaymentGateway {
     const requestId = `tripay-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     console.log(`[${requestId}] 🚀 TriPay: Creating new transaction for user ${params.userId}`)
     console.log(`[${requestId}] 📋 Order ID: ${params.orderId}, Amount: ${params.amount}`)
+    console.log(`[${requestId}] 🔧 Using mode: ${this.isProduction ? "PRODUCTION" : "SANDBOX"}`)
 
     try {
       // Validasi parameter yang diperlukan
@@ -127,6 +132,7 @@ export class TriPayGateway implements PaymentGateway {
   async verifyTransaction(orderId: string): Promise<VerifyTransactionResult> {
     const requestId = `tripay-verify-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     console.log(`[${requestId}] 🔍 TriPay: Verifying transaction with order ID: ${orderId}`)
+    console.log(`[${requestId}] 🔧 Using mode: ${this.isProduction ? "PRODUCTION" : "SANDBOX"}`)
 
     try {
       // Validasi parameter yang diperlukan
@@ -186,6 +192,7 @@ export class TriPayGateway implements PaymentGateway {
   async handleNotification(payload: any): Promise<NotificationResult> {
     const requestId = `tripay-notify-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     console.log(`[${requestId}] 📣 TriPay: Received notification webhook`)
+    console.log(`[${requestId}] 🔧 Using mode: ${this.isProduction ? "PRODUCTION" : "SANDBOX"}`)
     console.log(`[${requestId}] 📦 TriPay notification payload:`, JSON.stringify(payload, null, 2))
 
     try {
