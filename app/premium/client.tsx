@@ -7,7 +7,19 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { LoadingDots } from "@/components/loading-dots"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
-import { CheckCircle, AlertCircle, Clock, RefreshCw, X, History, Wallet, Building, QrCode, Lock } from "lucide-react"
+import {
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  RefreshCw,
+  X,
+  History,
+  Wallet,
+  Building,
+  QrCode,
+  Lock,
+  Store,
+} from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -38,8 +50,8 @@ type PremiumClientProps = {
   activeGateway: string // Tambahkan prop ini
 }
 
-// Definisi metode pembayaran
-const paymentMethods = [
+// Definisi metode pembayaran untuk Duitku
+const duitkuPaymentMethods = [
   {
     id: "bank",
     name: "Transfer Bank",
@@ -70,10 +82,7 @@ const paymentMethods = [
   },
 ]
 
-// Tambahkan definisi metode pembayaran untuk TriPay
-// Tambahkan kode ini di bawah definisi paymentMethods yang sudah ada
-
-// Definisi metode pembayaran untuk TriPay
+// Definisi metode pembayaran untuk TriPay berdasarkan dokumentasi resmi
 const tripayPaymentMethods = [
   {
     id: "bank",
@@ -84,6 +93,7 @@ const tripayPaymentMethods = [
       { id: "I1", name: "BNI Virtual Account", icon: "/payment-icons/bni.png" },
       { id: "BV", name: "BSI Virtual Account", icon: "/payment-icons/bsi.png" },
       { id: "BT", name: "Permata Virtual Account", icon: "/payment-icons/permata.png" },
+      { id: "NC", name: "CIMB Virtual Account", icon: "/payment-icons/cimb.png" },
     ],
   },
   {
@@ -99,7 +109,15 @@ const tripayPaymentMethods = [
   {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS", icon: "/payment-icons/qris.png" }],
+    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png" }],
+  },
+  {
+    id: "retail",
+    name: "Retail",
+    methods: [
+      { id: "A1", name: "Alfamart", icon: "/payment-icons/alfamart.png" },
+      { id: "IR", name: "Indomaret", icon: "/payment-icons/indomaret.png" },
+    ],
   },
 ]
 
@@ -133,7 +151,7 @@ export function PremiumClient({
         return tripayPaymentMethods
       case "duitku":
       default:
-        return paymentMethods
+        return duitkuPaymentMethods
     }
   }
 
@@ -547,26 +565,39 @@ export function PremiumClient({
 
   // Render metode pembayaran
   const renderPaymentMethods = () => {
+    // Buat array tab berdasarkan metode pembayaran yang tersedia
+    const tabs = currentPaymentMethods.map((category) => ({
+      id: category.id,
+      name: category.name,
+      icon:
+        category.id === "bank"
+          ? Building
+          : category.id === "ewallet"
+            ? Wallet
+            : category.id === "qris"
+              ? QrCode
+              : category.id === "retail"
+                ? Store
+                : Building,
+    }))
+
     return (
       <div className="mb-6">
         <h3 className="text-lg font-medium mb-4 flex items-center">
           <Lock className="h-5 w-5 text-green-500 mr-2" />
           Pilih Metode Pembayaran
+          {activeGateway === "tripay" && (
+            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">TriPay</span>
+          )}
         </h3>
         <Tabs value={selectedPaymentTab} onValueChange={handlePaymentTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="bank" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              <span>Bank</span>
-            </TabsTrigger>
-            <TabsTrigger value="ewallet" className="flex items-center gap-2">
-              <Wallet className="h-4 w-4" />
-              <span>E-Wallet</span>
-            </TabsTrigger>
-            <TabsTrigger value="qris" className="flex items-center gap-2">
-              <QrCode className="h-4 w-4" />
-              <span>QRIS</span>
-            </TabsTrigger>
+          <TabsList className={`grid w-full grid-cols-${tabs.length} mb-4`}>
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
+                <tab.icon className="h-4 w-4" />
+                <span>{tab.name}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {currentPaymentMethods.map((category) => (

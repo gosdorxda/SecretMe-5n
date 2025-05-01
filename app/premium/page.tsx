@@ -1,8 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
 import { PremiumClient } from "./client"
-import { getLatestTransaction } from "./actions"
-
-export const dynamic = "force-dynamic"
 
 export default async function PremiumPage({
   searchParams,
@@ -16,37 +13,15 @@ export default async function PremiumPage({
     data: { session },
   } = await supabase.auth.getSession()
 
+  // Check if user is logged in
   const isLoggedIn = !!session
+
+  // Get user data if logged in
   let isPremium = false
   let userName = ""
+  let transaction = null
 
-  // Get premium price from config or env
-  const { data: configData } = await supabase
-    .from("site_config")
-    .select("config")
-    .eq("type", "premium_settings")
-    .single()
-
-  const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-  // Tambahkan baris berikut untuk mendapatkan gateway aktif
-  const activeGateway = configData?.config?.activeGateway || "duitku"
-
-  // Get transaction status from URL if available
-  const status = searchParams.status as string | undefined
-  const orderId = searchParams.order_id as string | undefined
-
-  // Get latest transaction data
-  let transactionData = null
   if (isLoggedIn) {
-    const result = await getLatestTransaction()
-    if (result.success) {
-      if (result.isPremium) {
-        isPremium = true
-      } else if (result.hasTransaction) {
-        transactionData = result.transaction
-      }
-    }
-
     // Get user data
     const { data: userData } = await supabase
       .from("users")
@@ -58,7 +33,43 @@ export default async function PremiumPage({
       isPremium = userData.is_premium || false
       userName = userData.name || ""
     }
+
+    // Get latest transaction
+    const { data: transactionData } = await supabase
+      .from("premium_transactions")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (transactionData) {
+      transaction = transactionData
+    }
   }
+
+  // Get premium price from config or env
+  const { data: configData } = await supabase
+    .from("site_config")
+    .select("config")
+    .eq("type", "premium_settings")
+    .single()
+
+  const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+
+  // Get active gateway from config
+  const { data: gatewayConfigData } = await supabase
+    .from("site_config")
+    .select("config")
+    .eq("type", "premium_settings")
+    .single()
+
+  // Default to duitku if no config found
+  const activeGateway = gatewayConfigData?.config?.activeGateway || "duitku"
+
+  // Get URL parameters for status
+  const urlStatus = searchParams.status as string | undefined
+  const urlOrderId = searchParams.order_id as string | undefined
 
   return (
     <PremiumClient
@@ -66,10 +77,10 @@ export default async function PremiumPage({
       isPremium={isPremium}
       userName={userName}
       premiumPrice={premiumPrice}
-      urlStatus={status}
-      urlOrderId={orderId}
-      transaction={transactionData}
-      activeGateway={activeGateway} // Tambahkan prop ini
+      urlStatus={urlStatus}
+      urlOrderId={urlOrderId}
+      transaction={transaction}
+      activeGateway={activeGateway} // Pass the active gateway to the client
     />
   )
 }

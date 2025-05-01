@@ -59,6 +59,9 @@ export class TriPayGateway implements PaymentGateway {
         signature: this.generateSignature(params.orderId, params.amount),
       }
 
+      // Log payload untuk debugging
+      console.log("TriPay payload:", JSON.stringify(payload, null, 2))
+
       // Kirim request ke TriPay API
       const response = await fetch(`${this.baseUrl}/transaction/create`, {
         method: "POST",
@@ -208,22 +211,29 @@ export class TriPayGateway implements PaymentGateway {
 
   /**
    * Memetakan kode metode pembayaran UI ke kode TriPay
+   * Berdasarkan dokumentasi resmi: https://tripay.co.id/developer?tab=merchant-payment-channel
    */
   private mapPaymentMethodToTriPay(uiMethod: string): string {
+    // Kode metode pembayaran resmi TriPay
     const methodMap: Record<string, string> = {
-      // Bank Transfer
-      BR: "BRIVA",
-      M2: "MANDIRIVA",
-      I1: "BNIVA",
-      BV: "BSIVA",
-      BT: "PERMATA",
+      // Virtual Account
+      BR: "BRIVA", // BRI Virtual Account
+      M2: "MANDIRIVA", // Mandiri Virtual Account
+      I1: "BNIVA", // BNI Virtual Account
+      BV: "BSIVA", // BSI Virtual Account
+      BT: "PERMATAVA", // Permata Virtual Account
+      NC: "CIMBVA", // CIMB Virtual Account
 
       // E-Wallet
-      QR: "QRIS",
-      OV: "OVO",
-      SA: "SHOPEEPAY",
-      DA: "DANA",
-      LF: "LINKAJA",
+      QR: "QRIS", // QRIS by ShopeePay
+      OV: "OVO", // OVO
+      SA: "SHOPEEPAY", // ShopeePay
+      DA: "DANA", // DANA
+      LF: "LINKAJA", // LinkAja
+
+      // Convenience Store / Retail
+      A1: "ALFAMART", // Alfamart
+      IR: "INDOMARET", // Indomaret
 
       // Default
       default: "QRIS",
