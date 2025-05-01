@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
       orderId = notificationData.merchant_ref || notificationData.reference || "unknown"
       console.log(`[${requestId}] 🔑 TriPay order ID (merchant_ref): ${orderId}`)
       console.log(`[${requestId}] 🔑 TriPay reference: ${notificationData.reference || "not provided"}`)
+
+      // Add signature from header to the notification data for TriPay
+      if (request.headers.get("x-callback-signature")) {
+        notificationData.signature = request.headers.get("x-callback-signature")
+        console.log(`[${requestId}] 🔐 Added TriPay signature from header: ${notificationData.signature}`)
+      }
     } else {
       orderId = notificationData.merchantOrderId || notificationData.order_id || "unknown"
       console.log(`[${requestId}] 🔑 Duitku order ID: ${orderId}`)
@@ -95,7 +101,7 @@ export async function POST(request: NextRequest) {
     try {
       // Process the notification with the gateway
       console.log(`[${requestId}] ⚙️ Processing notification with ${gatewayName} gateway`)
-      const result = await gateway.handleNotification(notificationData)
+      const result = await gateway.handleNotification(notificationData, headers)
 
       // Extract important data
       const paymentStatus = result.status

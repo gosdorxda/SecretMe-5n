@@ -235,16 +235,30 @@ export class TriPayGateway implements PaymentGateway {
 
   /**
    * Menangani notifikasi webhook dari TriPay
+   * @param payload Data notifikasi dari TriPay
+   * @param headers Headers dari request (opsional)
    */
-  async handleNotification(payload: any): Promise<NotificationResult> {
+  async handleNotification(payload: any, headers?: any): Promise<NotificationResult> {
     const requestId = `tripay-notify-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     console.log(`[${requestId}] 📣 TriPay: Received notification webhook`)
     console.log(`[${requestId}] 🔧 Using mode: ${this.isProduction ? "PRODUCTION" : "SANDBOX"}`)
     console.log(`[${requestId}] 📦 TriPay notification payload:`, JSON.stringify(payload, null, 2))
 
     try {
-      // Validasi signature dari TriPay
-      const signature = payload.signature
+      // Cek apakah signature ada di payload atau di headers
+      let signature = payload.signature
+
+      // Jika signature tidak ada di payload, coba ambil dari headers
+      if (!signature && headers) {
+        signature = headers["x-callback-signature"] || headers["X-Callback-Signature"]
+        console.log(`[${requestId}] 🔐 TriPay signature from headers: ${signature}`)
+      }
+
+      if (!signature) {
+        console.error(`[${requestId}] ❌ TriPay signature not found in payload or headers!`)
+        throw new Error("Signature not found in TriPay notification")
+      }
+
       const expectedSignature = this.generateCallbackSignature(payload.merchant_ref, payload.status)
 
       console.log(`[${requestId}] 🔐 TriPay received signature: ${signature}`)
