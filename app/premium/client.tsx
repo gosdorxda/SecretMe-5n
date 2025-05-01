@@ -26,6 +26,7 @@ type Transaction = {
   gateway: string
 }
 
+// Tambahkan activeGateway ke props
 type PremiumClientProps = {
   isLoggedIn: boolean
   isPremium: boolean
@@ -34,6 +35,7 @@ type PremiumClientProps = {
   urlStatus?: string
   urlOrderId?: string
   transaction?: Transaction | null
+  activeGateway: string // Tambahkan prop ini
 }
 
 // Definisi metode pembayaran
@@ -68,6 +70,40 @@ const paymentMethods = [
   },
 ]
 
+// Tambahkan definisi metode pembayaran untuk TriPay
+// Tambahkan kode ini di bawah definisi paymentMethods yang sudah ada
+
+// Definisi metode pembayaran untuk TriPay
+const tripayPaymentMethods = [
+  {
+    id: "bank",
+    name: "Transfer Bank",
+    methods: [
+      { id: "BR", name: "BRI Virtual Account", icon: "/payment-icons/bri.png" },
+      { id: "M2", name: "Mandiri Virtual Account", icon: "/payment-icons/mandiri.png" },
+      { id: "I1", name: "BNI Virtual Account", icon: "/payment-icons/bni.png" },
+      { id: "BV", name: "BSI Virtual Account", icon: "/payment-icons/bsi.png" },
+      { id: "BT", name: "Permata Virtual Account", icon: "/payment-icons/permata.png" },
+    ],
+  },
+  {
+    id: "ewallet",
+    name: "E-Wallet",
+    methods: [
+      { id: "OV", name: "OVO", icon: "/payment-icons/ovo.png" },
+      { id: "SA", name: "ShopeePay", icon: "/payment-icons/shopeepay.png" },
+      { id: "LF", name: "LinkAja", icon: "/payment-icons/linkaja.png" },
+      { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
+    ],
+  },
+  {
+    id: "qris",
+    name: "QRIS",
+    methods: [{ id: "QR", name: "QRIS", icon: "/payment-icons/qris.png" }],
+  },
+]
+
+// Perbarui destructuring di function component
 export function PremiumClient({
   isLoggedIn,
   isPremium,
@@ -76,6 +112,7 @@ export function PremiumClient({
   urlStatus,
   urlOrderId,
   transaction,
+  activeGateway, // Tambahkan prop ini
 }: PremiumClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -88,6 +125,20 @@ export function PremiumClient({
   const [cancellingTransaction, setCancellingTransaction] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+
+  // Pilih metode pembayaran berdasarkan gateway aktif
+  const getPaymentMethodsForGateway = () => {
+    switch (activeGateway) {
+      case "tripay":
+        return tripayPaymentMethods
+      case "duitku":
+      default:
+        return paymentMethods
+    }
+  }
+
+  // Gunakan metode pembayaran yang sesuai dengan gateway aktif
+  const currentPaymentMethods = getPaymentMethodsForGateway()
 
   // Efek untuk memeriksa status transaksi secara berkala jika ada transaksi pending
   useEffect(() => {
@@ -172,20 +223,21 @@ export function PremiumClient({
   const handlePaymentTabChange = (value: string) => {
     setSelectedPaymentTab(value)
     // Set default payment method for the selected tab
-    const category = paymentMethods.find((cat) => cat.id === value)
+    const category = currentPaymentMethods.find((cat) => cat.id === value)
     if (category && category.methods.length > 0) {
       setSelectedPaymentMethod(category.methods[0].id)
     }
   }
 
-  // Fungsi untuk menangani pembayaran
+  // Perbarui fungsi handlePayment untuk mengirim activeGateway
   const handlePayment = async () => {
     try {
       setIsLoading(true)
       setError(null)
 
       // Panggil server action untuk membuat transaksi
-      const result = await createTransaction(selectedPaymentMethod)
+      // Tambahkan activeGateway sebagai parameter kedua
+      const result = await createTransaction(selectedPaymentMethod, activeGateway)
 
       if (!result.success) {
         setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
@@ -517,7 +569,7 @@ export function PremiumClient({
             </TabsTrigger>
           </TabsList>
 
-          {paymentMethods.map((category) => (
+          {currentPaymentMethods.map((category) => (
             <TabsContent key={category.id} value={category.id} className="mt-0">
               <RadioGroup
                 value={selectedPaymentMethod}

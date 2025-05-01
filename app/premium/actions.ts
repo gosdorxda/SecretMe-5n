@@ -5,18 +5,31 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
-/**
- * Membuat transaksi baru
- */
-export async function createTransaction(paymentMethod = "VC"): Promise<{
-  success: boolean
-  redirectUrl?: string
-  error?: string
-  orderId?: string
-  token?: string
-}> {
+// Perbarui fungsi createTransaction untuk menerima parameter gateway
+export async function createTransaction(paymentMethod: string, gatewayName = "duitku") {
   try {
     const supabase = createClient()
+
+    // Verifikasi user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return { success: false, error: "Unauthorized" }
+    }
+
+    // Kirim request ke API dengan gatewayName
+    const response = await fetch("/api/payment/create-transaction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        paymentMethod,
+        gatewayName, // Tambahkan gatewayName ke body request
+      }),
+    })
 
     // Get user session
     const {
@@ -122,8 +135,8 @@ export async function createTransaction(paymentMethod = "VC"): Promise<{
       token: result.token,
     }
   } catch (error: any) {
-    console.error("Error in createTransaction:", error)
-    return { success: false, error: error.message || "Terjadi kesalahan saat memproses pembayaran" }
+    console.error("Error creating transaction:", error)
+    return { success: false, error: error.message || "Failed to create transaction" }
   }
 }
 

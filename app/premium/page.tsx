@@ -28,6 +28,8 @@ export default async function PremiumPage({
     .single()
 
   const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+  // Tambahkan baris berikut untuk mendapatkan gateway aktif
+  const activeGateway = configData?.config?.activeGateway || "duitku"
 
   // Get transaction status from URL if available
   const status = searchParams.status as string | undefined
@@ -67,6 +69,7 @@ export default async function PremiumPage({
       urlStatus={status}
       urlOrderId={orderId}
       transaction={transactionData}
+      activeGateway={activeGateway} // Tambahkan prop ini
     />
   )
 }

@@ -36,9 +36,12 @@ export class TriPayGateway implements PaymentGateway {
         throw new Error("TriPay API Key dan Merchant Code diperlukan")
       }
 
+      // Map payment method dari UI ke kode TriPay
+      const tripayMethod = this.mapPaymentMethodToTriPay(params.paymentMethod || "QR")
+
       // Siapkan data untuk request ke TriPay
       const payload = {
-        method: params.paymentMethod || "QRIS", // Default ke QRIS jika tidak ada metode yang dipilih
+        method: tripayMethod, // Gunakan hasil mapping
         merchant_ref: params.orderId,
         amount: params.amount,
         customer_name: params.userName || "Pengguna",
@@ -201,5 +204,31 @@ export class TriPayGateway implements PaymentGateway {
     const crypto = require("crypto")
     const data = `${this.merchantCode}${orderId}${status}`
     return crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
+  }
+
+  /**
+   * Memetakan kode metode pembayaran UI ke kode TriPay
+   */
+  private mapPaymentMethodToTriPay(uiMethod: string): string {
+    const methodMap: Record<string, string> = {
+      // Bank Transfer
+      BR: "BRIVA",
+      M2: "MANDIRIVA",
+      I1: "BNIVA",
+      BV: "BSIVA",
+      BT: "PERMATA",
+
+      // E-Wallet
+      QR: "QRIS",
+      OV: "OVO",
+      SA: "SHOPEEPAY",
+      DA: "DANA",
+      LF: "LINKAJA",
+
+      // Default
+      default: "QRIS",
+    }
+
+    return methodMap[uiMethod] || methodMap.default
   }
 }
