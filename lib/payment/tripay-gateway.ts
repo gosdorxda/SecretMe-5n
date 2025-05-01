@@ -57,13 +57,13 @@ export class TriPayGateway implements PaymentGateway {
       const tripayMethod = this.mapPaymentMethodToTriPay(params.paymentMethod || "QR")
       console.log(`[${requestId}] 🔄 TriPay: Mapped payment method from ${params.paymentMethod} to ${tripayMethod}`)
 
-      // Hitung waktu kedaluwarsa (24 jam dari sekarang dalam format Unix timestamp)
+      // Hitung waktu kedaluwarsa (1 jam dari sekarang dalam format Unix timestamp)
       const now = Math.floor(Date.now() / 1000) // Waktu sekarang dalam detik
-      const expiredTime = now + 24 * 60 * 60 // 24 jam dari sekarang dalam detik
+      const expiredTime = now + 3600 // 1 jam dari sekarang dalam detik (3600 detik = 1 jam)
 
       console.log(`[${requestId}] ⏱️ Current time (Unix): ${now}`)
       console.log(`[${requestId}] ⏱️ Expiry time (Unix): ${expiredTime}`)
-      console.log(`[${requestId}] ⏱️ Expiry duration: ${expiredTime - now} seconds`)
+      console.log(`[${requestId}] ⏱️ Expiry duration: ${expiredTime - now} seconds (1 hour)`)
 
       // Siapkan data untuk request ke TriPay
       const payload = {
@@ -81,7 +81,7 @@ export class TriPayGateway implements PaymentGateway {
           },
         ],
         return_url: params.successRedirectUrl,
-        expired_time: expiredTime, // Gunakan Unix timestamp
+        expired_time: 3600, // 1 jam dalam detik
         signature: this.generateSignature(params.orderId, params.amount),
       }
 
