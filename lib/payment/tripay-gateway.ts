@@ -357,7 +357,7 @@ export class TriPayGateway implements PaymentGateway {
       // Identifikasi jenis event dari payload
       const eventType = this.identifyEventType(payload)
       logger.debug(`Event type identified: ${eventType}`)
-      this.debugSignature(payload)
+      this.debugSignature(payload, headers)
 
       // Cek apakah signature ada di payload atau di headers
       let receivedSignature = payload.signature
@@ -387,6 +387,15 @@ export class TriPayGateway implements PaymentGateway {
         // Ini sama dengan format pembuatan transaksi
         const format4 = this.generateSignatureFormat4(payload)
 
+        // Format 5: Menggunakan apiKey sebagai key HMAC
+        const format5 = this.generateSignatureFormat5(payload)
+
+        // Format 6: Menggunakan apiKey + reference + status
+        const format6 = this.generateSignatureFormat6(payload)
+
+        // Format 7: Menggunakan apiKey + reference + amount
+        const format7 = this.generateSignatureFormat7(payload)
+
         logger.debug("Signature debug mode", {
           received:
             receivedSignature.substring(0, 8) + "..." + receivedSignature.substring(receivedSignature.length - 8),
@@ -394,10 +403,16 @@ export class TriPayGateway implements PaymentGateway {
           format2: format2.substring(0, 8) + "..." + format2.substring(format2.length - 8),
           format3: format3.substring(0, 8) + "..." + format3.substring(format3.length - 8),
           format4: format4.substring(0, 8) + "..." + format4.substring(format4.length - 8),
+          format5: format5.substring(0, 8) + "..." + format5.substring(format5.length - 8),
+          format6: format6.substring(0, 8) + "..." + format6.substring(format6.length - 8),
+          format7: format7.substring(0, 8) + "..." + format7.substring(format7.length - 8),
           matchesFormat1: receivedSignature.toLowerCase() === format1.toLowerCase(),
           matchesFormat2: receivedSignature.toLowerCase() === format2.toLowerCase(),
           matchesFormat3: receivedSignature.toLowerCase() === format3.toLowerCase(),
           matchesFormat4: receivedSignature.toLowerCase() === format4.toLowerCase(),
+          matchesFormat5: receivedSignature.toLowerCase() === format5.toLowerCase(),
+          matchesFormat6: receivedSignature.toLowerCase() === format6.toLowerCase(),
+          matchesFormat7: receivedSignature.toLowerCase() === format7.toLowerCase(),
         })
 
         // Jika salah satu format cocok, gunakan format tersebut untuk validasi di masa depan
@@ -409,6 +424,12 @@ export class TriPayGateway implements PaymentGateway {
           logger.info("Signature matches Format 3 (HMAC(reference + status, privateKey))")
         } else if (receivedSignature.toLowerCase() === format4.toLowerCase()) {
           logger.info("Signature matches Format 4 (merchantCode + reference + amount)")
+        } else if (receivedSignature.toLowerCase() === format5.toLowerCase()) {
+          logger.info("Signature matches Format 5 (HMAC(reference + status, apiKey))")
+        } else if (receivedSignature.toLowerCase() === format6.toLowerCase()) {
+          logger.info("Signature matches Format 6 (apiKey + reference + status)")
+        } else if (receivedSignature.toLowerCase() === format7.toLowerCase()) {
+          logger.info("Signature matches Format 7 (apiKey + reference + amount)")
         } else {
           logger.warn("Signature doesn't match any known format")
         }
@@ -478,7 +499,7 @@ export class TriPayGateway implements PaymentGateway {
    * Metode khusus untuk debugging signature
    * PERHATIAN: Hanya gunakan untuk debugging, jangan di production!
    */
-  private debugSignature(payload: any): void {
+  private debugSignature(payload: any, headers?: any): void {
     const crypto = require("crypto")
 
     // Ambil nilai yang digunakan untuk signature
@@ -494,6 +515,7 @@ export class TriPayGateway implements PaymentGateway {
       amount: amount,
       status: status,
       privateKey: this.privateKey.substring(0, 3) + "...", // Hanya tampilkan sebagian kecil
+      apiKey: this.apiKey.substring(0, 3) + "...", // Hanya tampilkan sebagian kecil
     })
 
     // Format 1: merchantCode + reference + amount + status
@@ -504,12 +526,55 @@ export class TriPayGateway implements PaymentGateway {
     const data4 = `${merchantCode}${reference}${amount}`
     const sig4 = crypto.createHmac("sha256", this.privateKey).update(data4).digest("hex")
 
+    // Format 5: Menggunakan apiKey sebagai key HMAC
+    const data5 = `${reference}${status}`
+    const sig5 = crypto.createHmac("sha256", this.apiKey).update(data5).digest("hex")
+
+    // Format 6: Menggunakan apiKey + reference + status
+    const data6 = `${this.apiKey}${reference}${status}`
+    const sig6 = crypto.createHmac("sha256", this.apiKey).update(data6).digest("hex")
+
+    // Format 7: Menggunakan apiKey + reference + amount
+    const data7 = `${this.apiKey}${reference}${amount}`
+    const sig7 = crypto.createHmac("sha256", this.apiKey).update(data7).digest("hex")
+
+    // Log raw data dan signature
     this.logger.debug("Raw signature calculation", {
       data1: data1,
       sig1: sig1,
       data4: data4,
       sig4: sig4,
+      data5: data5,
+      sig5: sig5,
+      data6: data6,
+      sig6: sig6,
+      data7: data7,
+      sig7: sig7,
     })
+
+    // Jika ada header, coba cek signature dari header
+    if (headers) {
+      const headerSignature = headers["x-callback-signature"] || headers["X-Callback-Signature"]
+      if (headerSignature) {
+        this.logger.debug("Header signature", {
+          headerName: headers["x-callback-signature"] ? "x-callback-signature" : "X-Callback-Signature",
+          signature: headerSignature.substring(0, 8) + "..." + headerSignature.substring(headerSignature.length - 8),
+        })
+      }
+
+      // Log semua header yang mungkin berkaitan dengan signature
+      const signatureHeaders = Object.keys(headers).filter(
+        (key) => key.toLowerCase().includes("signature") || key.toLowerCase().includes("sign"),
+      )
+      if (signatureHeaders.length > 0) {
+        this.logger.debug("All potential signature headers", {
+          headers: signatureHeaders.map((key) => ({
+            name: key,
+            value: headers[key].substring(0, 8) + "..." + headers[key].substring(headers[key].length - 8),
+          })),
+        })
+      }
+    }
   }
 
   // Metode helper untuk format signature yang berbeda
@@ -546,6 +611,32 @@ export class TriPayGateway implements PaymentGateway {
     const amount = String(payload.total_amount || "0")
     const data = `${merchantCode}${reference}${amount}`
     return crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
+  }
+
+  // Format baru: Menggunakan apiKey sebagai key HMAC
+  private generateSignatureFormat5(payload: any): string {
+    const crypto = require("crypto")
+    const reference = String(payload.reference || "")
+    const status = String(payload.status || "")
+    return crypto.createHmac("sha256", this.apiKey).update(`${reference}${status}`).digest("hex")
+  }
+
+  // Format baru: Menggunakan apiKey + reference + status
+  private generateSignatureFormat6(payload: any): string {
+    const crypto = require("crypto")
+    const reference = String(payload.reference || "")
+    const status = String(payload.status || "")
+    const data = `${this.apiKey}${reference}${status}`
+    return crypto.createHmac("sha256", this.apiKey).update(data).digest("hex")
+  }
+
+  // Format baru: Menggunakan apiKey + reference + amount
+  private generateSignatureFormat7(payload: any): string {
+    const crypto = require("crypto")
+    const reference = String(payload.reference || "")
+    const amount = String(payload.total_amount || "0")
+    const data = `${this.apiKey}${reference}${amount}`
+    return crypto.createHmac("sha256", this.apiKey).update(data).digest("hex")
   }
 
   /**
