@@ -90,23 +90,50 @@ const tripayPaymentMethods = [
     id: "bank",
     name: "Transfer Bank",
     methods: [
-      { id: "BR", name: "BRI Virtual Account", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//briva.webp" },
-      { id: "M2", name: "Mandiri Virtual Account", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//mandiri.webp" },
-      { id: "BC", name: "BCA Virtual Account", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp" }, // Tambahkan BCA VA
+      {
+        id: "BR",
+        name: "BRI Virtual Account",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//briva.webp",
+      },
+      {
+        id: "M2",
+        name: "Mandiri Virtual Account",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//mandiri.webp",
+      },
+      {
+        id: "BC",
+        name: "BCA Virtual Account",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
+      }, // Tambahkan BCA VA
     ],
   },
   {
     id: "ewallet",
     name: "E-Wallet",
     methods: [
-      { id: "OV", name: "OVO", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//OVO_ID_CHNL_LOGO.webp" },
-      { id: "DA", name: "DANA", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//DANA_ID_CHNL_LOGO.webp" },
+      {
+        id: "OV",
+        name: "OVO",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//OVO_ID_CHNL_LOGO.webp",
+      },
+      {
+        id: "DA",
+        name: "DANA",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//DANA_ID_CHNL_LOGO.webp",
+      },
     ],
   },
   {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//QRIS_ID_CHNL_LOGO.webp", recommended: true }],
+    methods: [
+      {
+        id: "QR",
+        name: "QRIS by ShopeePay",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//QRIS_ID_CHNL_LOGO.webp",
+        recommended: true,
+      },
+    ],
   },
 ]
 
@@ -500,6 +527,119 @@ export function PremiumClient({
     const expiredTime = paymentDetails.expired_time || paymentDetails.expired_at || ""
     const instructions = paymentDetails.instructions || []
 
+    // Tambahkan fungsi untuk menampilkan instruksi pembayaran yang lebih baik
+
+    // Tambahkan fungsi ini di dalam komponen PremiumClient:
+    const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) => {
+      // Jika tidak ada detail pembayaran, tampilkan pesan default
+      if (!paymentDetails) return null
+
+      // Instruksi untuk QRIS
+      if (paymentMethod === "QR" || paymentMethod === "QRIS") {
+        return (
+          <div className="space-y-4 mt-4">
+            <h4 className="font-medium">Cara Pembayaran QRIS</h4>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>Buka aplikasi e-wallet Anda (OVO, DANA, GoPay, ShopeePay, LinkAja, dll)</li>
+              <li>Pilih menu Scan QR atau QRIS</li>
+              <li>Scan QR code yang ditampilkan atau upload QR code ke aplikasi</li>
+              <li>Periksa detail transaksi dan lakukan pembayaran</li>
+              <li>Pembayaran akan diproses secara otomatis</li>
+            </ol>
+          </div>
+        )
+      }
+
+      // Instruksi untuk Virtual Account
+      if (paymentMethod.includes("VA") || ["BR", "M2", "I1", "BV", "BT", "NC", "BC"].includes(paymentMethod)) {
+        const bankName = getBankName(paymentMethod)
+        return (
+          <div className="space-y-4 mt-4">
+            <h4 className="font-medium">Cara Pembayaran Virtual Account {bankName}</h4>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>
+                Catat nomor Virtual Account:{" "}
+                <span className="font-mono font-bold">{paymentDetails.pay_code || paymentDetails.va_number}</span>
+              </li>
+              <li>Login ke Internet Banking atau Mobile Banking {bankName}</li>
+              <li>Pilih menu Transfer atau Pembayaran</li>
+              <li>Pilih menu Virtual Account</li>
+              <li>Masukkan nomor Virtual Account</li>
+              <li>Periksa detail transaksi dan lakukan pembayaran</li>
+              <li>Simpan bukti pembayaran</li>
+            </ol>
+          </div>
+        )
+      }
+
+      // Instruksi untuk E-Wallet
+      if (["OV", "DA", "SA", "LF"].includes(paymentMethod)) {
+        const walletName = getWalletName(paymentMethod)
+        return (
+          <div className="space-y-4 mt-4">
+            <h4 className="font-medium">Cara Pembayaran {walletName}</h4>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>Buka aplikasi {walletName} di smartphone Anda</li>
+              <li>Pilih menu Bayar atau Scan</li>
+              <li>Klik tombol "Lanjutkan Pembayaran" di bawah</li>
+              <li>Anda akan diarahkan ke halaman pembayaran {walletName}</li>
+              <li>Ikuti instruksi pembayaran di aplikasi {walletName}</li>
+              <li>Setelah pembayaran selesai, Anda akan diarahkan kembali ke halaman ini</li>
+            </ol>
+          </div>
+        )
+      }
+
+      // Instruksi untuk Convenience Store
+      if (["A1", "IR"].includes(paymentMethod)) {
+        const storeName = paymentMethod === "A1" ? "Alfamart" : "Indomaret"
+        return (
+          <div className="space-y-4 mt-4">
+            <h4 className="font-medium">Cara Pembayaran di {storeName}</h4>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>
+                Catat kode pembayaran: <span className="font-mono font-bold">{paymentDetails.pay_code}</span>
+              </li>
+              <li>Kunjungi gerai {storeName} terdekat</li>
+              <li>
+                Beritahu kasir bahwa Anda ingin melakukan pembayaran {activeGateway === "tripay" ? "TriPay" : "Duitku"}
+              </li>
+              <li>Berikan kode pembayaran kepada kasir</li>
+              <li>Lakukan pembayaran sesuai jumlah yang tertera</li>
+              <li>Simpan struk pembayaran sebagai bukti</li>
+            </ol>
+          </div>
+        )
+      }
+
+      return null
+    }
+
+    // Tambahkan fungsi helper untuk mendapatkan nama bank
+    const getBankName = (code: string) => {
+      const bankMap: Record<string, string> = {
+        BR: "BRI",
+        M2: "Mandiri",
+        I1: "BNI",
+        BV: "BSI",
+        BT: "Permata",
+        NC: "CIMB",
+        BC: "BCA",
+      }
+      return bankMap[code] || code
+    }
+
+    // Tambahkan fungsi helper untuk mendapatkan nama e-wallet
+    const getWalletName = (code: string) => {
+      const walletMap: Record<string, string> = {
+        OV: "OVO",
+        DA: "DANA",
+        SA: "ShopeePay",
+        LF: "LinkAja",
+      }
+      return walletMap[code] || code
+    }
+
     return (
       <div className="mt-4 space-y-4">
         {/* Nomor Virtual Account atau Kode Pembayaran */}
@@ -572,6 +712,11 @@ export function PremiumClient({
             </AccordionItem>
           </Accordion>
         )}
+
+        {/* Instruksi Pembayaran yang Lebih Baik */}
+        {!instructions || instructions.length === 0
+          ? renderPaymentInstructions(currentTransaction.paymentMethod, currentTransaction.paymentDetails)
+          : null}
 
         {/* Tombol Tindakan */}
         <div className="flex gap-2 mt-4">
