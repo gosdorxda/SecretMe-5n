@@ -357,6 +357,7 @@ export class TriPayGateway implements PaymentGateway {
       // Identifikasi jenis event dari payload
       const eventType = this.identifyEventType(payload)
       logger.debug(`Event type identified: ${eventType}`)
+      this.debugSignature(payload)
 
       // Cek apakah signature ada di payload atau di headers
       let receivedSignature = payload.signature
@@ -471,6 +472,44 @@ export class TriPayGateway implements PaymentGateway {
       logger.error("Error handling notification", error)
       throw error
     }
+  }
+
+  /**
+   * Metode khusus untuk debugging signature
+   * PERHATIAN: Hanya gunakan untuk debugging, jangan di production!
+   */
+  private debugSignature(payload: any): void {
+    const crypto = require("crypto")
+
+    // Ambil nilai yang digunakan untuk signature
+    const merchantCode = this.merchantCode
+    const reference = String(payload.reference || "")
+    const amount = String(payload.total_amount || "0")
+    const status = String(payload.status || "")
+
+    // Log nilai raw (tanpa disamarkan)
+    this.logger.debug("Raw signature values for debugging", {
+      merchantCode: merchantCode,
+      reference: reference,
+      amount: amount,
+      status: status,
+      privateKey: this.privateKey.substring(0, 3) + "...", // Hanya tampilkan sebagian kecil
+    })
+
+    // Format 1: merchantCode + reference + amount + status
+    const data1 = `${merchantCode}${reference}${amount}${status}`
+    const sig1 = crypto.createHmac("sha256", this.privateKey).update(data1).digest("hex")
+
+    // Format 4: merchantCode + reference + amount (sama dengan format pembuatan transaksi)
+    const data4 = `${merchantCode}${reference}${amount}`
+    const sig4 = crypto.createHmac("sha256", this.privateKey).update(data4).digest("hex")
+
+    this.logger.debug("Raw signature calculation", {
+      data1: data1,
+      sig1: sig1,
+      data4: data4,
+      sig4: sig4,
+    })
   }
 
   // Metode helper untuk format signature yang berbeda
