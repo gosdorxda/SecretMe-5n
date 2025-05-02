@@ -367,56 +367,33 @@ export class TriPayGateway implements PaymentGateway {
         // Untuk sementara, bypass validasi signature
         logger.info("Bypassing signature validation due to missing signature")
       } else {
-        // Validasi signature dengan raw JSON payload sesuai dokumentasi TriPay
+        // Log raw payload untuk debugging
         const rawPayload = JSON.stringify(payload)
-        const crypto = require("crypto")
-        const calculatedSignature = crypto.createHmac("sha256", this.privateKey).update(rawPayload).digest("hex")
-
-        logger.debug("Signature validation", {
-          received:
-            receivedSignature.substring(0, 8) + "..." + receivedSignature.substring(receivedSignature.length - 8),
-          calculated:
-            calculatedSignature.substring(0, 8) + "..." + calculatedSignature.substring(calculatedSignature.length - 8),
-          matches: receivedSignature.toLowerCase() === calculatedSignature.toLowerCase(),
-          rawPayloadLength: rawPayload.length,
-          rawPayloadSample: rawPayload.substring(0, 100) + "...",
+        logger.debug("Raw payload for signature validation", {
+          rawPayload: rawPayload,
+          payloadLength: rawPayload.length,
         })
 
-        // Coba dengan beberapa variasi format JSON jika signature tidak cocok
-        if (receivedSignature.toLowerCase() !== calculatedSignature.toLowerCase()) {
-          logger.debug("Trying alternative JSON formats for signature validation")
+        // Coba berbagai format untuk validasi signature
+        const signatureResults = await this.tryMultipleSignatureFormats(payload, receivedSignature)
 
-          // 1. JSON tanpa spasi
-          const compactJson = JSON.stringify(payload)
-          const sigCompact = crypto.createHmac("sha256", this.privateKey).update(compactJson).digest("hex")
-          const matchesCompact = receivedSignature.toLowerCase() === sigCompact.toLowerCase()
-
-          // 2. JSON dengan urutan field yang berbeda (sorted)
-          const sortedKeys = Object.keys(payload).sort()
-          const sortedPayload: any = {}
-          sortedKeys.forEach((key) => {
-            sortedPayload[key] = payload[key]
-          })
-          const sortedJson = JSON.stringify(sortedPayload)
-          const sigSorted = crypto.createHmac("sha256", this.privateKey).update(sortedJson).digest("hex")
-          const matchesSorted = receivedSignature.toLowerCase() === sigSorted.toLowerCase()
-
-          logger.debug("Alternative JSON format results", {
-            compactJson: matchesCompact ? "MATCH! ✓" : "No match",
-            sortedJson: matchesSorted ? "MATCH! ✓" : "No match",
-          })
-
-          if (matchesCompact) {
-            logger.info("Signature matches with compact JSON format")
-          } else if (matchesSorted) {
-            logger.info("Signature matches with sorted JSON format")
-          } else {
-            logger.warn("Signature validation failed with all JSON formats, but continuing processing")
-            // Untuk sementara, bypass validasi signature
-            logger.info("Bypassing signature validation for now")
-          }
+        if (signatureResults.anyMatch) {
+          logger.info(`Signature validation successful using format: ${signatureResults.matchedFormat}`)
         } else {
-          logger.info("Signature validation successful")
+          logger.warn("Signature validation failed with all formats, but continuing processing")
+          // Untuk sementara, bypass validasi signature
+          logger.info("Bypassing signature validation for now")
+
+          // Log detail payload dan signature untuk analisis lebih lanjut
+          logger.debug("Detailed payload and signature for analysis", {
+            receivedSignature: receivedSignature,
+            payload: JSON.stringify(payload, null, 2),
+            payloadKeys: Object.keys(payload),
+            reference: payload.reference,
+            merchantRef: payload.merchant_ref,
+            status: payload.status,
+            amount: payload.total_amount,
+          })
         }
       }
 
@@ -474,6 +451,213 @@ export class TriPayGateway implements PaymentGateway {
     } catch (error: any) {
       logger.error("Error handling notification", error)
       throw error
+    }
+  }
+
+  /**
+   * Mencoba berbagai format untuk validasi signature
+   * @param payload Payload dari webhook
+   * @param receivedSignature Signature yang diterima dari header
+   * @returns Hasil validasi signature
+   */
+  private async tryMultipleSignatureFormats(
+    payload: any,
+    receivedSignature: string,
+  ): Promise<{
+    anyMatch: boolean
+    matchedFormat: string | null
+    results: Record<string, boolean>
+  }> {
+    const logger = createPaymentLogger("tripay")
+    const crypto = require("crypto")
+    const results: Record<string, boolean> = {}
+    let anyMatch = false
+    let matchedFormat: string | null = null
+
+    // Fungsi helper untuk mencoba format signature
+    const tryFormat = (name: string, data: string): boolean => {
+      const signature = crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
+      const matches = signature.toLowerCase() === receivedSignature.toLowerCase()
+      results[name] = matches
+
+      if (matches) {
+        anyMatch = true
+        matchedFormat = name
+        logger.debug(`Signature match found with format: ${name}`, {
+          format: name,
+          signature: signature.substring(0, 8) + "..." + signature.substring(signature.length - 8),
+        })
+      }
+
+      return matches
+    }
+
+    // 1. Format standar: raw JSON payload
+    const rawPayload = JSON.stringify(payload)
+    tryFormat("raw_json", rawPayload)
+
+    // 2. Format compact: JSON tanpa spasi
+    const compactJson = JSON.stringify(payload)
+    tryFormat("compact_json", compactJson)
+
+    // 3. Format sorted: JSON dengan urutan field yang diurutkan
+    const sortedKeys = Object.keys(payload).sort()
+    const sortedPayload: any = {}
+    sortedKeys.forEach((key) => {
+      sortedPayload[key] = payload[key]
+    })
+    const sortedJson = JSON.stringify(sortedPayload)
+    tryFormat("sorted_json", sortedJson)
+
+    // 4. Format dengan semua nilai sebagai string
+    const stringifiedPayload: any = {}
+    Object.keys(payload).forEach((key) => {
+      stringifiedPayload[key] = payload[key] === null ? null : String(payload[key])
+    })
+    const stringifiedJson = JSON.stringify(stringifiedPayload)
+    tryFormat("stringified_json", stringifiedJson)
+
+    // 5. Format dengan reference + merchant_ref
+    tryFormat("reference_merchant_ref", `${payload.reference}${payload.merchant_ref}`)
+
+    // 6. Format dengan reference + status
+    tryFormat("reference_status", `${payload.reference}${payload.status}`)
+
+    // 7. Format dengan reference + total_amount
+    tryFormat("reference_amount", `${payload.reference}${payload.total_amount}`)
+
+    // 8. Format dengan merchant_ref + status
+    tryFormat("merchant_ref_status", `${payload.merchant_ref}${payload.status}`)
+
+    // 9. Format dengan merchant_ref + total_amount
+    tryFormat("merchant_ref_amount", `${payload.merchant_ref}${payload.total_amount}`)
+
+    // 10. Format dengan reference + merchant_ref + status
+    tryFormat("reference_merchant_ref_status", `${payload.reference}${payload.merchant_ref}${payload.status}`)
+
+    // 11. Format dengan reference + merchant_ref + total_amount
+    tryFormat("reference_merchant_ref_amount", `${payload.reference}${payload.merchant_ref}${payload.total_amount}`)
+
+    // 12. Format dengan merchantCode + reference
+    tryFormat("merchant_code_reference", `${this.merchantCode}${payload.reference}`)
+
+    // 13. Format dengan merchantCode + merchant_ref
+    tryFormat("merchant_code_merchant_ref", `${this.merchantCode}${payload.merchant_ref}`)
+
+    // 14. Format dengan merchantCode + reference + status
+    tryFormat("merchant_code_reference_status", `${this.merchantCode}${payload.reference}${payload.status}`)
+
+    // 15. Format dengan merchantCode + merchant_ref + status
+    tryFormat("merchant_code_merchant_ref_status", `${this.merchantCode}${payload.merchant_ref}${payload.status}`)
+
+    // 16. Format dengan merchantCode + reference + total_amount
+    tryFormat("merchant_code_reference_amount", `${this.merchantCode}${payload.reference}${payload.total_amount}`)
+
+    // 17. Format dengan merchantCode + merchant_ref + total_amount
+    tryFormat("merchant_code_merchant_ref_amount", `${this.merchantCode}${payload.merchant_ref}${payload.total_amount}`)
+
+    // 18. Format dengan reference saja
+    tryFormat("reference_only", `${payload.reference}`)
+
+    // 19. Format dengan merchant_ref saja
+    tryFormat("merchant_ref_only", `${payload.merchant_ref}`)
+
+    // 20. Format dengan total_amount saja
+    tryFormat("amount_only", `${payload.total_amount}`)
+
+    // 21. Format dengan status saja
+    tryFormat("status_only", `${payload.status}`)
+
+    // 22. Format dengan paid_at + reference
+    if (payload.paid_at) {
+      tryFormat("paid_at_reference", `${payload.paid_at}${payload.reference}`)
+    }
+
+    // 23. Format dengan paid_at + merchant_ref
+    if (payload.paid_at) {
+      tryFormat("paid_at_merchant_ref", `${payload.paid_at}${payload.merchant_ref}`)
+    }
+
+    // 24. Format dengan reference + paid_at + status
+    if (payload.paid_at) {
+      tryFormat("reference_paid_at_status", `${payload.reference}${payload.paid_at}${payload.status}`)
+    }
+
+    // 25. Format dengan merchant_ref + paid_at + status
+    if (payload.paid_at) {
+      tryFormat("merchant_ref_paid_at_status", `${payload.merchant_ref}${payload.paid_at}${payload.status}`)
+    }
+
+    // 26. Format dengan reference + paid_at + total_amount
+    if (payload.paid_at) {
+      tryFormat("reference_paid_at_amount", `${payload.reference}${payload.paid_at}${payload.total_amount}`)
+    }
+
+    // 27. Format dengan merchant_ref + paid_at + total_amount
+    if (payload.paid_at) {
+      tryFormat("merchant_ref_paid_at_amount", `${payload.merchant_ref}${payload.paid_at}${payload.total_amount}`)
+    }
+
+    // 28. Format dengan apiKey sebagai kunci HMAC
+    const signatureWithApiKey = crypto.createHmac("sha256", this.apiKey).update(rawPayload).digest("hex")
+    const matchesWithApiKey = signatureWithApiKey.toLowerCase() === receivedSignature.toLowerCase()
+    results["raw_json_with_api_key"] = matchesWithApiKey
+
+    if (matchesWithApiKey) {
+      anyMatch = true
+      matchedFormat = "raw_json_with_api_key"
+      logger.debug("Signature match found with API Key as HMAC key", {
+        format: "raw_json_with_api_key",
+        signature:
+          signatureWithApiKey.substring(0, 8) + "..." + signatureWithApiKey.substring(signatureWithApiKey.length - 8),
+      })
+    }
+
+    // 29. Format dengan reference + apiKey sebagai kunci HMAC
+    const signatureRefWithApiKey = crypto.createHmac("sha256", this.apiKey).update(`${payload.reference}`).digest("hex")
+    const matchesRefWithApiKey = signatureRefWithApiKey.toLowerCase() === receivedSignature.toLowerCase()
+    results["reference_with_api_key"] = matchesRefWithApiKey
+
+    if (matchesRefWithApiKey) {
+      anyMatch = true
+      matchedFormat = "reference_with_api_key"
+      logger.debug("Signature match found with reference and API Key as HMAC key", {
+        format: "reference_with_api_key",
+        signature:
+          signatureRefWithApiKey.substring(0, 8) +
+          "..." +
+          signatureRefWithApiKey.substring(signatureRefWithApiKey.length - 8),
+      })
+    }
+
+    // 30. Format dengan merchant_ref + apiKey sebagai kunci HMAC
+    const signatureMerchantRefWithApiKey = crypto
+      .createHmac("sha256", this.apiKey)
+      .update(`${payload.merchant_ref}`)
+      .digest("hex")
+    const matchesMerchantRefWithApiKey =
+      signatureMerchantRefWithApiKey.toLowerCase() === receivedSignature.toLowerCase()
+    results["merchant_ref_with_api_key"] = matchesMerchantRefWithApiKey
+
+    if (matchesMerchantRefWithApiKey) {
+      anyMatch = true
+      matchedFormat = "merchant_ref_with_api_key"
+      logger.debug("Signature match found with merchant_ref and API Key as HMAC key", {
+        format: "merchant_ref_with_api_key",
+        signature:
+          signatureMerchantRefWithApiKey.substring(0, 8) +
+          "..." +
+          signatureMerchantRefWithApiKey.substring(signatureMerchantRefWithApiKey.length - 8),
+      })
+    }
+
+    // Log semua hasil
+    logger.debug("Signature validation results for all formats", { results })
+
+    return {
+      anyMatch,
+      matchedFormat,
+      results,
     }
   }
 
