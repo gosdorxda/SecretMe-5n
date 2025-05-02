@@ -382,15 +382,21 @@ export class TriPayGateway implements PaymentGateway {
         // Format 3: reference + status dengan privateKey sebagai key HMAC (format alternatif)
         const format3 = this.generateSignatureFormat3(payload)
 
+        // Format 4: Berdasarkan dokumentasi terbaru - merchantCode + reference + amount
+        // Ini sama dengan format pembuatan transaksi
+        const format4 = this.generateSignatureFormat4(payload)
+
         logger.debug("Signature debug mode", {
           received:
             receivedSignature.substring(0, 8) + "..." + receivedSignature.substring(receivedSignature.length - 8),
           format1: format1.substring(0, 8) + "..." + format1.substring(format1.length - 8),
           format2: format2.substring(0, 8) + "..." + format2.substring(format2.length - 8),
           format3: format3.substring(0, 8) + "..." + format3.substring(format3.length - 8),
+          format4: format4.substring(0, 8) + "..." + format4.substring(format4.length - 8),
           matchesFormat1: receivedSignature.toLowerCase() === format1.toLowerCase(),
           matchesFormat2: receivedSignature.toLowerCase() === format2.toLowerCase(),
           matchesFormat3: receivedSignature.toLowerCase() === format3.toLowerCase(),
+          matchesFormat4: receivedSignature.toLowerCase() === format4.toLowerCase(),
         })
 
         // Jika salah satu format cocok, gunakan format tersebut untuk validasi di masa depan
@@ -400,6 +406,8 @@ export class TriPayGateway implements PaymentGateway {
           logger.info("Signature matches Format 2 (privateKey + reference + status)")
         } else if (receivedSignature.toLowerCase() === format3.toLowerCase()) {
           logger.info("Signature matches Format 3 (HMAC(reference + status, privateKey))")
+        } else if (receivedSignature.toLowerCase() === format4.toLowerCase()) {
+          logger.info("Signature matches Format 4 (merchantCode + reference + amount)")
         } else {
           logger.warn("Signature doesn't match any known format")
         }
@@ -489,6 +497,16 @@ export class TriPayGateway implements PaymentGateway {
     const reference = String(payload.reference || "")
     const status = String(payload.status || "")
     return crypto.createHmac("sha256", this.privateKey).update(`${reference}${status}`).digest("hex")
+  }
+
+  // Tambahkan metode untuk format signature yang sama dengan pembuatan transaksi
+  private generateSignatureFormat4(payload: any): string {
+    const crypto = require("crypto")
+    const merchantCode = this.merchantCode
+    const reference = String(payload.reference || "")
+    const amount = String(payload.total_amount || "0")
+    const data = `${merchantCode}${reference}${amount}`
+    return crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
   }
 
   /**
@@ -661,27 +679,21 @@ export class TriPayGateway implements PaymentGateway {
   private generateCallbackSignature(payload: any): string {
     const crypto = require("crypto")
 
-    // Pastikan semua nilai dalam format string
+    // Format 4: merchantCode + reference + amount
+    const merchantCode = this.merchantCode
     const reference = String(payload.reference || "")
-    const status = String(payload.status || "")
+    const amount = String(payload.total_amount || "0")
 
-    // Format yang benar berdasarkan dokumentasi terbaru: privateKey + reference + status
-    const data = `${this.privateKey}${reference}${status}`
+    const data = `${merchantCode}${reference}${amount}`
 
-    // Log untuk debugging
-    this.logger.debug("Generating callback signature with updated format", {
+    this.logger.debug("Generating callback signature", {
+      merchantCode,
       reference,
-      status,
-      privateKeyLength: this.privateKey.length,
-      dataFormat: "privateKey + reference + status",
+      amount,
+      data,
     })
 
-    // Hasilkan signature dengan HMAC SHA256
-    const signature = crypto.createHmac("sha256", this.privateKey).update(`${reference}${status}`).digest("hex")
-
-    this.logger.debug("Generated callback signature", {
-      signature: signature.substring(0, 4) + "****" + signature.substring(signature.length - 4),
-    })
+    const signature = crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
 
     return signature
   }
