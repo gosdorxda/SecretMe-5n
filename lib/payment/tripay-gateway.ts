@@ -534,6 +534,39 @@ export class TriPayGateway implements PaymentGateway {
       privateKeyPrefix: this.privateKey.substring(0, 4) + "...",
     })
 
+    // PRIORITASKAN FORMAT YANG SUDAH TERBUKTI BENAR: raw JSON payload
+    const rawPayload = JSON.stringify(payload)
+    const signature = crypto.createHmac("sha256", this.privateKey).update(rawPayload).digest("hex")
+    const matches = signature.toLowerCase() === receivedSignature.toLowerCase()
+    results["raw_json"] = matches
+
+    logger.debug(`Trying prioritized signature format: raw_json`, {
+      format: "raw_json",
+      dataUsed: rawPayload.length > 50 ? rawPayload.substring(0, 50) + "..." : rawPayload,
+      dataLength: rawPayload.length,
+      calculatedSignature: signature,
+      calculatedSignatureLength: signature.length,
+      matches: matches,
+    })
+
+    if (matches) {
+      anyMatch = true
+      matchedFormat = "raw_json"
+      logger.info(`Signature match found with prioritized format: raw_json`, {
+        format: "raw_json",
+        signature: signature.substring(0, 8) + "..." + signature.substring(signature.length - 8),
+      })
+
+      // Jika format prioritas cocok, kita bisa langsung return
+      return {
+        anyMatch: true,
+        matchedFormat: "raw_json",
+        results: { raw_json: true },
+      }
+    }
+
+    // Jika format prioritas tidak cocok, coba format lain sebagai fallback
+
     // Fungsi helper untuk mencoba format signature dengan logging detail
     const tryFormat = (name: string, data: string): boolean => {
       const signature = crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
@@ -570,10 +603,6 @@ export class TriPayGateway implements PaymentGateway {
       amount: payload.total_amount,
       status: payload.status,
     })
-
-    // 1. Format standar: raw JSON payload
-    const rawPayload = JSON.stringify(payload)
-    tryFormat("raw_json", rawPayload)
 
     // 2. Format compact: JSON tanpa spasi
     const compactJson = JSON.stringify(payload)
