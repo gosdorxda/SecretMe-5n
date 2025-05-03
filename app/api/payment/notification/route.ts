@@ -22,13 +22,28 @@ export async function POST(request: NextRequest) {
     let gatewayName = "duitku" // Default to Duitku
     let eventType = "payment" // Default event type
 
+    // PERBAIKAN: Deteksi gateway berdasarkan header terlebih dahulu
+    const userAgent = request.headers.get("user-agent") || ""
+    const callbackEvent = request.headers.get("x-callback-event") || ""
+    const callbackSignature = request.headers.get("x-callback-signature") || ""
+
+    // Deteksi TriPay berdasarkan header
+    if (userAgent.includes("TriPay") || callbackEvent === "payment_status" || callbackSignature) {
+      gatewayName = "tripay"
+      logger.info("Detected TriPay notification based on headers", {
+        userAgent: userAgent.substring(0, 30),
+        callbackEvent,
+        hasSignature: !!callbackSignature,
+      })
+    }
+
     if (contentType.includes("application/json")) {
       // Parse JSON data
       notificationData = await request.json()
       logger.debug("Parsed JSON payload", { payload: logger.sanitizePayload(notificationData) })
 
-      // Try to determine if this is a TriPay notification
-      if (notificationData.reference || notificationData.merchant_ref) {
+      // Deteksi TriPay berdasarkan payload jika belum terdeteksi dari header
+      if (gatewayName !== "tripay" && (notificationData.reference || notificationData.merchant_ref)) {
         gatewayName = "tripay"
         logger.info("Detected TriPay notification based on payload structure")
 
@@ -47,8 +62,8 @@ export async function POST(request: NextRequest) {
       }
       logger.debug("Parsed form data payload", { payload: logger.sanitizePayload(notificationData) })
 
-      // Try to determine if this is a TriPay notification
-      if (notificationData.reference || notificationData.merchant_ref) {
+      // Deteksi TriPay berdasarkan payload jika belum terdeteksi dari header
+      if (gatewayName !== "tripay" && (notificationData.reference || notificationData.merchant_ref)) {
         gatewayName = "tripay"
         logger.info("Detected TriPay notification based on payload structure")
 
@@ -68,8 +83,8 @@ export async function POST(request: NextRequest) {
         notificationData = JSON.parse(text)
         logger.debug("Parsed JSON from text", { payload: logger.sanitizePayload(notificationData) })
 
-        // Try to determine if this is a TriPay notification
-        if (notificationData.reference || notificationData.merchant_ref) {
+        // Deteksi TriPay berdasarkan payload jika belum terdeteksi dari header
+        if (gatewayName !== "tripay" && (notificationData.reference || notificationData.merchant_ref)) {
           gatewayName = "tripay"
           logger.info("Detected TriPay notification based on payload structure")
 
@@ -87,8 +102,8 @@ export async function POST(request: NextRequest) {
         }
         logger.debug("Parsed URL params from text", { payload: logger.sanitizePayload(notificationData) })
 
-        // Try to determine if this is a TriPay notification
-        if (notificationData.reference || notificationData.merchant_ref) {
+        // Deteksi TriPay berdasarkan payload jika belum terdeteksi dari header
+        if (gatewayName !== "tripay" && (notificationData.reference || notificationData.merchant_ref)) {
           gatewayName = "tripay"
           logger.info("Detected TriPay notification based on payload structure")
 
@@ -98,6 +113,20 @@ export async function POST(request: NextRequest) {
             logger.info("Detected TriPay refund event")
           }
         }
+      }
+    }
+
+    // PERBAIKAN: Penanganan khusus untuk test callback
+    if (notificationData.note === "Test Callback") {
+      logger.info("Detected test callback", { gateway: gatewayName })
+
+      // Jika ini adalah test callback dari TriPay tapi tidak memiliki merchant_ref
+      if (gatewayName === "tripay" && (!notificationData.merchant_ref || !notificationData.reference)) {
+        logger.info("Test callback missing required fields, using dummy values")
+
+        // Gunakan nilai dummy untuk test callback
+        notificationData.merchant_ref = notificationData.merchant_ref || "TEST-CALLBACK-" + Date.now()
+        notificationData.reference = notificationData.reference || "TEST-REF-" + Date.now()
       }
     }
 
