@@ -362,39 +362,43 @@ export class TriPayGateway implements PaymentGateway {
       // Ambil signature dari header
       const receivedSignature = headers ? headers["x-callback-signature"] || headers["X-Callback-Signature"] : null
 
-      if (!receivedSignature) {
-        logger.warn("No callback signature found in headers")
-        // Untuk sementara, bypass validasi signature
-        logger.info("Bypassing signature validation due to missing signature")
-      } else {
-        // Log raw payload untuk debugging
-        const rawPayload = JSON.stringify(payload)
-        logger.debug("Raw payload for signature validation", {
-          rawPayload: rawPayload,
-          payloadLength: rawPayload.length,
+      // Log signature yang diterima dengan lebih detail
+      if (receivedSignature) {
+        logger.debug("Received signature from TriPay", {
+          signature: receivedSignature,
+          signatureLength: receivedSignature.length,
         })
+      } else {
+        logger.warn("No callback signature found in headers")
+      }
 
-        // Coba berbagai format untuk validasi signature
-        const signatureResults = await this.tryMultipleSignatureFormats(payload, receivedSignature)
+      // Log raw payload untuk debugging
+      const rawPayload = JSON.stringify(payload)
+      logger.debug("Raw payload for signature validation", {
+        rawPayload: rawPayload.substring(0, 100) + (rawPayload.length > 100 ? "..." : ""),
+        payloadLength: rawPayload.length,
+        payloadKeys: Object.keys(payload),
+      })
 
-        if (signatureResults.anyMatch) {
-          logger.info(`Signature validation successful using format: ${signatureResults.matchedFormat}`)
-        } else {
-          logger.warn("Signature validation failed with all formats, but continuing processing")
-          // Untuk sementara, bypass validasi signature
-          logger.info("Bypassing signature validation for now")
+      // Log detail payload untuk debugging
+      logger.debug("Detailed payload values", {
+        reference: payload.reference,
+        merchantRef: payload.merchant_ref,
+        status: payload.status,
+        amount: payload.total_amount,
+        paymentMethod: payload.payment_method,
+      })
 
-          // Log detail payload dan signature untuk analisis lebih lanjut
-          logger.debug("Detailed payload and signature for analysis", {
-            receivedSignature: receivedSignature,
-            payload: JSON.stringify(payload, null, 2),
-            payloadKeys: Object.keys(payload),
-            reference: payload.reference,
-            merchantRef: payload.merchant_ref,
-            status: payload.status,
-            amount: payload.total_amount,
-          })
-        }
+      // Tambahkan logging untuk semua header yang diterima
+      if (headers) {
+        logger.debug("All received headers", {
+          headerKeys: Object.keys(headers),
+          headerValues: Object.entries(headers).map(([key, value]) =>
+            key.toLowerCase().includes("signature")
+              ? `${key}: ${value.toString().substring(0, 8)}...`
+              : `${key}: ${value}`,
+          ),
+        })
       }
 
       // Mapping status TriPay ke status internal
@@ -474,16 +478,34 @@ export class TriPayGateway implements PaymentGateway {
     let anyMatch = false
     let matchedFormat: string | null = null
 
-    // Fungsi helper untuk mencoba format signature
+    // Log signature yang diterima
+    logger.debug("Validating received signature", {
+      receivedSignature: receivedSignature,
+      receivedSignatureLength: receivedSignature.length,
+      privateKeyLength: this.privateKey.length,
+      privateKeyPrefix: this.privateKey.substring(0, 4) + "...",
+    })
+
+    // Fungsi helper untuk mencoba format signature dengan logging detail
     const tryFormat = (name: string, data: string): boolean => {
       const signature = crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
       const matches = signature.toLowerCase() === receivedSignature.toLowerCase()
       results[name] = matches
 
+      // Log detail untuk setiap format yang dicoba
+      logger.debug(`Trying signature format: ${name}`, {
+        format: name,
+        dataUsed: data.length > 50 ? data.substring(0, 50) + "..." : data,
+        dataLength: data.length,
+        calculatedSignature: signature,
+        calculatedSignatureLength: signature.length,
+        matches: matches,
+      })
+
       if (matches) {
         anyMatch = true
         matchedFormat = name
-        logger.debug(`Signature match found with format: ${name}`, {
+        logger.info(`Signature match found with format: ${name}`, {
           format: name,
           signature: signature.substring(0, 8) + "..." + signature.substring(signature.length - 8),
         })
@@ -900,5 +922,92 @@ export class TriPayGateway implements PaymentGateway {
     }
 
     return methodMap[uiMethod] || methodMap.default
+  }
+
+  /**
+   * Metode khusus untuk debugging signature
+   * Dapat dipanggil dari route handler untuk menguji berbagai format signature
+   */
+  async debugSignature(payload: any, receivedSignature: string): Promise<any> {
+    const logger = createPaymentLogger("tripay-debug")
+    const crypto = require("crypto")
+
+    logger.info("Starting signature debugging", {
+      receivedSignature: receivedSignature,
+      payloadKeys: Object.keys(payload),
+    })
+
+    // Coba berbagai format data untuk signature
+    const formats: Record<string, string> = {
+      merchantCode_merchantRef_amount: `${this.merchantCode}${payload.merchant_ref}${payload.total_amount}`,
+      merchantRef_amount: `${payload.merchant_ref}${payload.total_amount}`,
+      reference_amount: `${payload.reference}${payload.total_amount}`,
+      merchantCode_reference: `${this.merchantCode}${payload.reference}`,
+      reference_only: `${payload.reference}`,
+      merchantRef_only: `${payload.merchant_ref}`,
+      amount_only: `${payload.total_amount}`,
+      status_only: `${payload.status}`,
+      raw_json: JSON.stringify(payload),
+      compact_json: JSON.stringify(payload, null, 0),
+    }
+
+    // Tambahkan format dengan berbagai kombinasi field
+    if (payload.paid_at) {
+      formats["paid_at_reference"] = `${payload.paid_at}${payload.reference}`
+      formats["paid_at_merchantRef"] = `${payload.paid_at}${payload.merchant_ref}`
+    }
+
+    // Hasil untuk setiap format
+    const results: Record<string, any> = {}
+
+    // Coba setiap format dengan privateKey
+    for (const [name, data] of Object.entries(formats)) {
+      const signature = crypto.createHmac("sha256", this.privateKey).update(data).digest("hex")
+      const matches = signature.toLowerCase() === receivedSignature.toLowerCase()
+
+      results[name] = {
+        data: data.length > 30 ? data.substring(0, 30) + "..." : data,
+        dataLength: data.length,
+        signature: signature,
+        matches: matches,
+      }
+
+      logger.debug(`Format "${name}" result:`, {
+        matches: matches,
+        signature: signature.substring(0, 10) + "..." + signature.substring(signature.length - 10),
+      })
+
+      if (matches) {
+        logger.info(`Match found with format: ${name}`)
+      }
+    }
+
+    // Coba juga dengan apiKey sebagai HMAC key
+    for (const [name, data] of Object.entries(formats)) {
+      const signature = crypto.createHmac("sha256", this.apiKey).update(data).digest("hex")
+      const matches = signature.toLowerCase() === receivedSignature.toLowerCase()
+
+      results[`${name}_with_apiKey`] = {
+        data: data.length > 30 ? data.substring(0, 30) + "..." : data,
+        dataLength: data.length,
+        signature: signature,
+        matches: matches,
+      }
+
+      logger.debug(`Format "${name}_with_apiKey" result:`, {
+        matches: matches,
+        signature: signature.substring(0, 10) + "..." + signature.substring(signature.length - 10),
+      })
+
+      if (matches) {
+        logger.info(`Match found with format: ${name}_with_apiKey`)
+      }
+    }
+
+    return {
+      receivedSignature: receivedSignature,
+      anyMatch: Object.values(results).some((r) => r.matches),
+      results: results,
+    }
   }
 }
