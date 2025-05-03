@@ -393,43 +393,13 @@ export class TriPayGateway implements PaymentGateway {
           signature: receivedSignature,
           signatureLength: receivedSignature.length,
         })
-      } else {
-        logger.warn("No callback signature found in headers")
-      }
 
-      // Log raw payload untuk debugging
-      const rawPayload = JSON.stringify(payload)
-      logger.debug("Raw payload for signature validation", {
-        rawPayload: rawPayload.substring(0, 100) + (rawPayload.length > 100 ? "..." : ""),
-        payloadLength: rawPayload.length,
-        payloadKeys: Object.keys(payload),
-      })
+        // Pastikan signature tidak dimasukkan ke dalam payload untuk validasi
+        const payloadForValidation = { ...payload }
+        delete payloadForValidation.signature
 
-      // Log detail payload untuk debugging
-      logger.debug("Detailed payload values", {
-        reference: payload.reference,
-        merchantRef: payload.merchant_ref,
-        status: payload.status,
-        amount: payload.total_amount,
-        paymentMethod: payload.payment_method,
-      })
-
-      // Tambahkan logging untuk semua header yang diterima
-      if (headers) {
-        logger.debug("All received headers", {
-          headerKeys: Object.keys(headers),
-          headerValues: Object.entries(headers).map(([key, value]) =>
-            key.toLowerCase().includes("signature")
-              ? `${key}: ${value.toString().substring(0, 8)}...`
-              : `${key}: ${value}`,
-          ),
-        })
-      }
-
-      // Jika ada signature, coba validasi dengan berbagai format
-      if (receivedSignature) {
         // Coba berbagai format untuk validasi signature
-        const signatureResults = await this.tryMultipleSignatureFormats(payload, receivedSignature)
+        const signatureResults = await this.tryMultipleSignatureFormats(payloadForValidation, receivedSignature)
 
         logger.debug("Signature validation results summary", {
           anyMatch: signatureResults.anyMatch,
@@ -534,8 +504,12 @@ export class TriPayGateway implements PaymentGateway {
       privateKeyPrefix: this.privateKey.substring(0, 4) + "...",
     })
 
+    // PENTING: Hapus field signature dari payload sebelum validasi
+    const cleanPayload = { ...payload }
+    delete cleanPayload.signature
+
     // PRIORITASKAN FORMAT YANG SUDAH TERBUKTI BENAR: raw JSON payload
-    const rawPayload = JSON.stringify(payload)
+    const rawPayload = JSON.stringify(cleanPayload)
     const signature = crypto.createHmac("sha256", this.privateKey).update(rawPayload).digest("hex")
     const matches = signature.toLowerCase() === receivedSignature.toLowerCase()
     results["raw_json"] = matches
@@ -605,14 +579,14 @@ export class TriPayGateway implements PaymentGateway {
     })
 
     // 2. Format compact: JSON tanpa spasi
-    const compactJson = JSON.stringify(payload)
+    const compactJson = JSON.stringify(cleanPayload)
     tryFormat("compact_json", compactJson)
 
     // 3. Format sorted: JSON dengan urutan field yang diurutkan
-    const sortedKeys = Object.keys(payload).sort()
+    const sortedKeys = Object.keys(cleanPayload).sort()
     const sortedPayload: any = {}
     sortedKeys.forEach((key) => {
-      sortedPayload[key] = payload[key]
+      sortedPayload[key] = cleanPayload[key]
     })
     const sortedJson = JSON.stringify(sortedPayload)
     tryFormat("sorted_json", sortedJson)
