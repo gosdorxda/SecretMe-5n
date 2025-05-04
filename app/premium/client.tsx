@@ -584,7 +584,7 @@ export function PremiumClient({
     const paymentMethod = currentTransaction.paymentMethod || ""
 
     return (
-      <div className="mt-6 space-y-4">
+      <div className="space-y-4">
         <div className="bg-yellow-50 border-2 border-yellow-100 rounded-md p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="bg-yellow-100 p-2 rounded-md">
@@ -1019,7 +1019,7 @@ export function PremiumClient({
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 pb-4 relative">
+            <CardContent className="pb-4 relative">
               <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-3">
                   <div className="bg-white p-2 rounded-md border">
