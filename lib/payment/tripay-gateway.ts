@@ -75,7 +75,7 @@ export class TriPayGateway implements PaymentGateway {
         amount: params.amount,
         customer_name: params.userName || "Pengguna",
         customer_email: params.userEmail || "user@example.com",
-        customer_phone: params.userPhone || "",
+        customer_phone: params.userPhone || "081234567890", // Gunakan nomor telepon yang diberikan
         order_items: [
           {
             name: "Premium Membership",

@@ -46,7 +46,7 @@ async function getPremiumSettings() {
 // Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
 
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
-export async function createTransaction(paymentMethod: string, gatewayName: string | undefined) {
+export async function createTransaction(paymentMethod: string, gatewayName: string | undefined, phoneNumber?: string) {
   try {
     const supabase = createClient()
 
@@ -65,19 +65,6 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: "Unauthorized" }
     }
 
-    // Kirim request ke API dengan gatewayName
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
-    const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        paymentMethod,
-        gatewayName: finalGatewayName, // Tambahkan gatewayName ke body request
-      }),
-    })
-
     // Get user session
     const {
       data: { session },
@@ -89,7 +76,7 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Get user data
     const { data: userData } = await supabase
       .from("users")
-      .select("name, email, is_premium")
+      .select("name, email, is_premium, phone")
       .eq("id", session.user.id)
       .single()
 
@@ -100,15 +87,6 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     if (userData.is_premium) {
       return { success: false, error: "Anda sudah menjadi pengguna premium" }
     }
-
-    // Get premium price from config or env
-    // const { data: configData } = await supabase
-    //   .from("site_config")
-    //   .select("config")
-    //   .eq("type", "premium_settings")
-    //   .single()
-
-    // const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
 
     // Generate order ID
     const orderId = generateOrderId(session.user.id)
@@ -135,11 +113,15 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Get payment gateway
     const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
 
+    // Gunakan nomor telepon dari parameter atau dari profil pengguna
+    const userPhone = phoneNumber || userData.phone || ""
+
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
       userId: session.user.id,
       userEmail: userData.email || session.user.email || "",
       userName: userData.name || "User",
+      userPhone: userPhone, // Tambahkan nomor telepon
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
