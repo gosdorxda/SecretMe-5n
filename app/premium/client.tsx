@@ -31,6 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { CheckPayPalStatus } from "@/components/check-paypal-status"
 
 type Transaction = {
   id: string
@@ -751,6 +752,15 @@ export function PremiumClient({
               </Button>
             </div>
           </div>
+          {/* Tambahkan tombol verifikasi PayPal jika gateway adalah PayPal */}
+          {currentTransaction.gateway === "paypal" && (
+            <div className="mt-4">
+              <CheckPayPalStatus orderId={currentTransaction.orderId} />
+              <p className="text-xs text-center mt-2 text-gray-500">
+                Jika Anda sudah menyelesaikan pembayaran di PayPal, klik tombol di atas untuk memverifikasi status.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     )
