@@ -475,7 +475,17 @@ export function PremiumClient({
       const result = await createTransaction(selectedPaymentMethod, activeGateway, phoneNumber)
 
       if (!result.success) {
-        setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
+        // Tampilkan pesan error yang lebih spesifik
+        if (result.error?.includes("Data pengguna tidak ditemukan")) {
+          setError("Data pengguna tidak ditemukan. Silakan refresh halaman atau logout dan login kembali.")
+          toast({
+            title: "Error",
+            description: "Data pengguna tidak ditemukan. Silakan refresh halaman atau logout dan login kembali.",
+            variant: "destructive",
+          })
+        } else {
+          setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
+        }
         setIsLoading(false)
         return
       }

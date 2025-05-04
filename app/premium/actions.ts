@@ -74,18 +74,42 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     }
 
     // Get user data
-    const { data: userData } = await supabase
+    const { data: userData, error: userDataError } = await supabase
       .from("users")
       .select("name, email, is_premium, phone")
       .eq("id", session.user.id)
       .single()
 
-    if (!userData) {
-      return { success: false, error: "Data pengguna tidak ditemukan" }
+    if (userDataError) {
+      console.error("Error fetching user data:", userDataError)
+
+      // Coba buat data pengguna jika tidak ditemukan
+      if (userDataError.code === "PGRST116") {
+        // PostgreSQL error code for "not found"
+        // Coba buat data pengguna baru
+        const { error: insertError } = await supabase.from("users").insert({
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
+          is_premium: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+
+        if (insertError) {
+          console.error("Error creating user data:", insertError)
+          return { success: false, error: "Gagal membuat data pengguna" }
+        }
+
+        // Gunakan data default karena baru saja dibuat
+        return createTransaction(paymentMethod, gatewayName, phoneNumber) // Coba lagi setelah membuat pengguna
+      }
+
+      return { success: false, error: "Data pengguna tidak ditemukan. Silakan coba lagi atau hubungi dukungan." }
     }
 
-    if (userData.is_premium) {
-      return { success: false, error: "Anda sudah menjadi pengguna premium" }
+    if (!userData) {
+      return { success: false, error: "Data pengguna tidak ditemukan" }
     }
 
     // Generate order ID
