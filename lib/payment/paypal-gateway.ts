@@ -254,6 +254,72 @@ export class PayPalGateway implements PaymentGateway {
   }
 
   /**
+   * Memeriksa status order PayPal
+   * Metode ini digunakan oleh endpoint check-paypal-status
+   */
+  async checkOrderStatus(orderId: string): Promise<{
+    success: boolean
+    status?: string
+    details?: any
+    error?: string
+  }> {
+    try {
+      this.logger.info("Checking PayPal order status", { orderId })
+
+      // Validasi kredensial
+      if (!this.clientId || !this.clientSecret) {
+        this.logger.error("Missing PayPal credentials")
+        return {
+          success: false,
+          error: "PayPal credentials not set",
+        }
+      }
+
+      // Dapatkan token akses
+      const accessToken = await this.getAccessToken()
+
+      // Periksa status order
+      const response = await fetch(`${this.baseUrl}/v2/checkout/orders/${orderId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        this.logger.error("Failed to check PayPal order status", null, {
+          status: response.status,
+          response: errorText,
+        })
+        return {
+          success: false,
+          error: `Failed to check PayPal order status: ${response.status} ${errorText}`,
+        }
+      }
+
+      const data = await response.json()
+
+      this.logger.info("PayPal order status checked", {
+        orderId,
+        status: data.status,
+      })
+
+      return {
+        success: true,
+        status: data.status,
+        details: data,
+      }
+    } catch (error: any) {
+      this.logger.error("Error checking PayPal order status", error, { orderId })
+      return {
+        success: false,
+        error: error.message || "Unknown error occurred",
+      }
+    }
+  }
+
+  /**
    * Menangani notifikasi webhook dari PayPal
    */
   async handleNotification(payload: any, headers?: any): Promise<NotificationResult> {
