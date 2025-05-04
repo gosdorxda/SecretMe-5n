@@ -552,27 +552,13 @@ export class TriPayGateway implements PaymentGateway {
    * Berdasarkan dokumentasi resmi: https://tripay.co.id/developer?tab=merchant-payment-channel
    */
   private mapPaymentMethodToTriPay(uiMethod: string): string {
-    // Kode metode pembayaran resmi TriPay
+    // Kode metode pembayaran resmi TriPay (disederhanakan)
     const methodMap: Record<string, string> = {
       // Virtual Account
-      BR: "BRIVA", // BRI Virtual Account
-      M2: "MANDIRIVA", // Mandiri Virtual Account
-      I1: "BNIVA", // BNI Virtual Account
-      BV: "BSIVA", // BSI Virtual Account
-      BT: "PERMATAVA", // Permata Virtual Account
-      NC: "CIMBVA", // CIMB Virtual Account
       BC: "BCAVA", // BCA Virtual Account
 
-      // E-Wallet
+      // QRIS
       QR: "QRIS", // QRIS by ShopeePay
-      OV: "OVO", // OVO
-      SA: "SHOPEEPAY", // ShopeePay
-      DA: "DANA", // DANA
-      LF: "LINKAJA", // LinkAja
-
-      // Convenience Store / Retail
-      A1: "ALFAMART", // Alfamart
-      IR: "INDOMARET", // Indomaret
 
       // Default
       default: "QRIS",

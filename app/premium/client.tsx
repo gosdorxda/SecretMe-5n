@@ -74,7 +74,7 @@ const duitkuPaymentMethods = [
   },
 ]
 
-// Definisi metode pembayaran untuk TriPay
+// Ubah definisi tripayPaymentMethods menjadi hanya QRIS dan BCA VA
 const tripayPaymentMethods = [
   {
     id: "bank",
@@ -84,22 +84,6 @@ const tripayPaymentMethods = [
         id: "BC",
         name: "BCA Virtual Account",
         icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
-      },
-    ],
-  },
-  {
-    id: "ewallet",
-    name: "E-Wallet",
-    methods: [
-      {
-        id: "OV",
-        name: "OVO",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//OVO_ID_CHNL_LOGO.webp",
-      },
-      {
-        id: "DA",
-        name: "DANA",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//DANA_ID_CHNL_LOGO.webp",
       },
     ],
   },
@@ -122,141 +106,14 @@ const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) =
   if (!paymentMethod || !paymentDetails) return null
 
   switch (paymentMethod) {
-    case "A1": // ATM Bersama
+    case "BC": // BCA Virtual Account
       return (
         <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran ATM Bersama:</div>
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BCA Virtual Account:</div>
           <ol className="list-decimal pl-5 space-y-1">
             <li>Masukkan kartu ATM dan PIN Anda.</li>
             <li>Pilih menu "Transfer".</li>
-            <li>Masukkan kode bank tujuan (jika berbeda) dan nomor virtual account.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "NC": // NEO
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran NEO:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Buka aplikasi NEO Anda.</li>
-            <li>Pilih menu "Transfer".</li>
-            <li>Masukkan nomor virtual account.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "I1": // BNI
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BNI:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Pilih menu "Transfer" di ATM atau BNI Mobile Banking.</li>
-            <li>Masukkan nomor virtual account BNI.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "BR": // BRIVA
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BRIVA:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Pilih menu "Pembayaran" di ATM atau BRI Mobile Banking.</li>
-            <li>Pilih "BRIVA".</li>
-            <li>Masukkan nomor BRIVA.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "BV": // BSI
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BSI:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Pilih menu "Pembayaran" di ATM atau BSI Mobile Banking.</li>
-            <li>Masukkan nomor virtual account BSI.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "M2": // MANDIRI
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran MANDIRI:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Pilih menu "Pembayaran" di ATM atau Mandiri Online.</li>
-            <li>Masukkan nomor virtual account Mandiri.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "BT": // PERMATA
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran PERMATA:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Pilih menu "Pembayaran" di ATM atau PermataMobile X.</li>
-            <li>Masukkan nomor virtual account Permata.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "OV": // OVO
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran OVO:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Buka aplikasi OVO Anda.</li>
-            <li>Pilih menu "Bayar".</li>
-            <li>Masukkan nomor virtual account OVO.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "SA": // ShopeePay
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran ShopeePay:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Buka aplikasi Shopee Anda.</li>
-            <li>Pilih menu "ShopeePay".</li>
-            <li>Pilih "Bayar".</li>
-            <li>Scan kode QR atau masukkan nomor virtual account ShopeePay.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "LF": // LinkAja
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran LinkAja:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Buka aplikasi LinkAja Anda.</li>
-            <li>Pilih menu "Bayar".</li>
-            <li>Masukkan nomor virtual account LinkAja.</li>
-            <li>Masukkan jumlah yang akan dibayarkan.</li>
-            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
-          </ol>
-        </div>
-      )
-    case "DA": // DANA
-      return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran DANA:</div>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Buka aplikasi DANA Anda.</li>
-            <li>Pilih menu "Kirim".</li>
-            <li>Masukkan nomor virtual account DANA.</li>
+            <li>Masukkan nomor virtual account BCA.</li>
             <li>Masukkan jumlah yang akan dibayarkan.</li>
             <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
           </ol>
