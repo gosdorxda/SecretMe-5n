@@ -171,8 +171,8 @@ export class DuitkuGateway implements PaymentGateway {
       merchantCode: this.merchantCode,
       orderId: orderId,
       amount: amount,
-      apiKey: this.apiKey ? "[HIDDEN]" : "Not set",
-      signatureString: this.merchantCode + orderId + amount + "[HIDDEN]",
+      apiKey: this.apiKey,
+      signatureString: signatureString,
       signature: hash,
     })
     return hash

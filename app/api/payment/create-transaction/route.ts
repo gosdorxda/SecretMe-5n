@@ -4,24 +4,12 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { createPaymentLogger } from "@/lib/payment/payment-logger"
 
-// Tambahkan phoneNumber ke body request
-
 export async function POST(request: NextRequest) {
   const requestId = `payment-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
   const logger = createPaymentLogger("transaction")
   logger.info("Starting transaction creation")
 
   try {
-    // Ambil data dari request
-    const body = await request.json()
-    const { paymentMethod, phoneNumber } = body
-
-    // Validasi input
-    if (!paymentMethod) {
-      logger.error("Payment method is required")
-      return NextResponse.json({ success: false, error: "Payment method is required" }, { status: 400 })
-    }
-
     // Verifikasi user
     const supabase = createClient()
     const {
@@ -34,9 +22,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = user.id
-
+    // Ambil data dari request
+    const body = await request.json()
     const gatewayName = body.gatewayName || process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+    const paymentMethod = body.paymentMethod
 
     logger.info(`Request data: gatewayName=${gatewayName}, paymentMethod=${paymentMethod || "default"}`)
 
@@ -67,7 +56,6 @@ export async function POST(request: NextRequest) {
 
     // Gunakan harga dari database jika ada, jika tidak gunakan dari env
     const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-    const amount = Number.parseInt(premiumPrice.toString(), 10)
 
     logger.info(`Premium price: ${premiumPrice}`)
 
@@ -112,7 +100,6 @@ export async function POST(request: NextRequest) {
       pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
       notificationUrl: `${appUrl}/api/payment/notification`,
       paymentMethod: paymentMethod,
-      phoneNumber: phoneNumber,
     })
 
     if (!result.success) {

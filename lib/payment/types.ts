@@ -29,16 +29,14 @@ export interface CreateTransactionParams {
   userId: string
   userEmail: string
   userName: string
-  userPhone?: string // Tambahkan parameter nomor telepon
   amount: number
   orderId: string
   description: string
   successRedirectUrl: string
   failureRedirectUrl: string
-  pendingRedirectUrl?: string
-  notificationUrl?: string
-  paymentMethod?: string
-  expiredTime?: string
+  pendingRedirectUrl: string
+  notificationUrl: string
+  paymentMethod?: string // Tambahkan parameter metode pembayaran
 }
 
 export interface CreateTransactionResult {

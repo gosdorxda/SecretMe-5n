@@ -308,8 +308,6 @@ export function PremiumClient({
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [cancellingTransaction, setCancellingTransaction] = useState(false)
   const [copiedText, setCopiedText] = useState<string | null>(null)
-  const [phoneNumber, setPhoneNumber] = useState<string>("")
-  const [phoneNumberError, setPhoneNumberError] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -446,53 +444,18 @@ export function PremiumClient({
     }
   }, [urlStatus, urlOrderId, toast])
 
-  // Tambahkan fungsi untuk mengecek apakah metode pembayaran memerlukan nomor telepon
-  const requiresPhoneNumber = (method: string) => {
-    // Daftar metode pembayaran yang memerlukan nomor telepon
-    const methodsRequiringPhone = ["OVO", "DANA", "SHOPEEPAY", "LINKAJA"]
-    return methodsRequiringPhone.includes(method)
-  }
-
   // Perbarui fungsi handlePayment untuk mengirim activeGateway
   const handlePayment = async () => {
     try {
       setIsLoading(true)
       setError(null)
-      setPhoneNumberError(null)
-
-      // Validasi nomor telepon untuk metode pembayaran e-wallet (OVO dan DANA)
-      if ((selectedPaymentMethod === "OV" || selectedPaymentMethod === "DA") && activeGateway === "tripay") {
-        if (!phoneNumber || phoneNumber.trim() === "") {
-          setPhoneNumberError("Nomor telepon wajib diisi untuk pembayaran OVO/DANA")
-          setIsLoading(false)
-          return
-        }
-
-        // Validasi format nomor telepon Indonesia
-        const phoneRegex = /^(08|\+628)[0-9]{8,11}$/
-        if (!phoneRegex.test(phoneNumber)) {
-          setPhoneNumberError("Format nomor telepon tidak valid (contoh: 08xxxxxxxxxx)")
-          setIsLoading(false)
-          return
-        }
-      }
 
       // Panggil server action untuk membuat transaksi
-      // Tambahkan phoneNumber sebagai parameter ketiga
-      const result = await createTransaction(selectedPaymentMethod, activeGateway, phoneNumber)
+      // Tambahkan activeGateway sebagai parameter kedua
+      const result = await createTransaction(selectedPaymentMethod, activeGateway)
 
       if (!result.success) {
-        // Tampilkan pesan error yang lebih spesifik
-        if (result.error?.includes("Data pengguna tidak ditemukan")) {
-          setError("Data pengguna tidak ditemukan. Silakan refresh halaman atau logout dan login kembali.")
-          toast({
-            title: "Error",
-            description: "Data pengguna tidak ditemukan. Silakan refresh halaman atau logout dan login kembali.",
-            variant: "destructive",
-          })
-        } else {
-          setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
-        }
+        setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
         setIsLoading(false)
         return
       }
@@ -1073,36 +1036,6 @@ export function PremiumClient({
             </div>
           ))}
         </RadioGroup>
-
-        {/* Input nomor telepon untuk OVO dan DANA */}
-        {(selectedPaymentMethod === "OV" || selectedPaymentMethod === "DA") && activeGateway === "tripay" && (
-          <div className="mt-4 p-4 border-2 border-dashed rounded-md bg-gray-50">
-            <div className="mb-2">
-              <Label htmlFor="phone-number" className="text-sm font-medium">
-                Nomor Telepon <span className="text-red-500">*</span>
-              </Label>
-              <div className="text-xs text-muted-foreground mb-2">
-                Diperlukan untuk pembayaran {selectedPaymentMethod === "OV" ? "OVO" : "DANA"}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  id="phone-number"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="08xxxxxxxxxx"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-              {phoneNumberError && <div className="text-red-500 text-xs mt-1">{phoneNumberError}</div>}
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 mt-4">
-          <Lock className="h-4 w-4 text-green-500" />
-          <span>Pembayaran aman & terenkripsi</span>
-        </div>
       </div>
     )
   }
