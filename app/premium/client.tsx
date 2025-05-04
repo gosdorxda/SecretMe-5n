@@ -57,54 +57,34 @@ const duitkuPaymentMethods = [
   {
     id: "bank",
     name: "Transfer Bank",
-    methods: [
-      { id: "A1", name: "ATM Bersama", icon: "/payment-icons/atm-bersama.png" },
-      { id: "NC", name: "NEO", icon: "/payment-icons/neo.png" },
-      { id: "I1", name: "BNI", icon: "/payment-icons/bni.png" },
-      { id: "BR", name: "BRIVA", icon: "/payment-icons/bri.png" },
-      { id: "BV", name: "BSI", icon: "/payment-icons/bsi.png" },
-      { id: "M2", name: "MANDIRI", icon: "/payment-icons/mandiri.png" },
-      { id: "BT", name: "PERMATA", icon: "/payment-icons/permata.png" },
-    ],
+    methods: [{ id: "BC", name: "BCA Virtual Account", icon: "/payment-icons/bca.png" }],
   },
   {
     id: "ewallet",
     name: "E-Wallet",
     methods: [
       { id: "OV", name: "OVO", icon: "/payment-icons/ovo.png" },
-      { id: "SA", name: "ShopeePay", icon: "/payment-icons/shopeepay.png" },
-      { id: "LF", name: "LinkAja", icon: "/payment-icons/linkaja.png" },
       { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
     ],
   },
   {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS", icon: "/payment-icons/qris.png", recommended: true }],
+    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png", recommended: true }],
   },
 ]
 
-// Definisi metode pembayaran untuk TriPay berdasarkan permintaan spesifik
+// Definisi metode pembayaran untuk TriPay
 const tripayPaymentMethods = [
   {
     id: "bank",
     name: "Transfer Bank",
     methods: [
       {
-        id: "BR",
-        name: "BRI Virtual Account",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//briva.webp",
-      },
-      {
-        id: "M2",
-        name: "Mandiri Virtual Account",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//mandiri.webp",
-      },
-      {
         id: "BC",
         name: "BCA Virtual Account",
         icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
-      }, // Tambahkan BCA VA
+      },
     ],
   },
   {
