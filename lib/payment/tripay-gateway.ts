@@ -3,6 +3,9 @@ import type { PaymentGateway, CreateTransactionParams, CreateTransactionResult }
 // Import logger
 import { type PaymentLogger, createPaymentLogger } from "./payment-logger"
 
+// Import crypto
+import * as crypto from "crypto"
+
 // Pastikan kelas diekspor dengan benar
 export class TriPayGateway implements PaymentGateway {
   name = "tripay"
@@ -80,7 +83,7 @@ export class TriPayGateway implements PaymentGateway {
         ],
         return_url: params.successRedirectUrl || "https://secretme.site/premium?status=success", // Pastikan URL redirect default ke premium
         callback_url: "https://secretme.site/api/payment/notification",
-        signature: this.generateSignature(params.orderId, params.amount),
+        signature: this.generateSignature(`${this.merchantCode}${params.orderId}${params.amount}`),
       }
 
       // Log URL redirect yang digunakan
@@ -203,8 +206,6 @@ export class TriPayGateway implements PaymentGateway {
     }
   }
 
-  // Metode lainnya tidak berubah...
-
   /**
    * Memetakan kode metode pembayaran UI ke kode TriPay
    * Berdasarkan dokumentasi resmi: https://tripay.co.id/developer?tab=merchant-payment-channel
@@ -239,5 +240,9 @@ export class TriPayGateway implements PaymentGateway {
     return methodMap[uiMethod] || methodMap.default
   }
 
-  // Metode lainnya tidak berubah...
+  private generateSignature(data: string): string {
+    const hmac = crypto.createHmac("sha256", this.privateKey)
+    hmac.update(data)
+    return hmac.digest("hex")
+  }
 }
