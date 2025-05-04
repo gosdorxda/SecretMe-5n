@@ -138,6 +138,7 @@ export interface Database {
           payment_details: Json | null
           created_at: string
           updated_at: string | null
+          gateway_reference: string | null // Tambahkan kolom gateway_reference
         }
         Insert: {
           id?: string
@@ -150,6 +151,7 @@ export interface Database {
           payment_details?: Json | null
           created_at?: string
           updated_at?: string | null
+          gateway_reference?: string | null // Tambahkan kolom gateway_reference
         }
         Update: {
           id?: string
@@ -162,6 +164,7 @@ export interface Database {
           payment_details?: Json | null
           created_at?: string
           updated_at?: string | null
+          gateway_reference?: string | null // Tambahkan kolom gateway_reference
         }
       }
       notification_logs: {

@@ -152,11 +152,12 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       event_type: "transaction-created",
     })
 
-    // PERBAIKAN: Pastikan gateway_reference diperbarui dengan benar
+    // PERBAIKAN: Coba update dengan gateway_reference, jika gagal karena kolom tidak ada,
+    // simpan di payment_details saja
     const { error: updateError } = await supabase
       .from("premium_transactions")
       .update({
-        gateway_reference: gatewayReference, // Simpan ID PayPal di gateway_reference
+        gateway_reference: gatewayReference, // Simpan ID referensi di gateway_reference
         payment_details: {
           gateway_reference: gatewayReference,
           redirect_url: result.redirectUrl,
@@ -170,22 +171,24 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
 
     if (updateError) {
       console.error("Error updating transaction with gateway_reference:", updateError)
-      // Tetap lanjutkan meskipun ada error, karena transaksi sudah dibuat
+      // Jika gagal karena kolom gateway_reference belum ada, update payment_details saja
+      await supabase
+        .from("premium_transactions")
+        .update({
+          payment_details: {
+            gateway_reference: gatewayReference,
+            redirect_url: result.redirectUrl,
+            token: result.token,
+            created_at: new Date().toISOString(),
+            payment_method: paymentMethod,
+            gateway: finalGatewayName,
+          },
+        })
+        .eq("id", transaction.id)
     }
 
     // Log untuk debugging
     console.log(`Transaction ${transaction.id} created with gateway_reference: ${gatewayReference}`)
-
-    // PERBAIKAN: Verifikasi bahwa gateway_reference telah tersimpan
-    const { data: verifyTransaction } = await supabase
-      .from("premium_transactions")
-      .select("gateway_reference")
-      .eq("id", transaction.id)
-      .single()
-
-    console.log(
-      `Verification: Transaction ${transaction.id} has gateway_reference: ${verifyTransaction?.gateway_reference}`,
-    )
 
     return {
       success: true,
@@ -243,6 +246,18 @@ export async function getLatestTransaction() {
       return { success: true, isPremium: false, hasTransaction: false }
     }
 
+    // Coba dapatkan gateway_reference dari kolom atau dari payment_details
+    let gatewayReference = transactionData.gateway_reference
+
+    if (!gatewayReference && transactionData.payment_details) {
+      const details =
+        typeof transactionData.payment_details === "string"
+          ? JSON.parse(transactionData.payment_details)
+          : transactionData.payment_details
+
+      gatewayReference = details?.gateway_reference || details?.token || null
+    }
+
     // Format transaksi untuk client
     const transaction = {
       id: transactionData.id,
@@ -253,7 +268,7 @@ export async function getLatestTransaction() {
       createdAt: transactionData.created_at,
       updatedAt: transactionData.updated_at,
       gateway: transactionData.payment_gateway,
-      gatewayReference: transactionData.gateway_reference, // Tambahkan gateway_reference
+      gatewayReference: gatewayReference, // Gunakan gateway_reference yang sudah diambil
       paymentDetails: transactionData.payment_details || {}, // Tambahkan payment_details
     }
 
@@ -290,17 +305,28 @@ export async function getTransactionHistory() {
     }
 
     // Format transaksi untuk client
-    const transactions = transactionsData.map((tx) => ({
-      id: tx.id,
-      orderId: tx.plan_id,
-      status: tx.status,
-      amount: tx.amount,
-      paymentMethod: tx.payment_method || "",
-      createdAt: tx.created_at,
-      updatedAt: tx.updated_at,
-      gateway: tx.payment_gateway,
-      gatewayReference: tx.gateway_reference, // Tambahkan gateway_reference
-    }))
+    const transactions = transactionsData.map((tx) => {
+      // Coba dapatkan gateway_reference dari kolom atau dari payment_details
+      let gatewayReference = tx.gateway_reference
+
+      if (!gatewayReference && tx.payment_details) {
+        const details = typeof tx.payment_details === "string" ? JSON.parse(tx.payment_details) : tx.payment_details
+
+        gatewayReference = details?.gateway_reference || details?.token || null
+      }
+
+      return {
+        id: tx.id,
+        orderId: tx.plan_id,
+        status: tx.status,
+        amount: tx.amount,
+        paymentMethod: tx.payment_method || "",
+        createdAt: tx.created_at,
+        updatedAt: tx.updated_at,
+        gateway: tx.payment_gateway,
+        gatewayReference: gatewayReference, // Gunakan gateway_reference yang sudah diambil
+      }
+    })
 
     return { success: true, transactions }
   } catch (error: any) {
@@ -356,9 +382,17 @@ export async function cancelTransaction(transactionId: string) {
     console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
 
     // Periksa apakah ada referensi gateway
-    const gatewayReference =
-      transactionData.gateway_reference ||
-      (transactionData.payment_details && transactionData.payment_details.gateway_reference)
+    let gatewayReference = transactionData.gateway_reference
+
+    // Jika tidak ada di kolom gateway_reference, coba ambil dari payment_details
+    if (!gatewayReference && transactionData.payment_details) {
+      const details =
+        typeof transactionData.payment_details === "string"
+          ? JSON.parse(transactionData.payment_details)
+          : transactionData.payment_details
+
+      gatewayReference = details?.gateway_reference || details?.token || null
+    }
 
     // Untuk TriPay, kita tidak memanggil API cancel dan membiarkan transaksi expired dengan sendirinya
     if (gatewayName !== "tripay" && gatewayReference) {
@@ -398,21 +432,49 @@ export async function cancelTransaction(transactionId: string) {
 
     // Update status transaksi di database lokal
     console.log(`[${requestId}] 📝 Updating transaction status to cancelled in database`)
-    const { error: updateError } = await supabase
-      .from("premium_transactions")
-      .update({
-        status: "cancelled",
-        updated_at: new Date().toISOString(),
-        payment_details: {
-          ...transactionData.payment_details,
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: "user",
-        },
-      })
-      .eq("id", transactionId)
 
-    if (updateError) {
-      console.error(`[${requestId}] ❌ Failed to update transaction status:`, updateError)
+    try {
+      // Coba update dengan gateway_reference jika kolom ada
+      const { error: updateError } = await supabase
+        .from("premium_transactions")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+          gateway_reference: gatewayReference, // Coba update gateway_reference jika kolom ada
+          payment_details: {
+            ...transactionData.payment_details,
+            gateway_reference: gatewayReference, // Selalu update di payment_details
+            cancelled_at: new Date().toISOString(),
+            cancelled_by: "user",
+          },
+        })
+        .eq("id", transactionId)
+
+      if (updateError) {
+        console.error(`[${requestId}] ⚠️ Error updating with gateway_reference: ${updateError.message}`)
+
+        // Jika gagal karena kolom gateway_reference tidak ada, update tanpa kolom tersebut
+        const { error: fallbackUpdateError } = await supabase
+          .from("premium_transactions")
+          .update({
+            status: "cancelled",
+            updated_at: new Date().toISOString(),
+            payment_details: {
+              ...transactionData.payment_details,
+              gateway_reference: gatewayReference, // Selalu update di payment_details
+              cancelled_at: new Date().toISOString(),
+              cancelled_by: "user",
+            },
+          })
+          .eq("id", transactionId)
+
+        if (fallbackUpdateError) {
+          console.error(`[${requestId}] ❌ Failed to update transaction status:`, fallbackUpdateError)
+          return { success: false, error: "Failed to cancel transaction" }
+        }
+      }
+    } catch (error: any) {
+      console.error(`[${requestId}] ❌ Error updating transaction:`, error)
       return { success: false, error: "Failed to cancel transaction" }
     }
 
