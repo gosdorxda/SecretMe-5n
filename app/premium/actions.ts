@@ -152,8 +152,8 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       event_type: "transaction-created",
     })
 
-    // Update transaction with gateway reference and payment details
-    await supabase
+    // PERBAIKAN: Pastikan gateway_reference diperbarui dengan benar
+    const { error: updateError } = await supabase
       .from("premium_transactions")
       .update({
         gateway_reference: gatewayReference, // Simpan ID PayPal di gateway_reference
@@ -168,14 +168,32 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       })
       .eq("id", transaction.id)
 
+    if (updateError) {
+      console.error("Error updating transaction with gateway_reference:", updateError)
+      // Tetap lanjutkan meskipun ada error, karena transaksi sudah dibuat
+    }
+
     // Log untuk debugging
     console.log(`Transaction ${transaction.id} created with gateway_reference: ${gatewayReference}`)
+
+    // PERBAIKAN: Verifikasi bahwa gateway_reference telah tersimpan
+    const { data: verifyTransaction } = await supabase
+      .from("premium_transactions")
+      .select("gateway_reference")
+      .eq("id", transaction.id)
+      .single()
+
+    console.log(
+      `Verification: Transaction ${transaction.id} has gateway_reference: ${verifyTransaction?.gateway_reference}`,
+    )
 
     return {
       success: true,
       redirectUrl: result.redirectUrl,
-      transactionId: transaction.id,
       orderId: orderId,
+      token: result.token,
+      gatewayReference: gatewayReference, // Tambahkan gatewayReference ke respons
+      transactionId: transaction.id,
     }
   } catch (error: any) {
     console.error("Error creating transaction:", error)
