@@ -2,7 +2,6 @@
 
 import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
-import { revalidatePath } from "next/cache"
 import { nanoid } from "nanoid"
 
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
@@ -67,15 +66,19 @@ export async function createTransaction(paymentMethod = "QR", gatewayName = "dui
       }
     }
 
-    // Ambil harga premium dari environment variable
-    const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "99000", 10)
+    // Ambil pengaturan premium dari database atau environment variable
+    const { premiumPrice } = await getPremiumSettings()
+
+    console.log(
+      `Using premium price: ${premiumPrice} for payment method: ${paymentMethod} with gateway: ${gatewayName}`,
+    )
 
     // Buat ID transaksi unik
     const orderId = `PM-${nanoid(10)}`
 
     // Buat URL redirect setelah pembayaran
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.site"
-    const successRedirectUrl = `${baseUrl}/dashboard` // Pastikan redirect ke dashboard
+    const successRedirectUrl = `${baseUrl}/premium?status=success&order_id=${orderId}` // Pastikan redirect ke premium
     const failureRedirectUrl = `${baseUrl}/premium?status=failed&order_id=${orderId}`
     const notificationUrl = `${baseUrl}/api/payment/notification`
 
@@ -141,37 +144,24 @@ export async function createTransaction(paymentMethod = "QR", gatewayName = "dui
   }
 }
 
-// Fungsi untuk mendapatkan transaksi terbaru
+// Tambahkan fungsi-fungsi yang hilang di bawah fungsi createTransaction yang sudah ada
+
+// Fungsi untuk mendapatkan transaksi terbaru pengguna
 export async function getLatestTransaction() {
   try {
-    // Verifikasi user
+    // Dapatkan user terverifikasi
+    const { user, error } = await getVerifiedUser()
+
+    if (error || !user) {
+      return {
+        success: false,
+        error: "Data pengguna tidak ditemukan. Silakan login kembali.",
+      }
+    }
+
+    // Ambil transaksi terbaru dari database
     const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized", isPremium: false, hasTransaction: false }
-    }
-
-    // Periksa apakah user sudah premium
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("is_premium")
-      .eq("id", user.id)
-      .single()
-
-    if (userError) {
-      return { success: false, error: "User not found", isPremium: false, hasTransaction: false }
-    }
-
-    if (userData.is_premium) {
-      return { success: true, isPremium: true, hasTransaction: false }
-    }
-
-    // Dapatkan transaksi terbaru
-    const { data: transactionData, error: transactionError } = await supabase
+    const { data, error: txError } = await supabase
       .from("premium_transactions")
       .select("*")
       .eq("user_id", user.id)
@@ -179,187 +169,127 @@ export async function getLatestTransaction() {
       .limit(1)
       .single()
 
-    if (transactionError) {
-      return { success: true, isPremium: false, hasTransaction: false }
+    if (txError) {
+      return {
+        success: false,
+        error: "Tidak ada transaksi ditemukan.",
+      }
     }
 
-    // Format transaksi untuk client
-    const transaction = {
-      id: transactionData.id,
-      orderId: transactionData.plan_id,
-      status: transactionData.status,
-      amount: transactionData.amount,
-      paymentMethod: transactionData.payment_method || "",
-      createdAt: transactionData.created_at,
-      updatedAt: transactionData.updated_at,
-      gateway: transactionData.payment_gateway,
+    return {
+      success: true,
+      transaction: data,
     }
-
-    return { success: true, isPremium: false, hasTransaction: true, transaction }
   } catch (error: any) {
-    console.error("Error in get latest transaction:", error)
-    return { success: false, error: error.message || "Internal server error", isPremium: false, hasTransaction: false }
+    console.error("Error getting latest transaction:", error)
+    return {
+      success: false,
+      error: error.message || "Terjadi kesalahan saat mengambil data transaksi.",
+    }
   }
 }
 
-// Fungsi untuk mendapatkan riwayat transaksi
+// Fungsi untuk mendapatkan riwayat transaksi pengguna
 export async function getTransactionHistory() {
   try {
-    // Verifikasi user
-    const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    // Dapatkan user terverifikasi
+    const { user, error } = await getVerifiedUser()
 
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized", transactions: [] }
+    if (error || !user) {
+      return {
+        success: false,
+        error: "Data pengguna tidak ditemukan. Silakan login kembali.",
+      }
     }
 
-    // Dapatkan transaksi
-    const { data: transactionsData, error: transactionsError } = await supabase
+    // Ambil riwayat transaksi dari database
+    const supabase = createClient()
+    const { data, error: txError } = await supabase
       .from("premium_transactions")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
-    if (transactionsError) {
-      return { success: false, error: "Failed to get transactions", transactions: [] }
+    if (txError) {
+      return {
+        success: false,
+        error: "Gagal mengambil riwayat transaksi.",
+      }
     }
 
-    // Format transaksi untuk client
-    const transactions = transactionsData.map((tx) => ({
-      id: tx.id,
-      orderId: tx.plan_id,
-      status: tx.status,
-      amount: tx.amount,
-      paymentMethod: tx.payment_method || "",
-      createdAt: tx.created_at,
-      updatedAt: tx.updated_at,
-      gateway: tx.payment_gateway,
-    }))
-
-    return { success: true, transactions }
+    return {
+      success: true,
+      transactions: data || [],
+    }
   } catch (error: any) {
-    console.error("Error in get transaction history:", error)
-    return { success: false, error: error.message || "Internal server error", transactions: [] }
+    console.error("Error getting transaction history:", error)
+    return {
+      success: false,
+      error: error.message || "Terjadi kesalahan saat mengambil riwayat transaksi.",
+    }
   }
 }
 
 // Fungsi untuk membatalkan transaksi
-export async function cancelTransaction(transactionId: string) {
+export async function cancelTransaction(orderId: string) {
   try {
-    // Buat logger untuk tracking
-    const requestId = `cancel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-    console.log(`[${requestId}] 🔄 Cancelling transaction ${transactionId}`)
+    // Dapatkan user terverifikasi
+    const { user, error } = await getVerifiedUser()
 
-    // Verifikasi user
-    const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      console.log(`[${requestId}] ❌ Unauthorized user`)
-      return { success: false, error: "Unauthorized" }
+    if (error || !user) {
+      return {
+        success: false,
+        error: "Data pengguna tidak ditemukan. Silakan login kembali.",
+      }
     }
 
-    // Dapatkan transaksi
-    const { data: transactionData, error: transactionError } = await supabase
+    // Periksa apakah transaksi ada dan milik pengguna ini
+    const supabase = createClient()
+    const { data: transaction, error: txError } = await supabase
       .from("premium_transactions")
       .select("*")
-      .eq("id", transactionId)
+      .eq("plan_id", orderId)
       .eq("user_id", user.id)
       .single()
 
-    if (transactionError) {
-      console.log(`[${requestId}] ❌ Transaction not found: ${transactionError.message}`)
-      return { success: false, error: "Transaction not found" }
-    }
-
-    // Periksa apakah transaksi bisa dibatalkan
-    if (transactionData.status !== "pending") {
-      console.log(`[${requestId}] ❌ Transaction cannot be cancelled: status is ${transactionData.status}`)
-      return { success: false, error: "Only pending transactions can be cancelled" }
-    }
-
-    console.log(
-      `[${requestId}] 📋 Transaction details: gateway=${transactionData.payment_gateway}, plan_id=${transactionData.plan_id}`,
-    )
-
-    // Coba batalkan transaksi di gateway pembayaran
-    const gatewayName = transactionData.payment_gateway || "duitku"
-    console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
-
-    // Periksa apakah ada referensi gateway
-    const gatewayReference = transactionData.payment_details?.gateway_reference
-
-    // Untuk TriPay, kita tidak memanggil API cancel dan membiarkan transaksi expired dengan sendirinya
-    if (gatewayName !== "tripay" && gatewayReference) {
-      try {
-        console.log(`[${requestId}] 🔄 Attempting to cancel transaction in ${gatewayName}: ${gatewayReference}`)
-
-        // Dapatkan gateway
-        const gateway = await getPaymentGateway(gatewayName)
-
-        // Periksa apakah gateway mendukung pembatalan
-        if (typeof gateway.cancelTransaction === "function") {
-          // Batalkan transaksi di gateway
-          const cancelResult = await gateway.cancelTransaction(gatewayReference)
-
-          if (!cancelResult.success) {
-            console.error(
-              `[${requestId}] ⚠️ Warning: Failed to cancel transaction in ${gatewayName}: ${cancelResult.error}`,
-            )
-            // Lanjutkan proses meskipun gagal di gateway, karena kita masih ingin mengubah status di database lokal
-          } else {
-            console.log(
-              `[${requestId}] ✅ Successfully cancelled transaction in ${gatewayName}: ${cancelResult.message}`,
-            )
-          }
-        } else {
-          console.log(`[${requestId}] ℹ️ Gateway ${gatewayName} does not support cancellation API`)
-        }
-      } catch (error: any) {
-        console.error(`[${requestId}] ⚠️ Error cancelling transaction in ${gatewayName}:`, error)
-        // Lanjutkan proses meskipun gagal di gateway
+    if (txError || !transaction) {
+      return {
+        success: false,
+        error: "Transaksi tidak ditemukan.",
       }
-    } else if (gatewayName === "tripay") {
-      console.log(`[${requestId}] ℹ️ Skipping TriPay API cancel call, letting transaction expire naturally`)
-    } else {
-      console.log(`[${requestId}] ℹ️ No gateway reference found, skipping gateway cancellation`)
     }
 
-    // Update status transaksi di database lokal
-    console.log(`[${requestId}] 📝 Updating transaction status to cancelled in database`)
+    // Periksa apakah transaksi masih dalam status pending
+    if (transaction.status !== "pending") {
+      return {
+        success: false,
+        error: "Hanya transaksi dengan status pending yang dapat dibatalkan.",
+      }
+    }
+
+    // Update status transaksi menjadi cancelled
     const { error: updateError } = await supabase
       .from("premium_transactions")
-      .update({
-        status: "cancelled",
-        updated_at: new Date().toISOString(),
-        payment_details: {
-          ...transactionData.payment_details,
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: "user",
-        },
-      })
-      .eq("id", transactionId)
+      .update({ status: "cancelled" })
+      .eq("plan_id", orderId)
+      .eq("user_id", user.id)
 
     if (updateError) {
-      console.error(`[${requestId}] ❌ Failed to update transaction status:`, updateError)
-      return { success: false, error: "Failed to cancel transaction" }
+      return {
+        success: false,
+        error: "Gagal membatalkan transaksi.",
+      }
     }
 
-    console.log(`[${requestId}] ✅ Transaction successfully cancelled`)
-
-    // Revalidasi path
-    revalidatePath("/premium")
-    revalidatePath("/dashboard")
-
-    return { success: true }
+    return {
+      success: true,
+      message: "Transaksi berhasil dibatalkan.",
+    }
   } catch (error: any) {
-    console.error("Error in cancel transaction:", error)
-    return { success: false, error: error.message || "Internal server error" }
+    console.error("Error cancelling transaction:", error)
+    return {
+      success: false,
+      error: error.message || "Terjadi kesalahan saat membatalkan transaksi.",
+    }
   }
 }
