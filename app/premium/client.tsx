@@ -202,221 +202,6 @@ const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) =
   }
 }
 
-const renderPendingTransactionDetails = (
-  currentTransaction: Transaction | null,
-  userName: string,
-  premiumPrice: number,
-  cancellingTransaction: boolean,
-  handleCancelTransaction: () => Promise<void>,
-) => {
-  const [copiedText, setCopiedText] = useState<string | null>(null)
-  const { toast } = useToast()
-  const [checkingStatus, setCheckingStatus] = useState(false)
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
-  }
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text).then(
-      () => {
-        setCopiedText(label)
-        toast({
-          title: "Berhasil disalin!",
-          description: `${label} telah disalin ke clipboard.`,
-          variant: "default",
-        })
-        setTimeout(() => setCopiedText(null), 3000)
-      },
-      (err) => {
-        console.error("Gagal menyalin teks: ", err)
-        toast({
-          title: "Gagal menyalin",
-          description: "Tidak dapat menyalin teks ke clipboard.",
-          variant: "destructive",
-        })
-      },
-    )
-  }
-  if (!currentTransaction || currentTransaction.status !== "pending") return null
-
-  // Ekstrak detail pembayaran dari payment_details
-  const paymentDetails = currentTransaction.paymentDetails || {}
-  const paymentUrl =
-    paymentDetails.checkout_url ||
-    paymentDetails.pay_url ||
-    paymentDetails.payment_url ||
-    paymentDetails.redirect_url ||
-    ""
-  const vaNumber = paymentDetails.pay_code || paymentDetails.va_number || ""
-  const expiredTime = paymentDetails.expired_time || paymentDetails.expired_at || ""
-  const qrCodeUrl = paymentDetails.qr_string || paymentDetails.qr_url || ""
-  const customerName = paymentDetails.customer_name || userName || ""
-  const customerEmail = paymentDetails.customer_email || ""
-  const amount = currentTransaction.amount || premiumPrice
-  const paymentMethod = currentTransaction.paymentMethod || ""
-
-  const checkTransactionStatus = async () => {
-    // Implement the logic to check the transaction status here
-    // For example, you can call an API to get the transaction status
-    // and update the UI accordingly
-    console.log("Checking transaction status...")
-  }
-
-  return (
-    <div className="mt-6 space-y-4">
-      <div className="bg-yellow-50 border-2 border-yellow-100 rounded-md p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="bg-yellow-100 p-2 rounded-md">
-            <Clock3 className="h-5 w-5 text-yellow-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-yellow-800">Menunggu Pembayaran</h3>
-            <p className="text-sm text-yellow-700">Selesaikan pembayaran sebelum batas waktu berakhir</p>
-          </div>
-        </div>
-
-        {/* Detail Pembayaran */}
-        <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
-          <h4 className="font-medium mb-3 pb-2 border-b">Detail Pembayaran</h4>
-
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-500">Metode Pembayaran:</span>
-              <span className="font-medium">{paymentMethod}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-500">Jumlah:</span>
-              <span className="font-medium">Rp {amount.toLocaleString("id-ID")}</span>
-            </div>
-
-            {customerName && (
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Nama:</span>
-                <span className="font-medium">{customerName}</span>
-              </div>
-            )}
-
-            {customerEmail && (
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Email:</span>
-                <span className="font-medium">{customerEmail}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Waktu Kadaluarsa */}
-        {expiredTime && (
-          <div className="bg-white p-4 rounded-md border-2 border-yellow-100 mb-4">
-            <div className="text-sm text-gray-500 mb-1">Batas Waktu Pembayaran:</div>
-            <div className="font-medium text-lg">{formatDate(expiredTime)}</div>
-          </div>
-        )}
-
-        {/* QR Code untuk QRIS */}
-        {qrCodeUrl && paymentMethod === "QR" && (
-          <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4 text-center">
-            <div className="text-sm text-gray-500 mb-3">Scan QR Code untuk membayar:</div>
-            <div className="flex justify-center mb-2">
-              <img src={qrCodeUrl || "/placeholder.svg"} alt="QRIS QR Code" className="max-w-[200px] h-auto" />
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-              Gunakan aplikasi e-wallet atau mobile banking yang mendukung QRIS
-            </div>
-          </div>
-        )}
-
-        {/* Nomor Virtual Account atau Kode Pembayaran */}
-        {vaNumber && (
-          <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
-            <div className="text-sm text-gray-500 mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
-            <div className="flex items-center justify-between">
-              <div className="font-mono text-xl font-bold">{vaNumber}</div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
-                className="h-8"
-              >
-                <Copy className={`h-4 w-4 mr-1 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
-                Salin
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Instruksi Pembayaran */}
-        <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
-          <div className="text-sm font-semibold mb-3 flex items-center">
-            <Info className="h-4 w-4 mr-2 text-blue-500" />
-            <span>Instruksi Pembayaran</span>
-          </div>
-
-          {paymentDetails.instructions && paymentDetails.instructions.length > 0 ? (
-            <div className="space-y-4">
-              {paymentDetails.instructions.map((instruction: any, index: number) => (
-                <div key={index} className="space-y-2">
-                  <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
-                  <ol className="list-decimal pl-5 space-y-1">
-                    {instruction.steps &&
-                      instruction.steps.map((step: string, stepIndex: number) => (
-                        <li key={stepIndex} className="text-sm">
-                          {step}
-                        </li>
-                      ))}
-                  </ol>
-                </div>
-              ))}
-            </div>
-          ) : (
-            renderPaymentInstructions(currentTransaction.paymentMethod, currentTransaction.paymentDetails)
-          )}
-        </div>
-
-        {/* Tombol Tindakan */}
-        <div className="flex flex-col gap-3 mt-6">
-          <Button
-            variant="success"
-            onClick={() => window.open(paymentUrl, "_blank")}
-            disabled={!paymentUrl}
-            className="w-full py-3 h-auto"
-          >
-            <ExternalLink className="h-5 w-5 mr-2" /> Lanjutkan Pembayaran
-          </Button>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              onClick={checkTransactionStatus}
-              disabled={checkingStatus}
-              className="neo-btn-outline"
-            >
-              {checkingStatus ? (
-                <Clock className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              )}
-              Periksa Status
-            </Button>
-
-            <Button variant="destructive" onClick={handleCancelTransaction} disabled={cancellingTransaction}>
-              {cancellingTransaction ? <Clock className="h-4 w-4 mr-2 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
-              Batalkan
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function PremiumClient({
   isLoggedIn,
   isPremium,
@@ -779,6 +564,177 @@ export function PremiumClient({
   }
 
   // Render detail transaksi pending
+  const renderPendingTransactionDetails = () => {
+    if (!currentTransaction || currentTransaction.status !== "pending") return null
+
+    // Ekstrak detail pembayaran dari payment_details
+    const paymentDetails = currentTransaction.paymentDetails || {}
+    const paymentUrl =
+      paymentDetails.checkout_url ||
+      paymentDetails.pay_url ||
+      paymentDetails.payment_url ||
+      paymentDetails.redirect_url ||
+      ""
+    const vaNumber = paymentDetails.pay_code || paymentDetails.va_number || ""
+    const expiredTime = paymentDetails.expired_time || paymentDetails.expired_at || ""
+    const qrCodeUrl = paymentDetails.qr_string || paymentDetails.qr_url || ""
+    const customerName = paymentDetails.customer_name || userName || ""
+    const customerEmail = paymentDetails.customer_email || ""
+    const amount = currentTransaction.amount || premiumPrice
+    const paymentMethod = currentTransaction.paymentMethod || ""
+
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="bg-yellow-50 border-2 border-yellow-100 rounded-md p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="bg-yellow-100 p-2 rounded-md">
+              <Clock3 className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-yellow-800">Menunggu Pembayaran</h3>
+              <p className="text-sm text-yellow-700">Selesaikan pembayaran sebelum batas waktu berakhir</p>
+            </div>
+          </div>
+
+          {/* Detail Pembayaran */}
+          <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
+            <h4 className="font-medium mb-3 pb-2 border-b">Detail Pembayaran</h4>
+
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Metode Pembayaran:</span>
+                <span className="font-medium">{paymentMethod}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Jumlah:</span>
+                <span className="font-medium">Rp {amount.toLocaleString("id-ID")}</span>
+              </div>
+
+              {customerName && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Nama:</span>
+                  <span className="font-medium">{customerName}</span>
+                </div>
+              )}
+
+              {customerEmail && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Email:</span>
+                  <span className="font-medium">{customerEmail}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Waktu Kadaluarsa */}
+          {expiredTime && (
+            <div className="bg-white p-4 rounded-md border-2 border-yellow-100 mb-4">
+              <div className="text-sm text-gray-500 mb-1">Batas Waktu Pembayaran:</div>
+              <div className="font-medium text-lg">{formatDate(expiredTime)}</div>
+            </div>
+          )}
+
+          {/* QR Code untuk QRIS */}
+          {qrCodeUrl && paymentMethod === "QR" && (
+            <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4 text-center">
+              <div className="text-sm text-gray-500 mb-3">Scan QR Code untuk membayar:</div>
+              <div className="flex justify-center mb-2">
+                <img src={qrCodeUrl || "/placeholder.svg"} alt="QRIS QR Code" className="max-w-[200px] h-auto" />
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                Gunakan aplikasi e-wallet atau mobile banking yang mendukung QRIS
+              </div>
+            </div>
+          )}
+
+          {/* Nomor Virtual Account atau Kode Pembayaran */}
+          {vaNumber && (
+            <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
+              <div className="text-sm text-gray-500 mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-xl font-bold">{vaNumber}</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
+                  className="h-8"
+                >
+                  <Copy className={`h-4 w-4 mr-1 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
+                  Salin
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Instruksi Pembayaran */}
+          <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
+            <div className="text-sm font-semibold mb-3 flex items-center">
+              <Info className="h-4 w-4 mr-2 text-blue-500" />
+              <span>Instruksi Pembayaran</span>
+            </div>
+
+            {paymentDetails.instructions && paymentDetails.instructions.length > 0 ? (
+              <div className="space-y-4">
+                {paymentDetails.instructions.map((instruction: any, index: number) => (
+                  <div key={index} className="space-y-2">
+                    <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
+                    <ol className="list-decimal pl-5 space-y-1">
+                      {instruction.steps &&
+                        instruction.steps.map((step: string, stepIndex: number) => (
+                          <li key={stepIndex} className="text-sm">
+                            {step}
+                          </li>
+                        ))}
+                    </ol>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              renderPaymentInstructions(currentTransaction.paymentMethod, currentTransaction.paymentDetails)
+            )}
+          </div>
+
+          {/* Tombol Tindakan */}
+          <div className="flex flex-col gap-3 mt-6">
+            <Button
+              variant="success"
+              onClick={() => window.open(paymentUrl, "_blank")}
+              disabled={!paymentUrl}
+              className="w-full py-3 h-auto"
+            >
+              <ExternalLink className="h-5 w-5 mr-2" /> Lanjutkan Pembayaran
+            </Button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={checkTransactionStatus}
+                disabled={checkingStatus}
+                className="neo-btn-outline"
+              >
+                {checkingStatus ? (
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Periksa Status
+              </Button>
+
+              <Button variant="destructive" onClick={handleCancelTransaction} disabled={cancellingTransaction}>
+                {cancellingTransaction ? (
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                Batalkan
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Render riwayat transaksi
   const renderTransactionHistory = () => {
@@ -1152,13 +1108,7 @@ export function PremiumClient({
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
             {currentTransaction && currentTransaction.status === "pending" ? (
-              renderPendingTransactionDetails(
-                currentTransaction,
-                userName,
-                premiumPrice,
-                cancellingTransaction,
-                handleCancelTransaction,
-              )
+              renderPendingTransactionDetails()
             ) : (
               <>
                 <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
