@@ -583,9 +583,9 @@ export function PremiumClient({
 
     return (
       <div className="mt-6 space-y-4">
-        <div className="bg-yellow-50 border-2 border-yellow-100 rounded-lg p-4">
+        <div className="bg-yellow-50 border-2 border-yellow-100 rounded-md p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="bg-yellow-100 p-2 rounded-full">
+            <div className="bg-yellow-100 p-2 rounded-md">
               <Clock3 className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
@@ -656,7 +656,7 @@ export function PremiumClient({
                     <Copy className={`h-4 w-4 mr-1 ${copiedText === "Link pembayaran" ? "text-green-500" : ""}`} />
                     Salin
                   </Button>
-                  <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
+                  <Button variant="success" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
                     <ExternalLink className="h-4 w-4 mr-1" /> Buka
                   </Button>
                 </div>
@@ -700,10 +700,10 @@ export function PremiumClient({
           {/* Tombol Tindakan */}
           <div className="flex flex-col gap-3 mt-6">
             <Button
-              variant="default"
+              variant="success"
               onClick={() => window.open(paymentUrl, "_blank")}
               disabled={!paymentUrl}
-              className="w-full neo-btn py-3 h-auto"
+              className="w-full py-3 h-auto"
             >
               <ExternalLink className="h-5 w-5 mr-2" /> Lanjutkan Pembayaran
             </Button>
@@ -723,12 +723,7 @@ export function PremiumClient({
                 Periksa Status
               </Button>
 
-              <Button
-                variant="outline"
-                onClick={handleCancelTransaction}
-                disabled={cancellingTransaction}
-                className="neo-btn-outline"
-              >
+              <Button variant="destructive" onClick={handleCancelTransaction} disabled={cancellingTransaction}>
                 {cancellingTransaction ? (
                   <Clock className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -746,25 +741,25 @@ export function PremiumClient({
   // Render riwayat transaksi
   const renderTransactionHistory = () => {
     return (
-      <div className="p-6">
+      <div className="p-4">
         <h3 className="text-lg font-medium mb-4 flex items-center">
           <History className="mr-2 h-5 w-5" />
           Riwayat Transaksi
         </h3>
 
         {!transactions.length && !loadingHistory ? (
-          <div className="text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+          <div className="text-center py-8 border-2 border-dashed rounded-md bg-gray-50">
             <History className="h-10 w-10 text-gray-300 mx-auto mb-3" />
             <p className="text-muted-foreground">Belum ada riwayat transaksi</p>
             <p className="text-xs text-gray-400 mt-1">Riwayat transaksi Anda akan muncul di sini</p>
           </div>
         ) : loadingHistory ? (
-          <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+          <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-md bg-gray-50">
             <Clock className="h-10 w-10 text-gray-300 animate-pulse mb-3" />
             <p className="text-muted-foreground">Memuat riwayat transaksi...</p>
           </div>
         ) : (
-          <div className="border-2 rounded-lg overflow-hidden shadow-sm">
+          <div className="border-2 rounded-md overflow-hidden shadow-sm">
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
@@ -842,7 +837,7 @@ export function PremiumClient({
           <CreditCard className="h-5 w-5 text-green-500 mr-2" />
           Pilih Metode Pembayaran
           {activeGateway === "tripay" && (
-            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">TriPay</span>
+            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md">TriPay</span>
           )}
         </h3>
 
@@ -856,7 +851,7 @@ export function PremiumClient({
               <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
               <Label
                 htmlFor={method.id}
-                className="flex flex-col rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
+                className="flex flex-col rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -894,7 +889,7 @@ export function PremiumClient({
                       {method.features.map((feature, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                          className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
                         >
                           <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
                           {feature}
@@ -908,7 +903,7 @@ export function PremiumClient({
               {/* Badge untuk metode yang direkomendasikan */}
               {method.recommended && (
                 <div className="absolute -top-2 -right-2 z-10">
-                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1 animate-pulse">
+                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-md shadow-md flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     Rekomendasi
                   </div>
@@ -931,7 +926,7 @@ export function PremiumClient({
             <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
           </div>
 
-          <Card className="mb-8 neo-card border-2 shadow-lg overflow-hidden">
+          <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
             <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex items-center justify-between">
                 <div>
@@ -945,9 +940,9 @@ export function PremiumClient({
               </div>
             </CardHeader>
             <CardContent className="pt-8 pb-6 relative">
-              <div className="mb-8 p-4 rounded-lg border-green-200 bg-green-50">
+              <div className="mb-8 p-4 rounded-md border-green-200 bg-green-50">
                 <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-full">
+                  <div className="bg-green-100 p-2 rounded-md">
                     <CheckCircle className="h-6 w-6 text-green-500" />
                   </div>
                   <div>
@@ -958,7 +953,7 @@ export function PremiumClient({
               </div>
 
               <div className="flex items-center justify-center mb-8">
-                <div className="bg-gradient-to-r from-gray-800 to-black p-8 rounded-full shadow-lg">
+                <div className="bg-gradient-to-r from-gray-800 to-black p-8 rounded-md shadow-lg">
                   <Award className="h-16 w-16 text-yellow-400" />
                 </div>
               </div>
@@ -971,17 +966,17 @@ export function PremiumClient({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-50 p-4 rounded-lg border-2 text-center">
+                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
                   <Shield className="h-8 w-8 mx-auto mb-2 text-blue-500" />
                   <h4 className="font-medium">Privasi Terjamin</h4>
                   <p className="text-xs text-gray-500">Keamanan data Anda adalah prioritas kami</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg border-2 text-center">
+                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
                   <Zap className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
                   <h4 className="font-medium">Fitur Tanpa Batas</h4>
                   <p className="text-xs text-gray-500">Akses semua fitur premium tanpa batasan</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg border-2 text-center">
+                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
                   <Sparkles className="h-8 w-8 mx-auto mb-2 text-purple-500" />
                   <h4 className="font-medium">Pengalaman Premium</h4>
                   <p className="text-xs text-gray-500">Nikmati pengalaman pengguna yang lebih baik</p>
@@ -1000,7 +995,7 @@ export function PremiumClient({
           </Card>
 
           {/* Riwayat Transaksi untuk pengguna premium */}
-          <Card className="mb-8 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
+          <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -1017,118 +1012,64 @@ export function PremiumClient({
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div className="md:col-span-2">
-              <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
-                <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-2xl">Pilih Metode Pembayaran</CardTitle>
-                    <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                      {activeGateway === "tripay" ? "TriPay" : "Duitku"}
-                    </Badge>
+          <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
+            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl">Pilih Metode Pembayaran</CardTitle>
+                <Badge variant="outline" className="text-base py-1 px-3 bg-white">
+                  {activeGateway === "tripay" ? "TriPay" : "Duitku"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 pb-4 relative">
+              <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white p-2 rounded-md border">
+                    <Info className="h-5 w-5 text-blue-500" />
                   </div>
-                </CardHeader>
-                <CardContent className="pt-6 pb-4 relative">
-                  <div className="mb-6 p-4 rounded-lg border-2 border-gray-200 bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-full border">
-                        <Info className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Status Akun: Free</h3>
-                        <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
-                      </div>
-                    </div>
+                  <div>
+                    <h3 className="font-semibold">Status Akun: Free</h3>
+                    <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
                   </div>
+                </div>
+              </div>
 
-                  {/* Metode Pembayaran */}
-                  {renderPaymentMethods()}
+              {/* Metode Pembayaran */}
+              {renderPaymentMethods()}
 
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg border">
-                    <Shield className="h-4 w-4 text-green-500" />
-                    <span>Pembayaran aman & terenkripsi</span>
-                  </div>
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md border">
+                <Shield className="h-4 w-4 text-green-500" />
+                <span>Pembayaran aman & terenkripsi</span>
+              </div>
 
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
-                      {error}
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter className="border-t p-6">
-                  <Button
-                    onClick={handlePayment}
-                    disabled={isLoading}
-                    variant="default"
-                    className="w-full neo-btn py-3 h-auto text-base flex items-center justify-center"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
-                      </>
-                    ) : (
-                      <>
-                        Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-
-            <div className="md:col-span-1">
-              <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
-                <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-                  <CardTitle className="text-xl">Ringkasan Pembelian</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6 pb-4">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center pb-3 border-b border-dashed">
-                      <span className="font-medium">Premium Membership</span>
-                      <span className="font-semibold">Rp {premiumPrice.toLocaleString("id-ID")}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center pb-3 border-b">
-                      <span className="font-medium">Biaya Layanan</span>
-                      <span className="text-green-600 font-medium">Gratis</span>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="font-semibold text-lg">Total</span>
-                      <span className="font-bold text-xl">Rp {premiumPrice.toLocaleString("id-ID")}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 bg-yellow-50 border-2 border-yellow-100 rounded-lg p-4">
-                    <h4 className="font-medium flex items-center text-yellow-800 mb-2">
-                      <Star className="h-4 w-4 mr-2 text-yellow-600" /> Keuntungan Premium
-                    </h4>
-                    <ul className="space-y-2">
-                      <li className="flex items-start">
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">Akses semua fitur tanpa batasan</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">Sekali bayar, akses seumur hidup</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">Dukungan prioritas</span>
-                      </li>
-                      <li className="flex items-start">
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">Fitur eksklusif premium</span>
-                      </li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
+                  {error}
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="border-t p-6">
+              <Button
+                onClick={handlePayment}
+                disabled={isLoading}
+                variant="success"
+                className="w-full py-3 h-auto text-base flex items-center justify-center"
+              >
+                {isLoading ? (
+                  <>
+                    <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
+                  </>
+                ) : (
+                  <>
+                    Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
 
           {/* Riwayat Transaksi di bawah card utama */}
-          <Card className="mb-8 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
+          <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -1142,150 +1083,96 @@ export function PremiumClient({
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          <div className="md:col-span-2">
-            <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl">Status Pembayaran</CardTitle>
-                  {currentTransaction ? (
-                    <Badge
-                      variant={
-                        currentTransaction.status === "success"
-                          ? "success"
-                          : currentTransaction.status === "pending"
-                            ? "warning"
-                            : "destructive"
-                      }
-                      className="text-base py-1 px-3"
-                    >
-                      {getStatusLabel(currentTransaction.status)}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                      Belum Ada Transaksi
-                    </Badge>
-                  )}
+        <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
+          <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl">Status Pembayaran</CardTitle>
+              {currentTransaction ? (
+                <Badge
+                  variant={
+                    currentTransaction.status === "success"
+                      ? "success"
+                      : currentTransaction.status === "pending"
+                        ? "warning"
+                        : "destructive"
+                  }
+                  className="text-base py-1 px-3"
+                >
+                  {getStatusLabel(currentTransaction.status)}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-base py-1 px-3 bg-white">
+                  Belum Ada Transaksi
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6 pb-4 relative">
+            {/* Status akun dan pembayaran */}
+            {currentTransaction && currentTransaction.status === "pending" ? (
+              renderPendingTransactionDetails()
+            ) : (
+              <>
+                <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white p-2 rounded-md border">
+                      <Info className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Status Akun: Free</h3>
+                      <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
+                    </div>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-6 pb-4 relative">
-                {/* Status akun dan pembayaran */}
-                {currentTransaction && currentTransaction.status === "pending" ? (
-                  renderPendingTransactionDetails()
+
+                {/* Metode Pembayaran */}
+                {renderPaymentMethods()}
+
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md border">
+                  <Shield className="h-4 w-4 text-green-500" />
+                  <span>Pembayaran aman & terenkripsi</span>
+                </div>
+              </>
+            )}
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
+                {error}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="border-t p-6">
+            {currentTransaction && currentTransaction.status === "pending" ? (
+              <Button
+                onClick={() => router.push("/")}
+                variant="default"
+                className="w-full neo-btn py-3 h-auto text-base"
+              >
+                Kembali ke Beranda
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePayment}
+                disabled={isLoading}
+                variant="success"
+                className="w-full py-3 h-auto text-base flex items-center justify-center"
+              >
+                {isLoading ? (
+                  <>
+                    <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
+                  </>
                 ) : (
                   <>
-                    <div className="mb-6 p-4 rounded-lg border-2 border-gray-200 bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-white p-2 rounded-full border">
-                          <Info className="h-5 w-5 text-blue-500" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">Status Akun: Free</h3>
-                          <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Metode Pembayaran */}
-                    {renderPaymentMethods()}
-
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg border">
-                      <Shield className="h-4 w-4 text-green-500" />
-                      <span>Pembayaran aman & terenkripsi</span>
-                    </div>
+                    Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
                   </>
                 )}
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
-                    {error}
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="border-t p-6">
-                {currentTransaction && currentTransaction.status === "pending" ? (
-                  <Button
-                    onClick={() => router.push("/")}
-                    variant="default"
-                    className="w-full neo-btn py-3 h-auto text-base"
-                  >
-                    Kembali ke Beranda
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handlePayment}
-                    disabled={isLoading}
-                    variant="default"
-                    className="w-full neo-btn py-3 h-auto text-base flex items-center justify-center"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
-                      </>
-                    ) : (
-                      <>
-                        Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
-                      </>
-                    )}
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-
-          <div className="md:col-span-1">
-            <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
-              <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-                <CardTitle className="text-xl">Ringkasan Pembelian</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 pb-4">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-dashed">
-                    <span className="font-medium">Premium Membership</span>
-                    <span className="font-semibold">Rp {premiumPrice.toLocaleString("id-ID")}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center pb-3 border-b">
-                    <span className="font-medium">Biaya Layanan</span>
-                    <span className="text-green-600 font-medium">Gratis</span>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="font-semibold text-lg">Total</span>
-                    <span className="font-bold text-xl">Rp {premiumPrice.toLocaleString("id-ID")}</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 bg-yellow-50 border-2 border-yellow-100 rounded-lg p-4">
-                  <h4 className="font-medium flex items-center text-yellow-800 mb-2">
-                    <Star className="h-4 w-4 mr-2 text-yellow-600" /> Keuntungan Premium
-                  </h4>
-                  <ul className="space-y-2">
-                    <li className="flex items-start">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Akses semua fitur tanpa batasan</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Sekali bayar, akses seumur hidup</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Dukungan prioritas</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Fitur eksklusif premium</span>
-                    </li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
 
         {/* Riwayat Transaksi di bawah card utama */}
-        <Card className="mb-8 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
+        <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
       </div>
     </div>
   )
