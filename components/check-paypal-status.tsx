@@ -3,66 +3,57 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { RefreshCw, Clock } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
 interface CheckPayPalStatusProps {
   orderId: string
+  gatewayReference?: string
+  onSuccess?: () => void
 }
 
-export function CheckPayPalStatus({ orderId }: CheckPayPalStatusProps) {
+export function CheckPayPalStatus({ orderId, gatewayReference, onSuccess }: CheckPayPalStatusProps) {
   const [isChecking, setIsChecking] = useState(false)
   const { toast } = useToast()
-  const router = useRouter()
 
-  const checkPayPalStatus = async () => {
-    if (!orderId) return
-
+  const handleCheckStatus = async () => {
+    setIsChecking(true)
     try {
-      setIsChecking(true)
+      // Use gatewayReference if available, otherwise use orderId
+      const idToCheck = gatewayReference || orderId
 
-      const response = await fetch(`/api/payment/check-paypal-status?orderId=${encodeURIComponent(orderId)}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-
+      const response = await fetch(`/api/payment/check-paypal-status?orderId=${idToCheck}`)
       const data = await response.json()
 
       if (data.success) {
-        if (data.status === "COMPLETED" || data.status === "success") {
-          toast({
-            title: "Pembayaran Berhasil!",
-            description: "Akun Anda telah diupgrade ke Premium.",
-            variant: "default",
-          })
-          // Refresh halaman untuk menampilkan status premium
-          router.refresh()
-        } else if (data.status === "FAILED" || data.status === "failed") {
-          toast({
-            title: "Pembayaran Gagal",
-            description: "Silakan coba lagi atau gunakan metode pembayaran lain.",
-            variant: "destructive",
-          })
-        } else {
-          toast({
-            title: "Status Pembayaran",
-            description: `Status pembayaran PayPal Anda: ${data.status}`,
-          })
+        toast({
+          title: "Status pembayaran berhasil diperbarui",
+          description: data.message,
+          variant: "success",
+        })
+
+        // If payment is successful and onSuccess callback is provided, call it
+        if (data.status === "success" && onSuccess) {
+          onSuccess()
+        }
+
+        // Reload the page if payment is successful to show updated status
+        if (data.status === "success") {
+          setTimeout(() => {
+            window.location.reload()
+          }, 2000)
         }
       } else {
         toast({
-          title: "Error",
-          description: data.error || "Gagal memeriksa status pembayaran PayPal",
+          title: "Gagal memeriksa status pembayaran",
+          description: data.error || "Terjadi kesalahan saat memeriksa status pembayaran",
           variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Error checking PayPal status:", error)
       toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat memeriksa status pembayaran PayPal",
+        title: "Gagal memeriksa status pembayaran",
+        description: "Terjadi kesalahan saat memeriksa status pembayaran",
         variant: "destructive",
       })
     } finally {
@@ -71,20 +62,14 @@ export function CheckPayPalStatus({ orderId }: CheckPayPalStatusProps) {
   }
 
   return (
-    <Button
-      onClick={checkPayPalStatus}
-      disabled={isChecking}
-      variant="outline"
-      className="w-full bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800 py-3 h-auto"
-    >
+    <Button onClick={handleCheckStatus} disabled={isChecking} variant="outline" className="mt-2 w-full">
       {isChecking ? (
         <>
-          <Clock className="h-5 w-5 mr-2 animate-spin" /> Memeriksa Status PayPal...
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Memeriksa Status...
         </>
       ) : (
-        <>
-          <RefreshCw className="h-5 w-5 mr-2" /> Verifikasi Pembayaran PayPal
-        </>
+        "Verifikasi Pembayaran PayPal"
       )}
     </Button>
   )

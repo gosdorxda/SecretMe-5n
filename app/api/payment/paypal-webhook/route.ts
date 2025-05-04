@@ -20,34 +20,91 @@ export async function POST(request: NextRequest) {
     // Get the PayPal gateway
     const gateway = await getPaymentGateway("paypal")
 
-    // Process the notification with the gateway
-    logger.info("Processing notification with PayPal gateway")
-    const result = await gateway.handleNotification(payload, headers)
+    // Extract important data from the webhook payload
+    const eventType = payload.event_type
 
-    // Extract important data
-    const paymentStatus = result.status
-    const isSuccess = result.isSuccess
-    const orderId = result.orderId
+    // For PAYMENT.CAPTURE.COMPLETED events, we need to extract the order_id from supplementary_data
+    let orderId = ""
+    if (eventType === "PAYMENT.CAPTURE.COMPLETED" && payload.resource) {
+      // Try to get the order_id from supplementary_data
+      orderId = payload.resource.supplementary_data?.related_ids?.order_id || ""
 
-    logger.info("Transaction details", {
-      orderId,
-      status: paymentStatus,
-      success: isSuccess,
-      paymentMethod: result.paymentMethod,
-    })
+      // If we couldn't find the order_id, try to get it from links
+      if (!orderId) {
+        // Try to extract order ID from links
+        const orderLink = payload.resource.links?.find(
+          (link: any) => link.rel === "up" && link.href.includes("/orders/"),
+        )
+        if (orderLink) {
+          const parts = orderLink.href.split("/")
+          orderId = parts[parts.length - 1]
+        }
+      }
 
-    // Find transaction in database
-    logger.debug("Looking up transaction in database", { orderId })
+      // If we still don't have an order ID, use the reference_id or custom_id if available
+      if (!orderId) {
+        orderId = payload.resource.custom_id || payload.resource.invoice_id || payload.resource.id
+      }
+
+      logger.info("Extracted PayPal order ID", {
+        orderId,
+        captureId: payload.resource.id,
+        eventType,
+      })
+    } else {
+      // For other event types, use the resource ID directly
+      orderId = payload.resource?.id || ""
+    }
+
+    if (!orderId) {
+      logger.error("Could not extract order ID from PayPal webhook", null, { payload: logger.sanitizePayload(payload) })
+      return NextResponse.json({ error: "Could not extract order ID from webhook" }, { status: 400 })
+    }
+
+    // Find transaction in database using the extracted order ID
+    logger.debug("Looking up transaction in database", { orderId, eventType })
     const supabase = createClient()
-    const { data: transaction, error: findError } = await supabase
+
+    // First try to find by gateway_reference (which should contain the PayPal order ID)
+    let { data: transaction, error: findError } = await supabase
       .from("premium_transactions")
-      .select("id, user_id, status, payment_gateway")
-      .eq("plan_id", orderId)
+      .select("id, user_id, status, payment_gateway, plan_id")
+      .eq("gateway_reference", orderId)
       .single()
 
+    // If not found by gateway_reference, try by plan_id
     if (findError) {
-      logger.error("Transaction not found", findError, { orderId })
-      return NextResponse.json({ error: "Transaction not found", order_id: orderId }, { status: 404 })
+      logger.debug("Transaction not found by gateway_reference, trying plan_id", { orderId })
+      const { data: transactionByPlanId, error: findByPlanIdError } = await supabase
+        .from("premium_transactions")
+        .select("id, user_id, status, payment_gateway, plan_id")
+        .eq("plan_id", orderId)
+        .single()
+
+      if (findByPlanIdError) {
+        logger.error("Transaction not found", findByPlanIdError, { orderId })
+
+        // Log the webhook anyway for debugging purposes
+        try {
+          await supabase.from("payment_notification_logs").insert({
+            request_id: logger.requestId,
+            gateway: "paypal",
+            raw_payload: payload,
+            parsed_payload: { orderId, eventType },
+            headers: headers,
+            status: "unknown",
+            order_id: orderId,
+            event_type: eventType,
+            error_message: "Transaction not found in database",
+          })
+        } catch (logError) {
+          logger.warn("Error logging notification", logError)
+        }
+
+        return NextResponse.json({ error: "Transaction not found", order_id: orderId }, { status: 404 })
+      }
+
+      transaction = transactionByPlanId
     }
 
     logger.info("Found transaction in database", {
@@ -55,23 +112,24 @@ export async function POST(request: NextRequest) {
       userId: transaction.user_id,
       currentStatus: transaction.status,
       gateway: transaction.payment_gateway || "unknown",
+      planId: transaction.plan_id,
     })
 
-    // Determine new status
+    // Determine new status based on event type
     let newStatus = transaction.status
     let isPremium = false
 
-    if (paymentStatus === "success") {
+    if (eventType === "PAYMENT.CAPTURE.COMPLETED" || eventType === "CHECKOUT.ORDER.APPROVED") {
       newStatus = "success"
       isPremium = true
       logger.info("Payment successful", { newStatus: "success", isPremium: true })
-    } else if (paymentStatus === "failed" || paymentStatus === "expired") {
+    } else if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
       newStatus = "failed"
-      logger.info("Payment failed or expired", { newStatus: "failed", isPremium: false })
-    } else if (paymentStatus === "pending") {
+      logger.info("Payment failed", { newStatus: "failed", isPremium: false })
+    } else if (eventType === "PAYMENT.CAPTURE.PENDING") {
       newStatus = "pending"
       logger.info("Payment pending", { newStatus: "pending", isPremium: false })
-    } else if (paymentStatus === "refunded") {
+    } else if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
       newStatus = "refunded"
       isPremium = false
       logger.info("Payment refunded", { newStatus: "refunded", isPremium: false })
@@ -88,8 +146,8 @@ export async function POST(request: NextRequest) {
       .from("premium_transactions")
       .update({
         status: newStatus,
-        payment_method: result.paymentMethod,
-        payment_details: result.details,
+        payment_method: "PayPal",
+        payment_details: payload,
         updated_at: new Date().toISOString(),
       })
       .eq("id", transaction.id)
@@ -127,12 +185,12 @@ export async function POST(request: NextRequest) {
         request_id: logger.requestId,
         gateway: "paypal",
         raw_payload: payload,
-        parsed_payload: result.details,
+        parsed_payload: { orderId, eventType, captureId: payload.resource?.id },
         headers: headers,
         status: newStatus,
         transaction_id: transaction.id,
         order_id: orderId,
-        event_type: result.eventType,
+        event_type: eventType,
       })
 
       if (logError) {
@@ -146,8 +204,8 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info("Notification processing completed successfully", {
-      paymentMethod: result.paymentMethod,
-      eventType: result.eventType,
+      paymentMethod: "PayPal",
+      eventType: eventType,
       transactionId: transaction.id,
       orderId: orderId,
     })
@@ -157,7 +215,7 @@ export async function POST(request: NextRequest) {
       message: `Transaction ${orderId} updated to ${newStatus}`,
       requestId: logger.requestId,
       gateway: "paypal",
-      eventType: result.eventType,
+      eventType: eventType,
     })
   } catch (error: any) {
     logger.error("Error processing PayPal webhook", error)
