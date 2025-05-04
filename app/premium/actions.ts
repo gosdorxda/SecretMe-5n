@@ -135,6 +135,23 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // PERBAIKAN: Pastikan gateway_reference selalu diisi dengan ID PayPal
     const gatewayReference = result.gatewayReference || result.token
 
+    // Log transaksi ke payment_notification_logs
+    await supabase.from("payment_notification_logs").insert({
+      request_id: `create-tx-${Date.now()}`,
+      gateway: finalGatewayName,
+      raw_payload: {
+        action: "create-transaction",
+        userId: session.user.id,
+        orderId: orderId,
+        amount: premiumPrice,
+        gatewayReference: gatewayReference,
+      },
+      status: "created",
+      transaction_id: transaction.id,
+      order_id: orderId,
+      event_type: "transaction-created",
+    })
+
     // Update transaction with gateway reference and payment details
     await supabase
       .from("premium_transactions")
@@ -157,9 +174,8 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     return {
       success: true,
       redirectUrl: result.redirectUrl,
+      transactionId: transaction.id,
       orderId: orderId,
-      token: result.token,
-      gatewayReference: gatewayReference, // Tambahkan gatewayReference ke respons
     }
   } catch (error: any) {
     console.error("Error creating transaction:", error)

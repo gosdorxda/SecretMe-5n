@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createPaymentLogger } from "@/lib/payment/payment-logger"
+import { createPaymentLogger } from "@/lib/payment/logger"
 
 export async function POST(request: NextRequest) {
   const logger = createPaymentLogger("paypal-webhook")
@@ -35,6 +35,23 @@ export async function POST(request: NextRequest) {
       eventType: eventType,
     })
 
+    // SELALU log webhook ke payment_notification_logs, bahkan jika ini adalah test webhook
+    const supabase = createClient()
+
+    // Log webhook ke payment_notification_logs
+    const logEntry = {
+      request_id: logger.requestId,
+      gateway: "paypal",
+      raw_payload: payload,
+      headers: headers,
+      status: "received",
+      order_id: orderId || "unknown",
+      event_type: eventType || "unknown",
+    }
+
+    await supabase.from("payment_notification_logs").insert(logEntry)
+    logger.debug("Webhook logged to payment_notification_logs", { logId: logger.requestId })
+
     // Check if this is a test webhook
     const isTestWebhook =
       payload.create_time?.startsWith("2015") || // PayPal example webhooks use 2015 date
@@ -46,6 +63,12 @@ export async function POST(request: NextRequest) {
         createTime: payload.create_time,
         summary: payload.summary,
       })
+
+      // Update log entry for test webhook
+      await supabase
+        .from("payment_notification_logs")
+        .update({ status: "test_webhook" })
+        .eq("request_id", logger.requestId)
 
       // Return success for test webhooks
       return NextResponse.json({
@@ -60,8 +83,6 @@ export async function POST(request: NextRequest) {
       orderId,
       eventType,
     })
-
-    const supabase = createClient()
 
     // First try to find by gateway_reference
     let { data: transaction, error } = await supabase
@@ -91,6 +112,16 @@ export async function POST(request: NextRequest) {
 
         if (searchError) {
           logger.error("Error searching transactions", searchError)
+
+          // Update log entry with error
+          await supabase
+            .from("payment_notification_logs")
+            .update({
+              status: "error",
+              error: "Error searching transactions",
+            })
+            .eq("request_id", logger.requestId)
+
           return NextResponse.json({ error: "Error searching transactions" }, { status: 500 })
         }
 
@@ -105,7 +136,9 @@ export async function POST(request: NextRequest) {
             details.id === orderId ||
             details.orderId === orderId ||
             details.order_id === orderId ||
-            details.gatewayReference === orderId
+            details.gatewayReference === orderId ||
+            details.gateway_reference === orderId ||
+            details.token === orderId
           )
         })
 
@@ -118,15 +151,14 @@ export async function POST(request: NextRequest) {
         } else {
           logger.error("Transaction not found", { orderId })
 
-          // Log the webhook for future reference even if we can't find the transaction
-          await supabase.from("payment_notification_logs").insert({
-            gateway: "paypal",
-            raw_payload: payload,
-            headers: headers,
-            status: "unmatched",
-            order_id: orderId,
-            event_type: eventType,
-          })
+          // Update log entry with transaction not found
+          await supabase
+            .from("payment_notification_logs")
+            .update({
+              status: "unmatched",
+              error: "Transaction not found",
+            })
+            .eq("request_id", logger.requestId)
 
           return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
         }
@@ -144,6 +176,15 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Update log entry with transaction ID
+    await supabase
+      .from("payment_notification_logs")
+      .update({
+        transaction_id: transaction.id,
+        status: "processing",
+      })
+      .eq("request_id", logger.requestId)
+
     // Process the webhook based on event type
     if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
       logger.info("Processing payment capture completed", {
@@ -157,11 +198,14 @@ export async function POST(request: NextRequest) {
         .update({
           status: "success",
           payment_method: "PayPal",
+          gateway_reference: orderId, // Pastikan gateway_reference diperbarui
           payment_details: {
             ...transaction.payment_details,
             captureId: captureId,
             eventType: eventType,
             webhookData: payload,
+            gateway_reference: orderId,
+            processed_at: new Date().toISOString(),
           },
           updated_at: new Date().toISOString(),
         })
@@ -169,6 +213,16 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         logger.error("Failed to update transaction", updateError)
+
+        // Update log entry with error
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "error",
+            error: "Failed to update transaction",
+          })
+          .eq("request_id", logger.requestId)
+
         return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
       }
 
@@ -183,6 +237,16 @@ export async function POST(request: NextRequest) {
 
       if (userUpdateError) {
         logger.error("Failed to update user premium status", userUpdateError)
+
+        // Update log entry with error
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "error",
+            error: "Failed to update user premium status",
+          })
+          .eq("request_id", logger.requestId)
+
         return NextResponse.json({ error: "Failed to update user premium status" }, { status: 500 })
       }
 
@@ -190,6 +254,19 @@ export async function POST(request: NextRequest) {
         userId: transaction.user_id,
         transactionId: transaction.id,
       })
+
+      // Update log entry with success
+      await supabase
+        .from("payment_notification_logs")
+        .update({
+          status: "success",
+          parsed_payload: {
+            captureId: captureId,
+            eventType: eventType,
+            status: "success",
+          },
+        })
+        .eq("request_id", logger.requestId)
     } else if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
       logger.info("Processing payment refund", {
         transactionId: transaction.id,
@@ -201,11 +278,14 @@ export async function POST(request: NextRequest) {
         .from("premium_transactions")
         .update({
           status: "refunded",
+          gateway_reference: orderId, // Pastikan gateway_reference diperbarui
           payment_details: {
             ...transaction.payment_details,
             captureId: captureId,
             eventType: eventType,
             webhookData: payload,
+            gateway_reference: orderId,
+            processed_at: new Date().toISOString(),
           },
           updated_at: new Date().toISOString(),
         })
@@ -213,6 +293,16 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         logger.error("Failed to update transaction", updateError)
+
+        // Update log entry with error
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "error",
+            error: "Failed to update transaction",
+          })
+          .eq("request_id", logger.requestId)
+
         return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
       }
 
@@ -227,6 +317,16 @@ export async function POST(request: NextRequest) {
 
       if (userUpdateError) {
         logger.error("Failed to update user premium status", userUpdateError)
+
+        // Update log entry with error
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "error",
+            error: "Failed to update user premium status",
+          })
+          .eq("request_id", logger.requestId)
+
         return NextResponse.json({ error: "Failed to update user premium status" }, { status: 500 })
       }
 
@@ -234,6 +334,19 @@ export async function POST(request: NextRequest) {
         userId: transaction.user_id,
         transactionId: transaction.id,
       })
+
+      // Update log entry with success
+      await supabase
+        .from("payment_notification_logs")
+        .update({
+          status: "refunded",
+          parsed_payload: {
+            captureId: captureId,
+            eventType: eventType,
+            status: "refunded",
+          },
+        })
+        .eq("request_id", logger.requestId)
     } else if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
       logger.info("Processing payment denial/reversal", {
         transactionId: transaction.id,
@@ -245,11 +358,14 @@ export async function POST(request: NextRequest) {
         .from("premium_transactions")
         .update({
           status: "failed",
+          gateway_reference: orderId, // Pastikan gateway_reference diperbarui
           payment_details: {
             ...transaction.payment_details,
             captureId: captureId,
             eventType: eventType,
             webhookData: payload,
+            gateway_reference: orderId,
+            processed_at: new Date().toISOString(),
           },
           updated_at: new Date().toISOString(),
         })
@@ -257,6 +373,16 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         logger.error("Failed to update transaction", updateError)
+
+        // Update log entry with error
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "error",
+            error: "Failed to update transaction",
+          })
+          .eq("request_id", logger.requestId)
+
         return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
       }
 
@@ -264,18 +390,38 @@ export async function POST(request: NextRequest) {
         transactionId: transaction.id,
         userId: transaction.user_id,
       })
-    }
 
-    // Log webhook to payment_notification_logs
-    await supabase.from("payment_notification_logs").insert({
-      gateway: "paypal",
-      raw_payload: payload,
-      headers: headers,
-      status: transaction.status,
-      transaction_id: transaction.id,
-      order_id: orderId,
-      event_type: eventType,
-    })
+      // Update log entry with success
+      await supabase
+        .from("payment_notification_logs")
+        .update({
+          status: "failed",
+          parsed_payload: {
+            captureId: captureId,
+            eventType: eventType,
+            status: "failed",
+          },
+        })
+        .eq("request_id", logger.requestId)
+    } else {
+      // For other event types, just log them
+      logger.info("Received other PayPal event type", {
+        eventType,
+        transactionId: transaction.id,
+      })
+
+      // Update log entry with other event type
+      await supabase
+        .from("payment_notification_logs")
+        .update({
+          status: "other_event",
+          parsed_payload: {
+            captureId: captureId,
+            eventType: eventType,
+          },
+        })
+        .eq("request_id", logger.requestId)
+    }
 
     logger.info("PayPal webhook processed successfully", {
       transactionId: transaction.id,
@@ -294,10 +440,12 @@ export async function POST(request: NextRequest) {
     try {
       const supabase = createClient()
       await supabase.from("payment_notification_logs").insert({
+        request_id: logger.requestId,
         gateway: "paypal",
         raw_payload: { error: error.message },
         status: "error",
         event_type: "error",
+        error: error.message,
       })
     } catch (logError) {
       logger.error("Failed to log error", logError)

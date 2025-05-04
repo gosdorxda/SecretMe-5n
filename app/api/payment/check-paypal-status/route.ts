@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createPaymentLogger } from "@/lib/payment/payment-logger"
+import { getPaymentGateway } from "@/lib/payment/gateway-factory"
+import { createPaymentLogger } from "@/lib/payment/logger"
 
 export async function GET(request: NextRequest) {
   const logger = createPaymentLogger("paypal-check")
@@ -9,11 +10,11 @@ export async function GET(request: NextRequest) {
   try {
     // Get order ID from query params
     const searchParams = request.nextUrl.searchParams
-    const orderId = searchParams.get("orderId") || searchParams.get("order_id")
+    const orderId = searchParams.get("order_id")
 
     if (!orderId) {
-      logger.error("Missing orderId parameter")
-      return NextResponse.json({ success: false, error: "Missing orderId parameter" }, { status: 400 })
+      logger.error("No order ID provided")
+      return NextResponse.json({ error: "No order ID provided" }, { status: 400 })
     }
 
     logger.info("Checking PayPal order status", { orderId })
@@ -22,15 +23,16 @@ export async function GET(request: NextRequest) {
     const supabase = createClient()
 
     // First try to find by gateway_reference
-    let { data: transaction, error: refError } = await supabase
+    let { data: transaction, error } = await supabase
       .from("premium_transactions")
       .select("*")
       .eq("gateway_reference", orderId)
       .single()
 
-    // If not found by gateway_reference, try to find by plan_id
-    if (refError) {
+    // If not found, try to find by plan_id
+    if (error) {
       logger.debug("Transaction not found by gateway_reference, trying plan_id", { orderId })
+
       const { data: transactionByPlanId, error: planIdError } = await supabase
         .from("premium_transactions")
         .select("*")
@@ -39,28 +41,39 @@ export async function GET(request: NextRequest) {
 
       if (planIdError) {
         logger.error("Transaction not found", planIdError, { orderId })
-        return NextResponse.json({ success: false, error: "Transaction not found" }, { status: 404 })
+        return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
       }
 
       transaction = transactionByPlanId
-      logger.info("Found transaction", {
-        transactionId: transaction.id,
-        userId: transaction.user_id,
-        status: transaction.status,
-        gateway: transaction.payment_gateway,
-      })
     }
+
+    logger.info("Found transaction", {
+      transactionId: transaction.id,
+      userId: transaction.user_id,
+      status: transaction.status,
+      gateway: transaction.payment_gateway,
+    })
 
     // Get PayPal order ID from transaction
     let paypalOrderId = transaction.gateway_reference
 
     // If no gateway_reference, try to extract from payment_details
     if (!paypalOrderId && transaction.payment_details) {
-      const details = transaction.payment_details
-      paypalOrderId = details.gateway_reference || details.token || details.id
+      const details =
+        typeof transaction.payment_details === "string"
+          ? JSON.parse(transaction.payment_details)
+          : transaction.payment_details
+
+      paypalOrderId = details?.gateway_reference || details?.token || details?.id
+
+      logger.debug("Extracted PayPal order ID from payment_details", {
+        paypalOrderId,
+        detailsType: typeof details,
+        hasDetails: !!details,
+      })
     }
 
-    // If still no PayPal order ID, we need to create one
+    // If still no PayPal order ID, we need to handle this case
     if (!paypalOrderId) {
       logger.warn("No PayPal order ID found in transaction", {
         transactionId: transaction.id,
@@ -73,175 +86,138 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
 
-      if (diffMinutes > 30 && transaction.status === "pending") {
-        logger.info("Transaction is old and still pending, marking as failed", {
+      // Log aktivitas ke payment_notification_logs
+      await supabase.from("payment_notification_logs").insert({
+        request_id: logger.requestId,
+        gateway: "paypal",
+        raw_payload: {
+          action: "check-status",
+          orderId: orderId,
           transactionId: transaction.id,
+          status: transaction.status,
           createdAt: transaction.created_at,
           diffMinutes,
-        })
+        },
+        status: transaction.status,
+        transaction_id: transaction.id,
+        order_id: orderId,
+        event_type: "status-check",
+        error: "No PayPal order ID found",
+      })
 
-        // Update transaction status to failed
+      if (diffMinutes > 30 && transaction.status === "pending") {
+        // Update transaction status to failed due to timeout
         const { error: updateError } = await supabase
           .from("premium_transactions")
           .update({
             status: "failed",
-            updated_at: new Date().toISOString(),
             payment_details: {
               ...transaction.payment_details,
-              failed_reason: "Timeout - no PayPal order ID found",
+              timeout: true,
               checked_at: new Date().toISOString(),
+              error: "Transaction timed out - no PayPal order ID found",
             },
+            updated_at: new Date().toISOString(),
           })
           .eq("id", transaction.id)
 
         if (updateError) {
           logger.error("Failed to update transaction status", updateError)
+          return NextResponse.json({ error: "Failed to update transaction status" }, { status: 500 })
         }
 
-        return NextResponse.json({
-          success: true,
-          status: "failed",
-          message: "Transaction timed out",
-        })
-      }
-
-      // Jika belum 30 menit, kembalikan status saat ini
-      return NextResponse.json({
-        success: true,
-        status: transaction.status,
-        message: "No PayPal order ID found, please try again later",
-      })
-    }
-
-    // Periksa status di PayPal
-    logger.info("Checking PayPal order status with ID", { paypalOrderId })
-
-    // Dapatkan kredensial PayPal
-    const clientId = process.env.PAYPAL_CLIENT_ID
-    const clientSecret = process.env.PAYPAL_CLIENT_SECRET
-
-    if (!clientId || !clientSecret) {
-      logger.error("Missing PayPal credentials")
-      return NextResponse.json({ success: false, error: "Missing PayPal credentials" }, { status: 500 })
-    }
-
-    // Dapatkan token akses
-    const authResponse = await fetch("https://api-m.sandbox.paypal.com/v1/oauth2/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-      },
-      body: "grant_type=client_credentials",
-    })
-
-    if (!authResponse.ok) {
-      const errorText = await authResponse.text()
-      logger.error("Failed to get PayPal access token", null, {
-        status: authResponse.status,
-        response: errorText,
-      })
-      return NextResponse.json(
-        { success: false, error: `Failed to get PayPal access token: ${authResponse.status}` },
-        { status: 500 },
-      )
-    }
-
-    const authData = await authResponse.json()
-    const accessToken = authData.access_token
-
-    // Periksa status order
-    const orderResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${paypalOrderId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
-
-    // Jika order tidak ditemukan, coba perbarui gateway_reference
-    if (orderResponse.status === 404) {
-      logger.warn("PayPal order not found, order ID may be invalid", { paypalOrderId })
-
-      // Jika transaksi sudah lama (> 30 menit) dan masih pending, anggap gagal
-      const createdAt = new Date(transaction.created_at)
-      const now = new Date()
-      const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60)
-
-      if (diffMinutes > 30 && transaction.status === "pending") {
-        logger.info("Transaction is old and still pending, marking as failed", {
+        logger.info("Transaction marked as failed due to timeout", {
           transactionId: transaction.id,
-          createdAt: transaction.created_at,
           diffMinutes,
         })
 
-        // Update transaction status to failed
-        const { error: updateError } = await supabase
-          .from("premium_transactions")
-          .update({
-            status: "failed",
-            updated_at: new Date().toISOString(),
-            payment_details: {
-              ...transaction.payment_details,
-              failed_reason: "PayPal order not found",
-              checked_at: new Date().toISOString(),
-            },
-          })
-          .eq("id", transaction.id)
-
-        if (updateError) {
-          logger.error("Failed to update transaction status", updateError)
-        }
-
         return NextResponse.json({
           success: true,
           status: "failed",
-          message: "PayPal order not found",
+          message: "Transaction timed out - no PayPal order ID found",
         })
       }
 
-      // Jika belum 30 menit, kembalikan status saat ini
+      // Return current status if not timed out
       return NextResponse.json({
         success: true,
         status: transaction.status,
-        message: "PayPal order not found, please try again later",
+        message: "No PayPal order ID found, returning current status",
       })
     }
 
-    if (!orderResponse.ok) {
-      const errorText = await orderResponse.text()
+    // Get PayPal gateway
+    const paypalGateway = await getPaymentGateway("paypal")
+
+    // Check order status with PayPal
+    const result = await paypalGateway.checkOrderStatus(paypalOrderId)
+
+    if (!result.success) {
       logger.error("Failed to check PayPal order status", null, {
-        status: orderResponse.status,
-        response: errorText,
+        error: result.error,
+        paypalOrderId,
       })
-      return NextResponse.json(
-        { success: false, error: `Failed to check PayPal order status: ${orderResponse.status}` },
-        { status: 500 },
-      )
+
+      // Log aktivitas ke payment_notification_logs
+      await supabase.from("payment_notification_logs").insert({
+        request_id: logger.requestId,
+        gateway: "paypal",
+        raw_payload: {
+          action: "check-status",
+          orderId: orderId,
+          paypalOrderId: paypalOrderId,
+          error: result.error,
+        },
+        status: "error",
+        transaction_id: transaction.id,
+        order_id: orderId,
+        event_type: "status-check",
+        error: result.error,
+      })
+
+      return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    const orderData = await orderResponse.json()
-    logger.info("PayPal order status retrieved", {
+    logger.info("PayPal order status", {
       paypalOrderId,
-      status: orderData.status,
+      status: result.status,
+      details: result.details?.status,
     })
 
-    // Map PayPal status to our status
+    // Determine new status based on PayPal status
     let newStatus = transaction.status
     let isPremium = false
 
-    if (orderData.status === "COMPLETED" || orderData.status === "APPROVED") {
+    if (result.status === "COMPLETED" || result.status === "APPROVED") {
       newStatus = "success"
       isPremium = true
-    } else if (orderData.status === "VOIDED" || orderData.status === "CANCELLED") {
+    } else if (result.status === "VOIDED" || result.status === "CANCELLED") {
       newStatus = "failed"
     }
+
+    // Log aktivitas ke payment_notification_logs
+    await supabase.from("payment_notification_logs").insert({
+      request_id: logger.requestId,
+      gateway: "paypal",
+      raw_payload: {
+        action: "check-status",
+        orderId: orderId,
+        paypalOrderId: paypalOrderId,
+        paypalStatus: result.status,
+      },
+      parsed_payload: result.details,
+      status: newStatus,
+      transaction_id: transaction.id,
+      order_id: orderId,
+      event_type: "status-check",
+    })
 
     // Update transaction if status changed
     if (newStatus !== transaction.status) {
       logger.info("Updating transaction status", {
         transactionId: transaction.id,
         oldStatus: transaction.status,
-        newStatus,
+        newStatus: newStatus,
       })
 
       const { error: updateError } = await supabase
@@ -251,26 +227,22 @@ export async function GET(request: NextRequest) {
           gateway_reference: paypalOrderId, // Pastikan gateway_reference diperbarui
           payment_details: {
             ...transaction.payment_details,
-            paypalStatus: orderData.status,
-            paypalOrderId: paypalOrderId,
-            details: orderData,
+            paypal_status: result.status,
             checked_at: new Date().toISOString(),
+            details: result.details,
           },
           updated_at: new Date().toISOString(),
         })
         .eq("id", transaction.id)
 
       if (updateError) {
-        logger.error("Failed to update transaction", updateError)
-        return NextResponse.json({ success: false, error: "Failed to update transaction" }, { status: 500 })
+        logger.error("Failed to update transaction status", updateError)
+        return NextResponse.json({ error: "Failed to update transaction status" }, { status: 500 })
       }
 
       // Update user premium status if payment successful
       if (isPremium) {
-        logger.info("Updating user premium status", {
-          userId: transaction.user_id,
-          isPremium,
-        })
+        logger.info("Updating user premium status", { userId: transaction.user_id })
 
         const { error: userUpdateError } = await supabase
           .from("users")
@@ -282,65 +254,43 @@ export async function GET(request: NextRequest) {
 
         if (userUpdateError) {
           logger.error("Failed to update user premium status", userUpdateError)
-          return NextResponse.json({ success: false, error: "Failed to update user premium status" }, { status: 500 })
+          return NextResponse.json({ error: "Failed to update user premium status" }, { status: 500 })
         }
 
         logger.info("User is now premium", { userId: transaction.user_id })
       }
-    } else {
-      logger.info("Transaction status unchanged", {
-        transactionId: transaction.id,
-        status: transaction.status,
-      })
-
-      // Perbarui payment_details meskipun status tidak berubah
-      const { error: updateError } = await supabase
-        .from("premium_transactions")
-        .update({
-          gateway_reference: paypalOrderId, // Pastikan gateway_reference diperbarui
-          payment_details: {
-            ...transaction.payment_details,
-            paypalStatus: orderData.status,
-            paypalOrderId: paypalOrderId,
-            details: orderData,
-            checked_at: new Date().toISOString(),
-          },
-        })
-        .eq("id", transaction.id)
-
-      if (updateError) {
-        logger.warn("Failed to update payment details", updateError)
-      }
     }
 
-    // Log ke payment_notification_logs
-    try {
-      await supabase.from("payment_notification_logs").insert({
-        gateway: "paypal",
-        raw_payload: orderData,
-        headers: {},
-        status: newStatus,
-        transaction_id: transaction.id,
-        order_id: paypalOrderId,
-        event_type: "check-status",
-      })
-    } catch (logError) {
-      logger.warn("Failed to log to payment_notification_logs", logError)
-    }
-
-    // Return current status
     return NextResponse.json({
       success: true,
-      transaction: {
-        id: transaction.id,
-        status: newStatus,
-        paypalStatus: orderData.status,
-        paypalOrderId: paypalOrderId,
-      },
-      isPremium,
+      status: newStatus,
+      paypalStatus: result.status,
+      details: result.details,
     })
   } catch (error: any) {
-    console.error("Error checking PayPal status:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    logger.error("Error checking PayPal payment status", error)
+
+    // Try to log the error
+    try {
+      const supabase = createClient()
+      await supabase.from("payment_notification_logs").insert({
+        request_id: logger.requestId,
+        gateway: "paypal",
+        raw_payload: { error: error.message },
+        status: "error",
+        event_type: "status-check-error",
+        error: error.message,
+      })
+    } catch (logError) {
+      logger.error("Failed to log error", logError)
+    }
+
+    return NextResponse.json(
+      {
+        error: "Error checking PayPal payment status",
+        message: error.message,
+      },
+      { status: 500 },
+    )
   }
 }
