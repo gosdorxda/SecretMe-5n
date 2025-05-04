@@ -853,7 +853,7 @@ export function PremiumClient({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border">
+                    <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border-2 border-muted">
                       {method.icon ? (
                         <img
                           src={method.icon || "/placeholder.svg"}
@@ -901,7 +901,7 @@ export function PremiumClient({
               {/* Badge untuk metode yang direkomendasikan */}
               {method.recommended && (
                 <div className="absolute -top-2 -right-2 z-10">
-                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-md shadow-md flex items-center gap-1">
+                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs px-3 py-1 rounded-md shadow-md flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     Rekomendasi
                   </div>
@@ -985,7 +985,7 @@ export function PremiumClient({
               <Button
                 onClick={() => router.push("/dashboard")}
                 variant="default"
-                className="w-full neo-btn py-3 h-auto text-base"
+                className="w-full neo-btn py-3 h-auto text-base mt-3"
               >
                 Kembali ke Dashboard
               </Button>
@@ -1051,7 +1051,7 @@ export function PremiumClient({
                 onClick={handlePayment}
                 disabled={isLoading}
                 variant="success"
-                className="w-full py-3 h-auto text-base flex items-center justify-center"
+                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3"
               >
                 {isLoading ? (
                   <>
@@ -1126,7 +1126,7 @@ export function PremiumClient({
                 {/* Metode Pembayaran */}
                 {renderPaymentMethods()}
 
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md border">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md">
                   <Shield className="h-4 w-4 text-green-500" />
                   <span>Pembayaran aman & terenkripsi</span>
                 </div>
@@ -1144,7 +1144,7 @@ export function PremiumClient({
               <Button
                 onClick={() => router.push("/")}
                 variant="default"
-                className="w-full neo-btn py-3 h-auto text-base"
+                className="w-full neo-btn py-3 h-auto text-base mt-3"
               >
                 Kembali ke Beranda
               </Button>
@@ -1153,7 +1153,7 @@ export function PremiumClient({
                 onClick={handlePayment}
                 disabled={isLoading}
                 variant="success"
-                className="w-full py-3 h-auto text-base flex items-center justify-center"
+                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3"
               >
                 {isLoading ? (
                   <>
