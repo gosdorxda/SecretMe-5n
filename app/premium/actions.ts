@@ -5,14 +5,6 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
-// Periksa apakah ada pengambilan harga dari database di server actions
-// Jika ada, ubah untuk menggunakan environment variables
-
-// Tambahkan kode berikut di awal file (jika belum ada):
-// const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-// const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
-
-// Dengan kode ini:
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
   const supabase = createClient()
@@ -43,8 +35,6 @@ async function getPremiumSettings() {
   return { premiumPrice, activeGateway }
 }
 
-// Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
-
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
 export async function createTransaction(paymentMethod: string, gatewayName: string | undefined) {
   try {
@@ -64,19 +54,6 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     if (authError || !user) {
       return { success: false, error: "Unauthorized" }
     }
-
-    // Kirim request ke API dengan gatewayName
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
-    const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        paymentMethod,
-        gatewayName: finalGatewayName, // Tambahkan gatewayName ke body request
-      }),
-    })
 
     // Get user session
     const {
@@ -101,15 +78,6 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: "Anda sudah menjadi pengguna premium" }
     }
 
-    // Get premium price from config or env
-    // const { data: configData } = await supabase
-    //   .from("site_config")
-    //   .select("config")
-    //   .eq("type", "premium_settings")
-    //   .single()
-
-    // const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-
     // Generate order ID
     const orderId = generateOrderId(session.user.id)
 
@@ -121,8 +89,8 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
         plan_id: orderId,
         amount: premiumPrice,
         status: "pending",
-        payment_gateway: finalGatewayName, // Gunakan gatewayName yang dipilih
-        payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
+        payment_gateway: finalGatewayName,
+        payment_method: paymentMethod,
       })
       .select()
       .single()
@@ -147,7 +115,7 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
       pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
       notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-      paymentMethod: paymentMethod, // Teruskan metode pembayaran ke gateway
+      paymentMethod: paymentMethod,
     })
 
     if (!result.success) {
@@ -164,22 +132,34 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: result.error || "Gagal membuat transaksi" }
     }
 
-    // Update transaction with gateway reference
+    // PERBAIKAN: Pastikan gateway_reference selalu diisi dengan ID PayPal
+    const gatewayReference = result.gatewayReference || result.token
+
+    // Update transaction with gateway reference and payment details
     await supabase
       .from("premium_transactions")
       .update({
+        gateway_reference: gatewayReference, // Simpan ID PayPal di gateway_reference
         payment_details: {
-          gateway_reference: result.gatewayReference,
+          gateway_reference: gatewayReference,
           redirect_url: result.redirectUrl,
+          token: result.token,
+          created_at: new Date().toISOString(),
+          payment_method: paymentMethod,
+          gateway: finalGatewayName,
         },
       })
       .eq("id", transaction.id)
+
+    // Log untuk debugging
+    console.log(`Transaction ${transaction.id} created with gateway_reference: ${gatewayReference}`)
 
     return {
       success: true,
       redirectUrl: result.redirectUrl,
       orderId: orderId,
       token: result.token,
+      gatewayReference: gatewayReference, // Tambahkan gatewayReference ke respons
     }
   } catch (error: any) {
     console.error("Error creating transaction:", error)
@@ -239,6 +219,8 @@ export async function getLatestTransaction() {
       createdAt: transactionData.created_at,
       updatedAt: transactionData.updated_at,
       gateway: transactionData.payment_gateway,
+      gatewayReference: transactionData.gateway_reference, // Tambahkan gateway_reference
+      paymentDetails: transactionData.payment_details || {}, // Tambahkan payment_details
     }
 
     return { success: true, isPremium: false, hasTransaction: true, transaction }
@@ -283,6 +265,7 @@ export async function getTransactionHistory() {
       createdAt: tx.created_at,
       updatedAt: tx.updated_at,
       gateway: tx.payment_gateway,
+      gatewayReference: tx.gateway_reference, // Tambahkan gateway_reference
     }))
 
     return { success: true, transactions }
@@ -339,7 +322,9 @@ export async function cancelTransaction(transactionId: string) {
     console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
 
     // Periksa apakah ada referensi gateway
-    const gatewayReference = transactionData.payment_details?.gateway_reference
+    const gatewayReference =
+      transactionData.gateway_reference ||
+      (transactionData.payment_details && transactionData.payment_details.gateway_reference)
 
     // Untuk TriPay, kita tidak memanggil API cancel dan membiarkan transaksi expired dengan sendirinya
     if (gatewayName !== "tripay" && gatewayReference) {
