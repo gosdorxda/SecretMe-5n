@@ -1,167 +1,178 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { getPaymentGateway } from "@/lib/payment/gateway-factory"
-import { createNotificationLogger } from "@/lib/payment/logger"
+import { createPaymentLogger } from "@/lib/payment/payment-logger"
 
 export async function POST(request: NextRequest) {
-  // Generate unique request ID for tracking this notification
-  const logger = createNotificationLogger()
-  logger.info("PAYPAL WEBHOOK RECEIVED")
+  const logger = createPaymentLogger("paypal-webhook")
+  logger.info("PayPal webhook received")
 
   try {
     // Log request headers
     const headers = Object.fromEntries(request.headers.entries())
-    logger.debug("Request headers received", { headers: logger.sanitizeHeaders(headers) })
+    logger.debug("Request headers received", { headers })
 
-    // Parse the request body
+    // Parse webhook payload
     const payload = await request.json()
-    logger.debug("Parsed JSON payload", { payload: logger.sanitizePayload(payload) })
+    logger.debug("Webhook payload received", { payload })
 
-    // Get the PayPal gateway
-    const gateway = await getPaymentGateway("paypal")
-
-    // Extract important data from the webhook payload
+    // Extract important information from the payload
     const eventType = payload.event_type
+    const resourceType = payload.resource_type
+    const captureId = payload.resource?.id
 
-    // For PAYMENT.CAPTURE.COMPLETED events, we need to extract the order_id from supplementary_data
-    let orderId = ""
-    if (eventType === "PAYMENT.CAPTURE.COMPLETED" && payload.resource) {
-      // Try to get the order_id from supplementary_data
-      orderId = payload.resource.supplementary_data?.related_ids?.order_id || ""
+    // Extract order ID from different possible locations in the payload
+    const orderId =
+      payload.resource?.supplementary_data?.related_ids?.order_id ||
+      payload.resource?.links
+        ?.find((link: any) => link.rel === "up")
+        ?.href?.split("/")
+        .pop() ||
+      ""
 
-      // If we couldn't find the order_id, try to get it from links
-      if (!orderId) {
-        // Try to extract order ID from links
-        const orderLink = payload.resource.links?.find(
-          (link: any) => link.rel === "up" && link.href.includes("/orders/"),
-        )
-        if (orderLink) {
-          const parts = orderLink.href.split("/")
-          orderId = parts[parts.length - 1]
-        }
-      }
+    logger.info("Extracted PayPal order ID", {
+      orderId,
+      captureId,
+      eventType: eventType,
+    })
 
-      // If we still don't have an order ID, use the reference_id or custom_id if available
-      if (!orderId) {
-        orderId = payload.resource.custom_id || payload.resource.invoice_id || payload.resource.id
-      }
+    // Check if this is a test webhook
+    const isTestWebhook =
+      payload.create_time?.startsWith("2015") || // PayPal example webhooks use 2015 date
+      payload.summary?.includes("test") ||
+      !orderId
 
-      logger.info("Extracted PayPal order ID", {
-        orderId,
-        captureId: payload.resource.id,
-        eventType,
+    if (isTestWebhook) {
+      logger.info("Detected test webhook from PayPal", {
+        createTime: payload.create_time,
+        summary: payload.summary,
       })
-    } else {
-      // For other event types, use the resource ID directly
-      orderId = payload.resource?.id || ""
+
+      // Return success for test webhooks
+      return NextResponse.json({
+        success: true,
+        message: "Test webhook received successfully",
+        isTest: true,
+      })
     }
 
-    if (!orderId) {
-      logger.error("Could not extract order ID from PayPal webhook", null, { payload: logger.sanitizePayload(payload) })
-      return NextResponse.json({ error: "Could not extract order ID from webhook" }, { status: 400 })
-    }
+    // Look up transaction in database
+    logger.debug("Looking up transaction in database", {
+      orderId,
+      eventType,
+    })
 
-    // Find transaction in database using the extracted order ID
-    logger.debug("Looking up transaction in database", { orderId, eventType })
     const supabase = createClient()
 
-    // First try to find by gateway_reference (which should contain the PayPal order ID)
-    let { data: transaction, error: findError } = await supabase
+    // First try to find by gateway_reference
+    let { data: transaction, error } = await supabase
       .from("premium_transactions")
-      .select("id, user_id, status, payment_gateway, plan_id")
+      .select("*")
       .eq("gateway_reference", orderId)
       .single()
 
-    // If not found by gateway_reference, try by plan_id
-    if (findError) {
+    // If not found, try to find by plan_id
+    if (error) {
       logger.debug("Transaction not found by gateway_reference, trying plan_id", { orderId })
-      const { data: transactionByPlanId, error: findByPlanIdError } = await supabase
+
+      const { data: transactionByPlanId, error: planIdError } = await supabase
         .from("premium_transactions")
-        .select("id, user_id, status, payment_gateway, plan_id")
+        .select("*")
         .eq("plan_id", orderId)
         .single()
 
-      if (findByPlanIdError) {
-        logger.error("Transaction not found", findByPlanIdError, { orderId })
+      if (planIdError) {
+        // Try to find by searching in payment_details
+        logger.debug("Transaction not found by plan_id, searching in payment_details", { orderId })
 
-        // Log the webhook anyway for debugging purposes
-        try {
-          await supabase.from("payment_notification_logs").insert({
-            request_id: logger.requestId,
-            gateway: "paypal",
-            raw_payload: payload,
-            parsed_payload: { orderId, eventType },
-            headers: headers,
-            status: "unknown",
-            order_id: orderId,
-            event_type: eventType,
-            error_message: "Transaction not found in database",
-          })
-        } catch (logError) {
-          logger.warn("Error logging notification", logError)
+        const { data: transactions, error: searchError } = await supabase
+          .from("premium_transactions")
+          .select("*")
+          .eq("payment_gateway", "paypal")
+
+        if (searchError) {
+          logger.error("Error searching transactions", searchError)
+          return NextResponse.json({ error: "Error searching transactions" }, { status: 500 })
         }
 
-        return NextResponse.json({ error: "Transaction not found", order_id: orderId }, { status: 404 })
+        // Search for the order ID in payment_details
+        const matchingTransaction = transactions.find((t) => {
+          if (!t.payment_details) return false
+
+          // Try to find the order ID in payment_details
+          const details = typeof t.payment_details === "string" ? JSON.parse(t.payment_details) : t.payment_details
+
+          return (
+            details.id === orderId ||
+            details.orderId === orderId ||
+            details.order_id === orderId ||
+            details.gatewayReference === orderId
+          )
+        })
+
+        if (matchingTransaction) {
+          transaction = matchingTransaction
+          logger.info("Found transaction by searching payment_details", {
+            transactionId: transaction.id,
+            userId: transaction.user_id,
+          })
+        } else {
+          logger.error("Transaction not found", { orderId })
+
+          // Log the webhook for future reference even if we can't find the transaction
+          await supabase.from("payment_notification_logs").insert({
+            gateway: "paypal",
+            raw_payload: payload,
+            headers: headers,
+            status: "unmatched",
+            order_id: orderId,
+            event_type: eventType,
+          })
+
+          return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
+        }
+      } else {
+        transaction = transactionByPlanId
+        logger.info("Found transaction by plan_id", {
+          transactionId: transaction.id,
+          userId: transaction.user_id,
+        })
+      }
+    } else {
+      logger.info("Found transaction by gateway_reference", {
+        transactionId: transaction.id,
+        userId: transaction.user_id,
+      })
+    }
+
+    // Process the webhook based on event type
+    if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+      logger.info("Processing payment capture completed", {
+        transactionId: transaction.id,
+        userId: transaction.user_id,
+      })
+
+      // Update transaction status
+      const { error: updateError } = await supabase
+        .from("premium_transactions")
+        .update({
+          status: "success",
+          payment_method: "PayPal",
+          payment_details: {
+            ...transaction.payment_details,
+            captureId: captureId,
+            eventType: eventType,
+            webhookData: payload,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transaction.id)
+
+      if (updateError) {
+        logger.error("Failed to update transaction", updateError)
+        return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
       }
 
-      transaction = transactionByPlanId
-    }
-
-    logger.info("Found transaction in database", {
-      transactionId: transaction.id,
-      userId: transaction.user_id,
-      currentStatus: transaction.status,
-      gateway: transaction.payment_gateway || "unknown",
-      planId: transaction.plan_id,
-    })
-
-    // Determine new status based on event type
-    let newStatus = transaction.status
-    let isPremium = false
-
-    if (eventType === "PAYMENT.CAPTURE.COMPLETED" || eventType === "CHECKOUT.ORDER.APPROVED") {
-      newStatus = "success"
-      isPremium = true
-      logger.info("Payment successful", { newStatus: "success", isPremium: true })
-    } else if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
-      newStatus = "failed"
-      logger.info("Payment failed", { newStatus: "failed", isPremium: false })
-    } else if (eventType === "PAYMENT.CAPTURE.PENDING") {
-      newStatus = "pending"
-      logger.info("Payment pending", { newStatus: "pending", isPremium: false })
-    } else if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
-      newStatus = "refunded"
-      isPremium = false
-      logger.info("Payment refunded", { newStatus: "refunded", isPremium: false })
-    }
-
-    // Update transaction in database
-    logger.info("Updating transaction status", {
-      transactionId: transaction.id,
-      oldStatus: transaction.status,
-      newStatus: newStatus,
-    })
-
-    const { error: updateError } = await supabase
-      .from("premium_transactions")
-      .update({
-        status: newStatus,
-        payment_method: "PayPal",
-        payment_details: payload,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", transaction.id)
-
-    if (updateError) {
-      logger.error("Failed to update transaction", updateError, { transactionId: transaction.id })
-      return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
-    }
-
-    logger.info("Transaction updated successfully", { transactionId: transaction.id, newStatus })
-
-    // Update user premium status if payment is successful
-    if (isPremium) {
-      logger.info("Upgrading user to premium status", { userId: transaction.user_id })
+      // Update user premium status
       const { error: userUpdateError } = await supabase
         .from("users")
         .update({
@@ -171,59 +182,131 @@ export async function POST(request: NextRequest) {
         .eq("id", transaction.user_id)
 
       if (userUpdateError) {
-        logger.error("Failed to update user premium status", userUpdateError, { userId: transaction.user_id })
+        logger.error("Failed to update user premium status", userUpdateError)
         return NextResponse.json({ error: "Failed to update user premium status" }, { status: 500 })
       }
 
-      logger.info("User is now premium", { userId: transaction.user_id, isPremium: true })
-    }
-
-    // Log transaction to payment notification logs table
-    try {
-      logger.debug("Logging notification to payment_notification_logs table")
-      const { error: logError } = await supabase.from("payment_notification_logs").insert({
-        request_id: logger.requestId,
-        gateway: "paypal",
-        raw_payload: payload,
-        parsed_payload: { orderId, eventType, captureId: payload.resource?.id },
-        headers: headers,
-        status: newStatus,
-        transaction_id: transaction.id,
-        order_id: orderId,
-        event_type: eventType,
+      logger.info("User is now premium", {
+        userId: transaction.user_id,
+        transactionId: transaction.id,
+      })
+    } else if (eventType === "PAYMENT.CAPTURE.REFUNDED") {
+      logger.info("Processing payment refund", {
+        transactionId: transaction.id,
+        userId: transaction.user_id,
       })
 
-      if (logError) {
-        logger.warn("Failed to log notification, but transaction was processed", logError)
-      } else {
-        logger.debug("Notification logged successfully")
+      // Update transaction status
+      const { error: updateError } = await supabase
+        .from("premium_transactions")
+        .update({
+          status: "refunded",
+          payment_details: {
+            ...transaction.payment_details,
+            captureId: captureId,
+            eventType: eventType,
+            webhookData: payload,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transaction.id)
+
+      if (updateError) {
+        logger.error("Failed to update transaction", updateError)
+        return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
       }
-    } catch (logError) {
-      logger.warn("Error logging notification", logError)
-      // Continue processing even if logging fails
+
+      // Remove user premium status
+      const { error: userUpdateError } = await supabase
+        .from("users")
+        .update({
+          is_premium: false,
+          premium_expires_at: null,
+        })
+        .eq("id", transaction.user_id)
+
+      if (userUpdateError) {
+        logger.error("Failed to update user premium status", userUpdateError)
+        return NextResponse.json({ error: "Failed to update user premium status" }, { status: 500 })
+      }
+
+      logger.info("User premium status removed due to refund", {
+        userId: transaction.user_id,
+        transactionId: transaction.id,
+      })
+    } else if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.REVERSED") {
+      logger.info("Processing payment denial/reversal", {
+        transactionId: transaction.id,
+        userId: transaction.user_id,
+      })
+
+      // Update transaction status
+      const { error: updateError } = await supabase
+        .from("premium_transactions")
+        .update({
+          status: "failed",
+          payment_details: {
+            ...transaction.payment_details,
+            captureId: captureId,
+            eventType: eventType,
+            webhookData: payload,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", transaction.id)
+
+      if (updateError) {
+        logger.error("Failed to update transaction", updateError)
+        return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
+      }
+
+      logger.info("Transaction marked as failed", {
+        transactionId: transaction.id,
+        userId: transaction.user_id,
+      })
     }
 
-    logger.info("Notification processing completed successfully", {
-      paymentMethod: "PayPal",
-      eventType: eventType,
+    // Log webhook to payment_notification_logs
+    await supabase.from("payment_notification_logs").insert({
+      gateway: "paypal",
+      raw_payload: payload,
+      headers: headers,
+      status: transaction.status,
+      transaction_id: transaction.id,
+      order_id: orderId,
+      event_type: eventType,
+    })
+
+    logger.info("PayPal webhook processed successfully", {
       transactionId: transaction.id,
       orderId: orderId,
+      eventType: eventType,
     })
 
     return NextResponse.json({
       success: true,
-      message: `Transaction ${orderId} updated to ${newStatus}`,
-      requestId: logger.requestId,
-      gateway: "paypal",
-      eventType: eventType,
+      message: `Webhook processed successfully for transaction ${transaction.id}`,
     })
   } catch (error: any) {
     logger.error("Error processing PayPal webhook", error)
+
+    // Try to log the error
+    try {
+      const supabase = createClient()
+      await supabase.from("payment_notification_logs").insert({
+        gateway: "paypal",
+        raw_payload: { error: error.message },
+        status: "error",
+        event_type: "error",
+      })
+    } catch (logError) {
+      logger.error("Failed to log error", logError)
+    }
+
     return NextResponse.json(
       {
-        error: "Internal server error",
-        details: error.message,
-        requestId: logger.requestId,
+        error: "Error processing webhook",
+        message: error.message,
       },
       { status: 500 },
     )

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
+import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { createPaymentLogger } from "@/lib/payment/payment-logger"
 
 export async function GET(request: NextRequest) {
@@ -8,161 +8,151 @@ export async function GET(request: NextRequest) {
   logger.info("Checking PayPal payment status")
 
   try {
-    // Get orderId from query params
-    const { searchParams } = new URL(request.url)
-    const orderId = searchParams.get("orderId")
+    // Get order ID from query params
+    const searchParams = request.nextUrl.searchParams
+    const orderId = searchParams.get("order_id")
 
     if (!orderId) {
-      logger.error("Missing orderId parameter")
-      return NextResponse.json({ success: false, error: "Missing orderId parameter" }, { status: 400 })
+      logger.error("Missing order_id parameter")
+      return NextResponse.json({ error: "Missing order_id parameter" }, { status: 400 })
     }
 
     logger.info("Checking PayPal order status", { orderId })
 
-    // Get user session
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      logger.error("Unauthorized user")
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Cari transaksi di database
-    // Pertama, coba cari berdasarkan gateway_reference
-    let { data: transaction, error: findError } = await supabase
+    // Find transaction in database
+    const supabase = createClient()
+    const { data: transaction, error } = await supabase
       .from("premium_transactions")
       .select("*")
-      .eq("gateway_reference", orderId)
+      .eq("plan_id", orderId)
       .single()
 
-    // Jika tidak ditemukan, coba cari berdasarkan plan_id
-    if (findError) {
-      logger.debug("Transaction not found by gateway_reference, trying plan_id", { orderId })
-      const { data: transactionByPlanId, error: findByPlanIdError } = await supabase
-        .from("premium_transactions")
-        .select("*")
-        .eq("plan_id", orderId)
-        .single()
-
-      if (findByPlanIdError) {
-        logger.error("Transaction not found", findByPlanIdError, { orderId })
-        return NextResponse.json({ success: false, error: "Transaction not found" }, { status: 404 })
-      }
-
-      transaction = transactionByPlanId
+    if (error) {
+      logger.error("Transaction not found", error, { orderId })
+      return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
     }
 
-    logger.info("Found transaction", {
-      transactionId: transaction.id,
-      userId: transaction.user_id,
-      status: transaction.status,
-      gateway: transaction.payment_gateway,
-    })
+    // Get PayPal gateway
+    const paypalGateway = await getPaymentGateway("paypal")
 
-    // Jika transaksi sudah success, tidak perlu memeriksa lagi
-    if (transaction.status === "success") {
-      logger.info("Transaction already successful", { transactionId: transaction.id })
-      return NextResponse.json({
-        success: true,
-        status: "success",
-        message: "Transaction already successful",
-      })
-    }
-
-    // Dapatkan ID PayPal yang sebenarnya dari gateway_reference atau payment_details
-    const paypalOrderId = transaction.gateway_reference || transaction.payment_details?.id
+    // Get PayPal order ID from transaction
+    // First check gateway_reference, then payment_details
+    const paypalOrderId =
+      transaction.gateway_reference || (transaction.payment_details && transaction.payment_details.id)
 
     if (!paypalOrderId) {
-      logger.error("No PayPal order ID found in transaction", null, { transactionId: transaction.id })
-      return NextResponse.json({ success: false, error: "No PayPal order ID found in transaction" }, { status: 400 })
-    }
-
-    // Periksa status di PayPal
-    const paypalResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${paypalOrderId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Basic ${Buffer.from(
-          `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`,
-        ).toString("base64")}`,
-      },
-    })
-
-    if (!paypalResponse.ok) {
-      const errorText = await paypalResponse.text()
-      logger.error("Failed to check PayPal order status", null, {
-        status: paypalResponse.status,
-        response: errorText,
+      logger.error("PayPal order ID not found in transaction", null, {
+        transactionId: transaction.id,
+        orderId,
       })
       return NextResponse.json(
-        { success: false, error: `Failed to check PayPal order status: ${paypalResponse.status}` },
-        { status: 500 },
+        {
+          error: "PayPal order ID not found in transaction",
+          transaction: {
+            id: transaction.id,
+            status: transaction.status,
+            gateway: transaction.payment_gateway,
+          },
+        },
+        { status: 400 },
       )
     }
 
-    const paypalData = await paypalResponse.json()
-    logger.info("PayPal order status", { orderId: paypalOrderId, status: paypalData.status })
+    // Check status with PayPal
+    const result = await paypalGateway.checkOrderStatus(paypalOrderId)
 
-    // Update transaksi jika status PayPal adalah COMPLETED
-    if (paypalData.status === "COMPLETED") {
-      logger.info("Updating transaction to success", { transactionId: transaction.id })
+    if (!result.success) {
+      logger.error("Failed to check PayPal order status", null, {
+        error: result.error,
+        paypalOrderId,
+      })
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
+
+    logger.info("PayPal order status retrieved", {
+      paypalOrderId,
+      status: result.status,
+    })
+
+    // Map PayPal status to our status
+    let newStatus = transaction.status
+    let isPremium = false
+
+    if (result.status === "COMPLETED" || result.status === "APPROVED") {
+      newStatus = "success"
+      isPremium = true
+    } else if (result.status === "VOIDED" || result.status === "CANCELLED") {
+      newStatus = "failed"
+    }
+
+    // Update transaction if status changed
+    if (newStatus !== transaction.status) {
+      logger.info("Updating transaction status", {
+        transactionId: transaction.id,
+        oldStatus: transaction.status,
+        newStatus,
+      })
 
       const { error: updateError } = await supabase
         .from("premium_transactions")
         .update({
-          status: "success",
-          payment_method: "PayPal",
-          payment_details: paypalData,
+          status: newStatus,
+          payment_details: {
+            ...transaction.payment_details,
+            paypalStatus: result.status,
+            details: result.details,
+          },
           updated_at: new Date().toISOString(),
         })
         .eq("id", transaction.id)
 
       if (updateError) {
-        logger.error("Failed to update transaction", updateError, { transactionId: transaction.id })
-        return NextResponse.json({ success: false, error: "Failed to update transaction" }, { status: 500 })
+        logger.error("Failed to update transaction", updateError)
+        return NextResponse.json({ error: "Failed to update transaction" }, { status: 500 })
       }
 
-      // Update user premium status
-      logger.info("Updating user premium status", { userId: user.id })
-      const { error: userUpdateError } = await supabase
-        .from("users")
-        .update({
-          is_premium: true,
-          premium_expires_at: null, // Lifetime premium
+      // Update user premium status if payment successful
+      if (isPremium) {
+        logger.info("Updating user premium status", {
+          userId: transaction.user_id,
+          isPremium,
         })
-        .eq("id", user.id)
 
-      if (userUpdateError) {
-        logger.error("Failed to update user premium status", userUpdateError, { userId: user.id })
-        return NextResponse.json({ success: false, error: "Failed to update user premium status" }, { status: 500 })
+        const { error: userUpdateError } = await supabase
+          .from("users")
+          .update({
+            is_premium: true,
+            premium_expires_at: null, // Lifetime premium
+          })
+          .eq("id", transaction.user_id)
+
+        if (userUpdateError) {
+          logger.error("Failed to update user premium status", userUpdateError)
+          return NextResponse.json({ error: "Failed to update user premium status" }, { status: 500 })
+        }
+
+        logger.info("User is now premium", { userId: transaction.user_id })
       }
-
-      logger.info("User upgraded to premium", { userId: user.id })
-      return NextResponse.json({
-        success: true,
-        status: "success",
-        message: "Payment completed and user upgraded to premium",
+    } else {
+      logger.info("Transaction status unchanged", {
+        transactionId: transaction.id,
+        status: transaction.status,
       })
     }
 
-    // Jika status bukan COMPLETED, kembalikan status saat ini
+    // Return current status
     return NextResponse.json({
       success: true,
-      status: transaction.status,
-      paypalStatus: paypalData.status,
-      message: `Current status: ${paypalData.status}`,
+      transaction: {
+        id: transaction.id,
+        status: newStatus,
+        paypalStatus: result.status,
+        paypalOrderId: paypalOrderId,
+      },
+      isPremium,
     })
   } catch (error: any) {
-    console.error("Error checking PayPal status:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Error checking PayPal status: " + error.message,
-      },
-      { status: 500 },
-    )
+    logger.error("Error checking PayPal status", error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
