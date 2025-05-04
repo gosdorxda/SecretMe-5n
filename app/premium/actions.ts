@@ -1,9 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
-import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
+import { nanoid } from "nanoid"
 
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
@@ -36,152 +36,108 @@ async function getPremiumSettings() {
 }
 
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
-export async function createTransaction(paymentMethod: string, gatewayName: string | undefined, phoneNumber?: string) {
+export async function createTransaction(paymentMethod = "QR", gatewayName = "duitku", phoneNumber?: string) {
   try {
-    const supabase = createClient()
+    // Dapatkan user terverifikasi
+    const { user, error } = await getVerifiedUser()
 
-    // Get premium settings
-    const { premiumPrice, activeGateway: defaultGateway } = await getPremiumSettings()
-
-    // Use provided gateway or default
-    const finalGatewayName = gatewayName || defaultGateway
-
-    // Verifikasi user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return { success: false, error: "Unauthorized" }
-    }
-
-    // Get user session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) {
-      return { success: false, error: "Anda harus login terlebih dahulu" }
-    }
-
-    // Get user data
-    const { data: userData, error: userDataError } = await supabase
-      .from("users")
-      .select("name, email, is_premium")
-      .eq("id", session.user.id)
-      .single()
-
-    if (userDataError) {
-      console.error("Error fetching user data:", userDataError)
-
-      // Coba buat data pengguna jika tidak ditemukan
-      if (userDataError.code === "PGRST116") {
-        // PostgreSQL error code for "not found"
-        // Coba buat data pengguna baru
-        const { error: insertError } = await supabase.from("users").insert({
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "User",
-          is_premium: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-
-        if (insertError) {
-          console.error("Error creating user data:", insertError)
-          return { success: false, error: "Gagal membuat data pengguna" }
-        }
-
-        // Gunakan data default karena baru saja dibuat
-        return createTransaction(paymentMethod, gatewayName, phoneNumber) // Coba lagi setelah membuat pengguna
+    if (error || !user) {
+      return {
+        success: false,
+        error: "Data pengguna tidak ditemukan. Silakan login kembali.",
       }
-
-      return { success: false, error: "Data pengguna tidak ditemukan. Silakan coba lagi atau hubungi dukungan." }
     }
 
-    if (!userData) {
-      return { success: false, error: "Data pengguna tidak ditemukan" }
+    // Ambil data user dari database
+    const supabase = createClient()
+    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", user.id).single()
+
+    if (userError || !userData) {
+      return {
+        success: false,
+        error: "Data pengguna tidak ditemukan di database.",
+      }
     }
 
+    // Cek apakah user sudah premium
     if (userData.is_premium) {
-      return { success: false, error: "Anda sudah menjadi pengguna premium" }
+      return {
+        success: false,
+        error: "Anda sudah memiliki akun premium.",
+      }
     }
 
-    // Generate order ID
-    const orderId = generateOrderId(session.user.id)
+    // Ambil harga premium dari environment variable
+    const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "99000", 10)
 
-    // Create transaction record
-    const { data: transaction, error: transactionError } = await supabase
-      .from("premium_transactions")
-      .insert({
-        user_id: session.user.id,
-        plan_id: orderId,
-        amount: premiumPrice,
-        status: "pending",
-        payment_gateway: finalGatewayName, // Gunakan gatewayName yang dipilih
-        payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
-      })
-      .select()
-      .single()
+    // Buat ID transaksi unik
+    const orderId = `PM-${nanoid(10)}`
 
-    if (transactionError) {
-      console.error("Error creating transaction record:", transactionError)
-      return { success: false, error: "Gagal membuat catatan transaksi" }
-    }
+    // Buat URL redirect setelah pembayaran
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://secretme.site"
+    const successRedirectUrl = `${baseUrl}/dashboard` // Pastikan redirect ke dashboard
+    const failureRedirectUrl = `${baseUrl}/premium?status=failed&order_id=${orderId}`
+    const notificationUrl = `${baseUrl}/api/payment/notification`
 
-    // Get payment gateway
-    const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
+    // Dapatkan gateway pembayaran yang sesuai
+    const gateway = await getPaymentGateway(gatewayName, phoneNumber)
 
-    // Create transaction in payment gateway
-    // Gunakan nomor telepon yang diberikan oleh pengguna tanpa menyimpannya
+    // Buat transaksi di gateway pembayaran
     const result = await gateway.createTransaction({
-      userId: session.user.id,
-      userEmail: userData.email || session.user.email || "",
-      userName: userData.name || "User",
-      userPhone: phoneNumber || "", // Gunakan nomor telepon yang diberikan tanpa validasi
+      userId: user.id,
+      userEmail: user.email || "",
+      userName: userData.name || userData.username || "User",
+      userPhone: phoneNumber || userData.phone_number || "",
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
-      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
-      notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-      paymentMethod: paymentMethod, // Teruskan metode pembayaran ke gateway
+      successRedirectUrl,
+      failureRedirectUrl,
+      notificationUrl,
+      paymentMethod,
     })
 
     if (!result.success) {
-      // Update transaction status to failed
-      await supabase
-        .from("premium_transactions")
-        .update({
-          status: "failed",
-          updated_at: new Date().toISOString(),
-          payment_details: { error: result.error },
-        })
-        .eq("id", transaction.id)
-
-      return { success: false, error: result.error || "Gagal membuat transaksi" }
+      return {
+        success: false,
+        error: result.error || "Gagal membuat transaksi.",
+      }
     }
 
-    // Update transaction with gateway reference
-    await supabase
-      .from("premium_transactions")
-      .update({
-        payment_details: {
-          gateway_reference: result.gatewayReference,
-          redirect_url: result.redirectUrl,
-        },
-      })
-      .eq("id", transaction.id)
+    // Simpan transaksi ke database
+    const { error: insertError } = await supabase.from("premium_transactions").insert({
+      user_id: user.id,
+      plan_id: orderId,
+      amount: premiumPrice,
+      status: "pending",
+      payment_method: paymentMethod,
+      payment_gateway: gatewayName,
+      payment_details: {
+        gateway_reference: result.gatewayReference,
+        redirect_url: result.redirectUrl,
+      },
+    })
 
+    if (insertError) {
+      console.error("Error inserting transaction:", insertError)
+      return {
+        success: false,
+        error: "Gagal menyimpan transaksi ke database.",
+      }
+    }
+
+    // Kembalikan hasil
     return {
       success: true,
       redirectUrl: result.redirectUrl,
       orderId: orderId,
-      token: result.token,
     }
   } catch (error: any) {
     console.error("Error creating transaction:", error)
-    return { success: false, error: error.message || "Failed to create transaction" }
+    return {
+      success: false,
+      error: error.message || "Terjadi kesalahan saat membuat transaksi.",
+    }
   }
 }
 
