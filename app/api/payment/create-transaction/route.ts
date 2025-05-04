@@ -2,20 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
+import { PaymentLogger } from "@/lib/payment/payment-logger"
 
 export async function POST(request: NextRequest) {
-  const requestId = `payment-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-  console.log(`[${requestId}] 🚀 Payment: Creating new transaction`)
+  const logger = new PaymentLogger("create-transaction")
+  logger.log("Starting transaction creation")
 
   try {
-    // Get the request body
-    const body = await request.json()
-    const gatewayName = body.gatewayName || "duitku"
-
-    console.log(`[${requestId}] 📋 Payment gateway: ${gatewayName}`)
-    console.log(`[${requestId}] 📋 Request body:`, JSON.stringify(body, null, 2))
-
-    // Verify user - SECURITY FIX: Use getUser() instead of getSession()
+    // Verifikasi user
     const supabase = createClient()
     const {
       data: { user },
@@ -23,8 +17,14 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      logger.error("Unauthorized user")
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
+
+    // Ambil data dari request
+    const { paymentMethod, gatewayName = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku" } = await request.json()
+
+    logger.log(`Request data: paymentMethod=${paymentMethod}, gatewayName=${gatewayName}`)
 
     // Get user data
     const { data: userData, error: userError } = await supabase
@@ -33,124 +33,115 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single()
 
-    if (userError || !userData) {
+    if (userError) {
+      logger.error(`User data error: ${userError.message}`)
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    // Check if user is already premium
     if (userData.is_premium) {
-      return NextResponse.json({ success: false, error: "User already premium" }, { status: 400 })
+      logger.log("User is already premium")
+      return NextResponse.json({ success: false, error: "User is already premium" }, { status: 400 })
     }
 
-    // Get premium price from config
+    // Get premium price from site_config or env
+    // Ambil dari database jika ada
     const { data: configData } = await supabase
       .from("site_config")
       .select("config")
       .eq("type", "premium_settings")
       .single()
 
+    // Gunakan harga dari database jika ada, jika tidak gunakan dari env
     const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+
+    logger.log(`Premium price: ${premiumPrice}`)
 
     // Generate order ID
     const orderId = generateOrderId(user.id)
+    logger.log(`Generated order ID: ${orderId}`)
 
-    // Create transaction in database
-    const { error: transactionError } = await supabase.from("premium_transactions").insert({
-      user_id: user.id,
-      plan_id: orderId,
-      amount: premiumPrice,
-      status: "pending",
-      payment_gateway: gatewayName,
-    })
+    // Create transaction record
+    const { data: transaction, error: transactionError } = await supabase
+      .from("premium_transactions")
+      .insert({
+        user_id: user.id,
+        plan_id: orderId,
+        amount: premiumPrice,
+        status: "pending",
+        payment_gateway: gatewayName,
+        payment_method: paymentMethod,
+      })
+      .select()
+      .single()
 
     if (transactionError) {
-      console.error("Error creating transaction:", transactionError)
-      return NextResponse.json({ success: false, error: "Failed to create transaction" }, { status: 500 })
+      logger.error(`Transaction record error: ${transactionError.message}`)
+      return NextResponse.json({ success: false, error: "Failed to create transaction record" }, { status: 500 })
     }
+
+    logger.log(`Transaction record created: ${transaction.id}`)
 
     // Get payment gateway
     const gateway = await getPaymentGateway(gatewayName)
-
-    // Prepare callback URLs
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
-
-    // Ambil konfigurasi gateway dari database
-    const { data: gatewayConfigData } = await supabase
-      .from("site_config")
-      .select("config")
-      .eq("type", "payment_gateway_config")
-      .single()
-
-    console.log("Gateway config from database:", gatewayConfigData?.config)
-
-    // Jika ada konfigurasi di database, gunakan untuk override environment variables
-    if (gatewayConfigData?.config?.gateways?.[gatewayName]) {
-      const gatewayConfig = gatewayConfigData.config.gateways[gatewayName]
-
-      // Set environment variables untuk digunakan oleh gateway
-      if (gatewayName === "duitku") {
-        if (gatewayConfig.merchantCode) {
-          process.env.DUITKU_MERCHANT_CODE = gatewayConfig.merchantCode
-        }
-        if (gatewayConfig.apiKey) {
-          process.env.DUITKU_API_KEY = gatewayConfig.apiKey
-        }
-      }
-
-      console.log("Using gateway config from database for", gatewayName)
-    }
-
-    // Log the Duitku merchant code and API key being used
-    console.log("Duitku Merchant Code:", process.env.DUITKU_MERCHANT_CODE)
-    console.log("Duitku API Key:", process.env.DUITKU_API_KEY)
+    logger.log(`Using payment gateway: ${gatewayName}`)
 
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
       userId: user.id,
-      userEmail: userData.email,
+      userEmail: userData.email || user.email || "",
       userName: userData.name || "User",
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${appUrl}/dashboard?status=success&order_id=${orderId}`,
-      failureRedirectUrl: `${appUrl}/premium?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${appUrl}/dashboard?status=pending&order_id=${orderId}`,
-      notificationUrl: `${appUrl}/api/payment/notification`,
+      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
+      notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
+      paymentMethod: paymentMethod,
     })
 
     if (!result.success) {
-      // Delete transaction from database because it failed
-      await supabase.from("premium_transactions").delete().eq("plan_id", orderId)
+      logger.error(`Gateway error: ${result.error}`)
 
-      return NextResponse.json(
-        { success: false, error: result.error || "Failed to create payment transaction" },
-        { status: 500 },
-      )
-    }
-
-    // Update transaction with gateway reference - FIXED: Store in payment_details instead
-    if (result.gatewayReference) {
+      // Update transaction status to failed
       await supabase
         .from("premium_transactions")
         .update({
-          payment_details: {
-            gateway_reference: result.gatewayReference,
-            redirect_url: result.redirectUrl,
-            token: result.token,
-          },
+          status: "failed",
+          updated_at: new Date().toISOString(),
+          payment_details: { error: result.error },
         })
-        .eq("plan_id", orderId)
+        .eq("id", transaction.id)
+
+      return NextResponse.json({ success: false, error: result.error }, { status: 500 })
     }
+
+    logger.log(`Gateway transaction created: ${result.gatewayReference}`)
+
+    // Update transaction with gateway reference
+    await supabase
+      .from("premium_transactions")
+      .update({
+        payment_details: {
+          gateway_reference: result.gatewayReference,
+          redirect_url: result.redirectUrl,
+        },
+      })
+      .eq("id", transaction.id)
+
+    logger.log(`Transaction updated with gateway reference`)
 
     return NextResponse.json({
       success: true,
       redirectUrl: result.redirectUrl,
-      token: result.token,
       orderId: orderId,
+      token: result.token,
     })
   } catch (error: any) {
-    console.error(`[${requestId}] 💥 Error in create transaction API:`, error)
-    console.error(`[${requestId}] 📋 Error stack:`, error.stack || "No stack trace available")
-    return NextResponse.json({ success: false, error: error.message || "Internal server error" }, { status: 500 })
+    logger.error(`Unexpected error: ${error.message}`)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to create transaction" },
+      { status: 500 },
+    )
   }
 }

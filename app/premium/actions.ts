@@ -9,15 +9,52 @@ import { revalidatePath } from "next/cache"
 // Jika ada, ubah untuk menggunakan environment variables
 
 // Tambahkan kode berikut di awal file (jika belum ada):
-const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+// const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+// const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+
+// Dengan kode ini:
+// Fungsi helper untuk mendapatkan pengaturan premium dari database
+async function getPremiumSettings() {
+  const supabase = createClient()
+
+  // Default values from env
+  let premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+  let activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+
+  // Try to get from database
+  const { data: configData } = await supabase
+    .from("site_config")
+    .select("config")
+    .eq("type", "premium_settings")
+    .single()
+
+  if (configData?.config) {
+    // Use price from database if available
+    if (configData.config.price) {
+      premiumPrice = Number.parseInt(configData.config.price.toString())
+    }
+
+    // Use active gateway from database if available
+    if (configData.config.activeGateway) {
+      activeGateway = configData.config.activeGateway
+    }
+  }
+
+  return { premiumPrice, activeGateway }
+}
 
 // Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
 
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
-export async function createTransaction(paymentMethod: string, gatewayName = activeGateway) {
+export async function createTransaction(paymentMethod: string, gatewayName: string | undefined) {
   try {
     const supabase = createClient()
+
+    // Get premium settings
+    const { premiumPrice, activeGateway: defaultGateway } = await getPremiumSettings()
+
+    // Use provided gateway or default
+    const finalGatewayName = gatewayName || defaultGateway
 
     // Verifikasi user
     const {
@@ -37,7 +74,7 @@ export async function createTransaction(paymentMethod: string, gatewayName = act
       },
       body: JSON.stringify({
         paymentMethod,
-        gatewayName, // Tambahkan gatewayName ke body request
+        gatewayName: finalGatewayName, // Tambahkan gatewayName ke body request
       }),
     })
 
@@ -84,7 +121,7 @@ export async function createTransaction(paymentMethod: string, gatewayName = act
         plan_id: orderId,
         amount: premiumPrice,
         status: "pending",
-        payment_gateway: gatewayName, // Gunakan gatewayName yang dipilih
+        payment_gateway: finalGatewayName, // Gunakan gatewayName yang dipilih
         payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
       })
       .select()
@@ -96,7 +133,7 @@ export async function createTransaction(paymentMethod: string, gatewayName = act
     }
 
     // Get payment gateway
-    const gateway = await getPaymentGateway(gatewayName || activeGateway)
+    const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
 
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
@@ -298,7 +335,7 @@ export async function cancelTransaction(transactionId: string) {
     )
 
     // Coba batalkan transaksi di gateway pembayaran
-    const gatewayName = transactionData.payment_gateway || activeGateway
+    const gatewayName = transactionData.payment_gateway || "duitku"
     console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
 
     // Periksa apakah ada referensi gateway

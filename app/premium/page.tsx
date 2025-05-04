@@ -48,11 +48,28 @@ export default async function PremiumPage({
     }
   }
 
-  // Get premium price from env
-  const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+  // Get premium price and active gateway from database first, then fallback to env
+  let premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+  let activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
 
-  // Get active gateway from env
-  const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+  // Try to get from database first
+  const { data: configData } = await supabase
+    .from("site_config")
+    .select("config")
+    .eq("type", "premium_settings")
+    .single()
+
+  if (configData?.config) {
+    // Use price from database if available
+    if (configData.config.price) {
+      premiumPrice = Number.parseInt(configData.config.price.toString())
+    }
+
+    // Use active gateway from database if available
+    if (configData.config.activeGateway) {
+      activeGateway = configData.config.activeGateway
+    }
+  }
 
   // Get URL parameters for status
   const urlStatus = searchParams.status as string | undefined

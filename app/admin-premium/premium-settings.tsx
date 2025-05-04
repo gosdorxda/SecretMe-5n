@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -28,10 +28,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  Save,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface PremiumSettings {
+  price: number
+  activeGateway: string
+}
 
 interface Transaction {
   id: string
@@ -85,7 +91,12 @@ interface PaymentStats {
 }
 
 export default function PremiumSettings() {
+  const [settings, setSettings] = useState<PremiumSettings>({
+    price: Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_PRICE || "49000", 10),
+    activeGateway: process.env.NEXT_PUBLIC_ACTIVE_PAYMENT_GATEWAY || "duitku",
+  })
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
@@ -111,12 +122,77 @@ export default function PremiumSettings() {
   })
   const [isStatsLoading, setIsStatsLoading] = useState(false)
 
-  // Ambil nilai dari environment variables
-  const activeGateway = process.env.NEXT_PUBLIC_ACTIVE_PAYMENT_GATEWAY || "duitku"
-  const premiumPrice = Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_PRICE || "49000", 10)
-
   const supabase = createClient()
   const { toast } = useToast()
+
+  // Fungsi untuk memuat pengaturan premium dari database
+  const loadSettings = async () => {
+    setIsLoading(true)
+    try {
+      // Ambil pengaturan dari database
+      const { data, error } = await supabase.from("site_config").select("*").eq("type", "premium_settings").single()
+
+      if (error) {
+        if (error.code !== "PGRST116") {
+          // PGRST116 adalah kode untuk "tidak ditemukan"
+          console.error("Error loading premium settings:", error)
+          toast({
+            title: "Gagal memuat pengaturan",
+            description: error.message,
+            variant: "destructive",
+          })
+        }
+        return
+      }
+
+      if (data && data.config) {
+        setSettings({
+          price: data.config.price || Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_PRICE || "49000", 10),
+          activeGateway: data.config.activeGateway || process.env.NEXT_PUBLIC_ACTIVE_PAYMENT_GATEWAY || "duitku",
+        })
+      }
+    } catch (error) {
+      console.error("Error loading premium settings:", error)
+      toast({
+        title: "Gagal memuat pengaturan",
+        description: "Terjadi kesalahan saat memuat pengaturan premium",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fungsi untuk menyimpan pengaturan premium ke database
+  const saveSettings = async () => {
+    setIsSaving(true)
+    try {
+      const { error } = await supabase.from("site_config").upsert(
+        {
+          type: "premium_settings",
+          config: settings,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "type" },
+      )
+
+      if (error) throw error
+
+      toast({
+        title: "Pengaturan disimpan",
+        description: "Pengaturan premium berhasil diperbarui",
+      })
+    } catch (error: any) {
+      console.error("Error saving premium settings:", error)
+      toast({
+        title: "Gagal menyimpan pengaturan",
+        description: error.message || "Terjadi kesalahan saat menyimpan pengaturan premium",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Fungsi untuk memuat transaksi premium
   const loadTransactions = async () => {
@@ -550,44 +626,37 @@ export default function PremiumSettings() {
     filterTransactions()
   }, [searchQuery, statusFilter, paymentMethodFilter, dateRangeFilter, transactions])
 
-  // Load transactions on component mount
+  // Load settings and transactions on component mount
   useEffect(() => {
-    loadTransactions()
-  }, [])
+    loadSettings()
+    if (activeTab === "transactions" || activeTab === "statistics") {
+      loadTransactions()
+    }
+  }, [activeTab])
 
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Pengaturan Premium</h1>
 
-      {/* Tambahkan informasi konfigurasi dari env */}
+      {/* Informasi konfigurasi dari env */}
       <Card className="mb-6">
         <CardContent className="pt-6 pb-4">
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-500 mt-0.5" />
             <div>
-              <h3 className="font-medium">Konfigurasi Premium</h3>
+              <h3 className="font-medium">Konfigurasi API Gateway</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Konfigurasi premium diambil dari environment variables.
+                Kredensial API gateway (API key, private key, merchant code) diambil dari environment variables.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm font-medium">Gateway Aktif</p>
-                  <p className="text-sm mt-1">{activeGateway}</p>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-sm font-medium">Harga Premium</p>
-                  <p className="text-sm mt-1">{formatCurrency(premiumPrice)}</p>
-                </div>
-              </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Untuk mengubah konfigurasi ini, perbarui environment variables dan deploy ulang aplikasi.
+                Untuk mengubah kredensial API, perbarui environment variables dan deploy ulang aplikasi.
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Ubah Tabs untuk hanya menampilkan Transaksi dan Statistik */}
+      {/* Tabs untuk Transaksi, Statistik, dan Pengaturan */}
       <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="transactions">
@@ -598,9 +667,90 @@ export default function PremiumSettings() {
             <BarChart4 className="h-4 w-4 mr-2" />
             Statistik
           </TabsTrigger>
+          <TabsTrigger value="settings">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pengaturan
+          </TabsTrigger>
         </TabsList>
 
-        {/* Hapus TabsContent untuk gateway dan settings */}
+        {/* Tab Pengaturan */}
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pengaturan Premium</CardTitle>
+              <CardDescription>Konfigurasi harga dan gateway pembayaran</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="premium-price">Harga Premium (Rp)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="premium-price"
+                      type="number"
+                      value={settings.price}
+                      onChange={(e) => setSettings((prev) => ({ ...prev, price: Number.parseInt(e.target.value) }))}
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Harga dalam Rupiah, tanpa titik atau koma (contoh: 49000 untuk Rp 49.000)
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="active-gateway">Gateway Pembayaran Aktif</Label>
+                  <Select
+                    value={settings.activeGateway}
+                    onValueChange={(value) => setSettings((prev) => ({ ...prev, activeGateway: value }))}
+                  >
+                    <SelectTrigger id="active-gateway">
+                      <SelectValue placeholder="Pilih Gateway" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="duitku">Duitku</SelectItem>
+                      <SelectItem value="tripay">TriPay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Gateway yang dipilih akan digunakan untuk semua transaksi baru
+                  </p>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2 mt-4">
+                  <AlertCircle className="text-amber-500 mt-0.5 h-5 w-5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium">Perubahan Pengaturan</p>
+                    <p className="text-xs mt-1">
+                      Perubahan pada pengaturan ini akan disimpan ke database dan akan digunakan untuk transaksi baru.
+                      Perubahan ini tidak akan mengubah environment variables.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={loadSettings} disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                Reset
+              </Button>
+              <Button onClick={saveSettings} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Simpan Pengaturan
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="statistics">
           <div className="space-y-6">
