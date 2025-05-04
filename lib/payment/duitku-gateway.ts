@@ -15,6 +15,9 @@ export class DuitkuGateway implements PaymentGateway {
   private apiKey = ""
   private isProduction = false
 
+  // Daftar metode pembayaran yang didukung
+  private supportedPaymentMethods = ["BC", "QR", "OV", "DA"]
+
   constructor() {
     // This class should only be instantiated on the server
     if (typeof window !== "undefined") {
@@ -34,6 +37,7 @@ export class DuitkuGateway implements PaymentGateway {
       apiKey: this.apiKey ? "Set (hidden)" : "Not set",
       isProduction: this.isProduction,
       environment: this.isProduction ? "PRODUCTION" : "SANDBOX",
+      supportedMethods: this.supportedPaymentMethods,
     })
   }
 
@@ -46,6 +50,15 @@ export class DuitkuGateway implements PaymentGateway {
     } else {
       return "https://sandbox.duitku.com/webapi"
     }
+  }
+
+  /**
+   * Validasi metode pembayaran yang dipilih
+   * @param paymentMethod Kode metode pembayaran
+   * @returns Boolean yang menunjukkan apakah metode pembayaran valid
+   */
+  private isValidPaymentMethod(paymentMethod: string): boolean {
+    return this.supportedPaymentMethods.includes(paymentMethod)
   }
 
   /**
@@ -62,6 +75,7 @@ export class DuitkuGateway implements PaymentGateway {
         successRedirectUrl,
         failureRedirectUrl,
         notificationUrl,
+        paymentMethod,
       } = params
 
       // Validasi kredensial
@@ -73,6 +87,12 @@ export class DuitkuGateway implements PaymentGateway {
         }
       }
 
+      // Validasi metode pembayaran
+      const selectedPaymentMethod = paymentMethod || "QR"
+      if (!this.isValidPaymentMethod(selectedPaymentMethod)) {
+        console.error(`Invalid payment method: ${selectedPaymentMethod}. Using default: QR`)
+      }
+
       // Generate signature
       const signature = this.generateSignature(amount, orderId)
 
@@ -81,7 +101,7 @@ export class DuitkuGateway implements PaymentGateway {
         merchantCode: this.merchantCode,
         paymentAmount: amount,
         merchantOrderId: orderId,
-        productDetails: description,
+        productDetails: description || "SecretMe Premium Lifetime",
         customerVaName: userName,
         email: userEmail,
         itemDetails: [
@@ -95,7 +115,7 @@ export class DuitkuGateway implements PaymentGateway {
         returnUrl: successRedirectUrl,
         expiryPeriod: 60, // 60 menit
         signature: signature,
-        paymentMethod: params.paymentMethod || "VC", // Gunakan metode pembayaran dari parameter atau default ke VC
+        paymentMethod: selectedPaymentMethod,
       }
 
       console.log("Sending request to Duitku API:", {
@@ -103,6 +123,7 @@ export class DuitkuGateway implements PaymentGateway {
         merchantCode: this.merchantCode,
         orderId: orderId,
         amount: amount,
+        paymentMethod: selectedPaymentMethod,
         baseUrl: this.getBaseUrl(),
         isProduction: this.isProduction,
       })
@@ -167,14 +188,6 @@ export class DuitkuGateway implements PaymentGateway {
   private generateSignature(amount: number, orderId: string): string {
     const signatureString = this.merchantCode + orderId + amount + this.apiKey
     const hash = crypto.createHash("md5").update(signatureString).digest("hex")
-    console.log("Generated Duitku signature:", {
-      merchantCode: this.merchantCode,
-      orderId: orderId,
-      amount: amount,
-      apiKey: this.apiKey,
-      signatureString: signatureString,
-      signature: hash,
-    })
     return hash
   }
 
@@ -242,15 +255,6 @@ export class DuitkuGateway implements PaymentGateway {
         status = "failed"
       }
 
-      console.log("Duitku Verify Transaction Details:", {
-        orderId: orderId,
-        statusCode: data.statusCode,
-        statusMessage: data.statusMessage,
-        amount: data.amount,
-        paymentMethod: data.paymentCode,
-        details: data,
-      })
-
       return {
         isValid: true,
         status: formatPaymentStatus(status),
@@ -284,14 +288,8 @@ export class DuitkuGateway implements PaymentGateway {
 
       console.log(`Processing notification for order ID: ${merchantOrderId}`)
 
-      // Log the payload
-      console.log("Duitku notification payload:", JSON.stringify(payload, null, 2))
-
       // Attempt to verify transaction with Duitku
       const verificationResult = await this.verifyTransaction(merchantOrderId)
-
-      // Even if verification fails, we'll try to process the notification based on the payload
-      // This is important because sometimes the Duitku API might be slow to update
 
       // Determine status from notification payload
       let status = "unknown"
@@ -354,12 +352,8 @@ export class DuitkuGateway implements PaymentGateway {
         }
       }
 
-      // Duitku tidak memiliki API resmi untuk membatalkan transaksi
-      // Kita akan mencoba memverifikasi status transaksi terlebih dahulu
-      console.log(`[${requestId}] ℹ️ Duitku does not have an official cancellation API`)
-      console.log(`[${requestId}] 🔍 Checking current transaction status`)
-
       // Coba verifikasi status transaksi
+      console.log(`[${requestId}] 🔍 Checking current transaction status`)
       const verificationResult = await this.verifyTransaction(reference)
 
       if (!verificationResult.isValid) {
@@ -374,7 +368,7 @@ export class DuitkuGateway implements PaymentGateway {
       const status = verificationResult.status
       console.log(`[${requestId}] 📊 Current transaction status: ${status}`)
 
-      // Jika transaksi sudah dalam status final (success, failed, expired), tidak perlu dibatalkan
+      // Jika transaksi sudah dalam status final, tidak perlu dibatalkan
       if (status === "success" || status === "failed" || status === "expired") {
         console.log(`[${requestId}] ℹ️ Transaction already in final state (${status}), no need to cancel`)
         return {
@@ -383,8 +377,7 @@ export class DuitkuGateway implements PaymentGateway {
         }
       }
 
-      // Jika transaksi masih pending, kita tidak bisa membatalkannya melalui API
-      // Kita hanya bisa menandainya sebagai dibatalkan di database lokal
+      // Duitku tidak memiliki API resmi untuk membatalkan transaksi
       console.log(`[${requestId}] ℹ️ Transaction is still pending, but Duitku does not support cancellation via API`)
       console.log(`[${requestId}] ℹ️ Transaction will be marked as cancelled in local database only`)
 
@@ -400,5 +393,13 @@ export class DuitkuGateway implements PaymentGateway {
         error: error.message || "Unknown error occurred",
       }
     }
+  }
+
+  /**
+   * Mendapatkan daftar metode pembayaran yang didukung
+   * @returns Array kode metode pembayaran yang didukung
+   */
+  getSupportedPaymentMethods(): string[] {
+    return this.supportedPaymentMethods
   }
 }
