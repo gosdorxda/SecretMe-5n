@@ -1,11 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createClient } from "@/lib/supabase/client"
@@ -17,7 +16,6 @@ import {
   DollarSign,
   FileText,
   RefreshCw,
-  Settings,
   Search,
   Calendar,
   TrendingUp,
@@ -29,18 +27,11 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  Info,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-interface PremiumSettings {
-  price: number
-  enabled: boolean
-  description: string
-  features: string[]
-  activeGateway?: string
-}
 
 interface Transaction {
   id: string
@@ -94,15 +85,7 @@ interface PaymentStats {
 }
 
 export default function PremiumSettings() {
-  const [settings, setSettings] = useState<PremiumSettings>({
-    price: 49000,
-    enabled: true,
-    description: "Akses ke semua fitur premium selamanya",
-    features: ["Tidak ada batasan pesan", "Tema premium", "Fitur analitik lanjutan", "Prioritas dukungan pelanggan"],
-  })
-
   const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
@@ -127,82 +110,13 @@ export default function PremiumSettings() {
     dailyRevenue: [],
   })
   const [isStatsLoading, setIsStatsLoading] = useState(false)
-  const [showStatsView, setShowStatsView] = useState(false)
+
+  // Ambil nilai dari environment variables
+  const activeGateway = process.env.NEXT_PUBLIC_ACTIVE_PAYMENT_GATEWAY || "duitku"
+  const premiumPrice = Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_PRICE || "49000", 10)
 
   const supabase = createClient()
   const { toast } = useToast()
-
-  // Fungsi untuk memuat pengaturan premium dari database
-  const loadSettings = async () => {
-    setIsLoading(true)
-    try {
-      // Coba ambil dari environment variable dulu
-      const envPrice = process.env.NEXT_PUBLIC_PREMIUM_PRICE
-      if (envPrice) {
-        setSettings((prev) => ({ ...prev, price: Number.parseInt(envPrice) }))
-      }
-
-      // Kemudian coba ambil dari database
-      const { data, error } = await supabase.from("site_config").select("*").eq("type", "premium_settings").single()
-
-      if (error) {
-        if (error.code !== "PGRST116") {
-          // PGRST116 adalah kode untuk "tidak ditemukan"
-          console.error("Error loading premium settings:", error)
-          toast({
-            title: "Gagal memuat pengaturan",
-            description: error.message,
-            variant: "destructive",
-          })
-        }
-        return
-      }
-
-      if (data && data.config) {
-        setSettings(data.config as PremiumSettings)
-      }
-    } catch (error) {
-      console.error("Error loading premium settings:", error)
-      toast({
-        title: "Gagal memuat pengaturan",
-        description: "Terjadi kesalahan saat memuat pengaturan premium",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Fungsi untuk menyimpan pengaturan premium ke database
-  const saveSettings = async () => {
-    setIsSaving(true)
-    try {
-      const { error } = await supabase.from("site_config").upsert(
-        {
-          type: "premium_settings",
-          config: settings,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "type" },
-      )
-
-      if (error) throw error
-
-      toast({
-        title: "Pengaturan disimpan",
-        description: "Pengaturan premium berhasil diperbarui",
-      })
-    } catch (error: any) {
-      console.error("Error saving premium settings:", error)
-      toast({
-        title: "Gagal menyimpan pengaturan",
-        description: error.message || "Terjadi kesalahan saat menyimpan pengaturan premium",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
 
   // Fungsi untuk memuat transaksi premium
   const loadTransactions = async () => {
@@ -620,38 +534,6 @@ export default function PremiumSettings() {
     }
   }
 
-  // Fungsi untuk menambah fitur baru
-  const addFeature = () => {
-    setSettings((prev) => ({
-      ...prev,
-      features: [...prev.features, ""],
-    }))
-  }
-
-  // Fungsi untuk mengubah fitur
-  const updateFeature = (index: number, value: string) => {
-    setSettings((prev) => {
-      const newFeatures = [...prev.features]
-      newFeatures[index] = value
-      return {
-        ...prev,
-        features: newFeatures,
-      }
-    })
-  }
-
-  // Fungsi untuk menghapus fitur
-  const removeFeature = (index: number) => {
-    setSettings((prev) => {
-      const newFeatures = [...prev.features]
-      newFeatures.splice(index, 1)
-      return {
-        ...prev,
-        features: newFeatures,
-      }
-    })
-  }
-
   // Fungsi untuk mendapatkan daftar metode pembayaran unik
   const getUniquePaymentMethods = () => {
     const methods = new Set<string>()
@@ -668,22 +550,44 @@ export default function PremiumSettings() {
     filterTransactions()
   }, [searchQuery, statusFilter, paymentMethodFilter, dateRangeFilter, transactions])
 
-  // Load settings and transactions on component mount
+  // Load transactions on component mount
   useEffect(() => {
-    loadSettings()
+    loadTransactions()
   }, [])
-
-  useEffect(() => {
-    if (activeTab === "transactions" || activeTab === "statistics") {
-      loadTransactions()
-    }
-  }, [activeTab])
 
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Pengaturan Premium</h1>
 
-      {/* Tambahkan tab untuk pengaturan gateway di dalam komponen Tabs */}
+      {/* Tambahkan informasi konfigurasi dari env */}
+      <Card className="mb-6">
+        <CardContent className="pt-6 pb-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+            <div>
+              <h3 className="font-medium">Konfigurasi Premium</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Konfigurasi premium diambil dari environment variables.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium">Gateway Aktif</p>
+                  <p className="text-sm mt-1">{activeGateway}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-sm font-medium">Harga Premium</p>
+                  <p className="text-sm mt-1">{formatCurrency(premiumPrice)}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Untuk mengubah konfigurasi ini, perbarui environment variables dan deploy ulang aplikasi.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ubah Tabs untuk hanya menampilkan Transaksi dan Statistik */}
       <Tabs defaultValue="transactions" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="transactions">
@@ -694,330 +598,9 @@ export default function PremiumSettings() {
             <BarChart4 className="h-4 w-4 mr-2" />
             Statistik
           </TabsTrigger>
-          <TabsTrigger value="settings">
-            <Settings className="h-4 w-4 mr-2" />
-            Pengaturan
-          </TabsTrigger>
-          <TabsTrigger value="gateways">
-            <CreditCard className="h-4 w-4 mr-2" />
-            Gateway
-          </TabsTrigger>
         </TabsList>
 
-        {/* Tambahkan TabsContent untuk gateway */}
-        <TabsContent value="gateways">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pengaturan Gateway Pembayaran</CardTitle>
-              <CardDescription>Konfigurasi gateway pembayaran yang digunakan</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="active-gateway">Gateway Pembayaran Aktif</Label>
-                  <Select
-                    value={settings.activeGateway || "duitku"}
-                    onValueChange={(value) => setSettings((prev) => ({ ...prev, activeGateway: value }))}
-                  >
-                    <SelectTrigger id="active-gateway">
-                      <SelectValue placeholder="Pilih Gateway" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="duitku">Duitku</SelectItem>
-                      <SelectItem value="midtrans">Midtrans</SelectItem>
-                      <SelectItem value="tripay">TriPay</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Gateway yang dipilih akan digunakan untuk semua transaksi baru
-                  </p>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-medium mb-4">Konfigurasi Gateway</h3>
-
-                  <Tabs defaultValue="duitku" className="mt-4">
-                    <TabsList>
-                      <TabsTrigger value="duitku">Duitku</TabsTrigger>
-                      <TabsTrigger value="midtrans">Midtrans</TabsTrigger>
-                      <TabsTrigger value="tripay">TriPay</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="duitku" className="space-y-4 mt-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="duitku-merchant-code">Merchant Code</Label>
-                        <Input id="duitku-merchant-code" value={process.env.DUITKU_MERCHANT_CODE || ""} disabled />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="duitku-api-key">API Key</Label>
-                        <Input id="duitku-api-key" value="••••••••••••••••••••••••••••••" disabled />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Konfigurasi Duitku diatur melalui environment variables. Hubungi administrator untuk
-                        mengubahnya.
-                      </p>
-                    </TabsContent>
-
-                    <TabsContent value="midtrans" className="space-y-4 mt-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="midtrans-server-key">Server Key</Label>
-                        <Input id="midtrans-server-key" value="••••••••••••••••••••••••••••••" disabled />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="midtrans-client-key">Client Key</Label>
-                        <Input id="midtrans-client-key" value="••••••••••••••••••••••••••••••" disabled />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Konfigurasi Midtrans diatur melalui environment variables. Hubungi administrator untuk
-                        mengubahnya.
-                      </p>
-                    </TabsContent>
-
-                    <TabsContent value="tripay" className="space-y-4 mt-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="tripay-merchant-code">Merchant Code</Label>
-                        <Input id="tripay-merchant-code" value={process.env.TRIPAY_MERCHANT_CODE || ""} disabled />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="tripay-api-key">API Key</Label>
-                        <Input id="tripay-api-key" value="••••••••••••••••••••••••••••••" disabled />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="tripay-private-key">Private Key</Label>
-                        <Input id="tripay-private-key" value="••••••••••••••••••••••••••••••" disabled />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Konfigurasi TriPay diatur melalui environment variables. Hubungi administrator untuk
-                        mengubahnya.
-                      </p>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2 mt-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-amber-500 mt-0.5"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  <div className="text-sm text-amber-800">
-                    <p className="font-medium">Pengaturan Gateway Pembayaran</p>
-                    <p className="text-xs mt-1">
-                      Perubahan gateway aktif akan memengaruhi semua transaksi baru. Transaksi yang sudah dibuat akan
-                      tetap menggunakan gateway yang dipilih saat transaksi dibuat.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={loadSettings} disabled={isLoading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                Reset
-              </Button>
-              <Button onClick={saveSettings} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Menyimpan...
-                  </>
-                ) : (
-                  "Simpan Pengaturan"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="premium-enabled">Aktifkan Premium</Label>
-                  <div className="space-y-1">
-                    <Switch
-                      id="premium-enabled"
-                      checked={settings.enabled}
-                      onCheckedChange={(checked) => setSettings((prev) => ({ ...prev, enabled: checked }))}
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Jika dinonaktifkan, pengguna tidak akan dapat membeli paket premium
-                  </p>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="premium-price">Harga Premium (Rp)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="premium-price"
-                      type="number"
-                      value={settings.price}
-                      onChange={(e) => setSettings((prev) => ({ ...prev, price: Number.parseInt(e.target.value) }))}
-                      className="pl-10"
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Harga dalam Rupiah, tanpa titik atau koma (contoh: 49000 untuk Rp 49.000)
-                  </p>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="premium-description">Deskripsi Premium</Label>
-                  <Input
-                    id="premium-description"
-                    value={settings.description}
-                    onChange={(e) => setSettings((prev) => ({ ...prev, description: e.target.value }))}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Fitur Premium</Label>
-                  <div className="space-y-2">
-                    {settings.features.map((feature, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          value={feature}
-                          onChange={(e) => updateFeature(index, e.target.value)}
-                          placeholder="Deskripsi fitur"
-                        />
-                        <Button variant="outline" size="icon" onClick={() => removeFeature(index)} className="shrink-0">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="mr-2"
-                          >
-                            <path d="M5 12h14"></path>
-                            <path d="M12 5v14"></path>
-                          </svg>
-                          Hapus
-                        </Button>
-                      </div>
-                    ))}
-                    <Button variant="outline" onClick={addFeature} className="w-full">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2"
-                      >
-                        <path d="M5 12h14"></path>
-                        <path d="M12 5v14"></path>
-                      </svg>
-                      Tambah Fitur
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-amber-500 mt-0.5"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  <div className="text-sm text-amber-800">
-                    <p className="font-medium">Pengaturan Premium</p>
-                    <p className="text-xs mt-1">
-                      Perubahan pada pengaturan premium akan memengaruhi tampilan halaman premium dan proses pembayaran.
-                      Perubahan harga hanya akan memengaruhi transaksi baru.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={loadSettings} disabled={isLoading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                Reset
-              </Button>
-              <Button onClick={saveSettings} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Menyimpan...
-                  </>
-                ) : (
-                  "Simpan Pengaturan"
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
+        {/* Hapus TabsContent untuk gateway dan settings */}
 
         <TabsContent value="statistics">
           <div className="space-y-6">
