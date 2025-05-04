@@ -164,13 +164,14 @@ export class PayPalGateway implements PaymentGateway {
       this.logger.info("PayPal order created successfully", {
         orderId: data.id,
         status: data.status,
+        internalOrderId: params.orderId,
       })
 
       return {
         success: true,
         redirectUrl: approvalUrl,
-        token: data.id,
-        gatewayReference: data.id,
+        token: data.id, // PayPal order ID
+        gatewayReference: data.id, // PayPal order ID sebagai gateway reference
       }
     } catch (error: any) {
       this.logger.error("Error creating PayPal transaction", error)
