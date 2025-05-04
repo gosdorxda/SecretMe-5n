@@ -100,3 +100,17 @@ export async function getPaymentGateway(gatewayName = "duitku"): Promise<Payment
 export function createGateway(): PaymentGateway {
   throw new Error("createGateway is not implemented")
 }
+
+// Pastikan bahwa kita tidak memerlukan nomor telepon yang tersimpan di database
+// Ubah fungsi createPaymentGateway untuk menerima phoneNumber sebagai parameter opsional
+
+export function createPaymentGateway(gateway: string, phoneNumber?: string) {
+  switch (gateway.toLowerCase()) {
+    case 'duitku':
+      return new DuitkuGateway();
+    case 'tripay':
+      return new TriPayGateway(phoneNumber);
+    default:
+      throw new Error(`Unsupported payment gateway: ${gateway}`);
+  }
+}

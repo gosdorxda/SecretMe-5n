@@ -446,6 +446,13 @@ export function PremiumClient({
     }
   }, [urlStatus, urlOrderId, toast])
 
+  // Tambahkan fungsi untuk mengecek apakah metode pembayaran memerlukan nomor telepon
+  const requiresPhoneNumber = (method: string) => {
+    // Daftar metode pembayaran yang memerlukan nomor telepon
+    const methodsRequiringPhone = ["OVO", "DANA", "SHOPEEPAY", "LINKAJA"]
+    return methodsRequiringPhone.includes(method)
+  }
+
   // Perbarui fungsi handlePayment untuk mengirim activeGateway
   const handlePayment = async () => {
     try {

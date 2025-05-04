@@ -5,14 +5,6 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
-// Periksa apakah ada pengambilan harga dari database di server actions
-// Jika ada, ubah untuk menggunakan environment variables
-
-// Tambahkan kode berikut di awal file (jika belum ada):
-// const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-// const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
-
-// Dengan kode ini:
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
   const supabase = createClient()
@@ -42,8 +34,6 @@ async function getPremiumSettings() {
 
   return { premiumPrice, activeGateway }
 }
-
-// Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
 
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
 export async function createTransaction(paymentMethod: string, gatewayName: string | undefined, phoneNumber?: string) {
@@ -76,7 +66,7 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Get user data
     const { data: userData, error: userDataError } = await supabase
       .from("users")
-      .select("name, email, is_premium, phone")
+      .select("name, email, is_premium")
       .eq("id", session.user.id)
       .single()
 
@@ -112,6 +102,10 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: "Data pengguna tidak ditemukan" }
     }
 
+    if (userData.is_premium) {
+      return { success: false, error: "Anda sudah menjadi pengguna premium" }
+    }
+
     // Generate order ID
     const orderId = generateOrderId(session.user.id)
 
@@ -137,15 +131,13 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Get payment gateway
     const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
 
-    // Gunakan nomor telepon dari parameter atau dari profil pengguna
-    const userPhone = phoneNumber || userData.phone || ""
-
     // Create transaction in payment gateway
+    // Gunakan nomor telepon yang diberikan oleh pengguna tanpa menyimpannya
     const result = await gateway.createTransaction({
       userId: session.user.id,
       userEmail: userData.email || session.user.email || "",
       userName: userData.name || "User",
-      userPhone: userPhone, // Tambahkan nomor telepon
+      userPhone: phoneNumber || "", // Gunakan nomor telepon yang diberikan tanpa validasi
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",

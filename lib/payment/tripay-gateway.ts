@@ -20,8 +20,9 @@ export class TriPayGateway implements PaymentGateway {
   private isProduction: boolean
   private baseUrl: string
   private logger: PaymentLogger
+  private phoneNumber?: string
 
-  constructor() {
+  constructor(phoneNumber?: string) {
     this.isProduction = process.env.TRIPAY_USE_PRODUCTION === "true"
 
     // Gunakan kredensial yang sesuai berdasarkan mode
@@ -45,6 +46,8 @@ export class TriPayGateway implements PaymentGateway {
       mode: this.isProduction ? "PRODUCTION" : "SANDBOX",
       baseUrl: this.baseUrl,
     })
+
+    this.phoneNumber = phoneNumber
   }
 
   /**
@@ -75,7 +78,7 @@ export class TriPayGateway implements PaymentGateway {
         amount: params.amount,
         customer_name: params.userName || "Pengguna",
         customer_email: params.userEmail || "user@example.com",
-        customer_phone: params.userPhone || "081234567890", // Gunakan nomor telepon yang diberikan
+        customer_phone: this.phoneNumber || params.userPhone || "081234567890", // Gunakan nomor telepon yang diberikan
         order_items: [
           {
             name: "Premium Membership",
