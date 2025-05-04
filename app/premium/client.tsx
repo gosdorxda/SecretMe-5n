@@ -137,6 +137,176 @@ const tripayPaymentMethods = [
   },
 ]
 
+// Fungsi untuk menampilkan instruksi pembayaran berdasarkan metode pembayaran
+const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) => {
+  if (!paymentMethod || !paymentDetails) return null
+
+  switch (paymentMethod) {
+    case "A1": // ATM Bersama
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran ATM Bersama:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Masukkan kartu ATM dan PIN Anda.</li>
+            <li>Pilih menu "Transfer".</li>
+            <li>Masukkan kode bank tujuan (jika berbeda) dan nomor virtual account.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "NC": // NEO
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran NEO:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Buka aplikasi NEO Anda.</li>
+            <li>Pilih menu "Transfer".</li>
+            <li>Masukkan nomor virtual account.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "I1": // BNI
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BNI:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Pilih menu "Transfer" di ATM atau BNI Mobile Banking.</li>
+            <li>Masukkan nomor virtual account BNI.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "BR": // BRIVA
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BRIVA:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Pilih menu "Pembayaran" di ATM atau BRI Mobile Banking.</li>
+            <li>Pilih "BRIVA".</li>
+            <li>Masukkan nomor BRIVA.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "BV": // BSI
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BSI:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Pilih menu "Pembayaran" di ATM atau BSI Mobile Banking.</li>
+            <li>Masukkan nomor virtual account BSI.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "M2": // MANDIRI
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran MANDIRI:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Pilih menu "Pembayaran" di ATM atau Mandiri Online.</li>
+            <li>Masukkan nomor virtual account Mandiri.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "BT": // PERMATA
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran PERMATA:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Pilih menu "Pembayaran" di ATM atau PermataMobile X.</li>
+            <li>Masukkan nomor virtual account Permata.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "OV": // OVO
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran OVO:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Buka aplikasi OVO Anda.</li>
+            <li>Pilih menu "Bayar".</li>
+            <li>Masukkan nomor virtual account OVO.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "SA": // ShopeePay
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran ShopeePay:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Buka aplikasi Shopee Anda.</li>
+            <li>Pilih menu "ShopeePay".</li>
+            <li>Pilih "Bayar".</li>
+            <li>Scan kode QR atau masukkan nomor virtual account ShopeePay.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "LF": // LinkAja
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran LinkAja:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Buka aplikasi LinkAja Anda.</li>
+            <li>Pilih menu "Bayar".</li>
+            <li>Masukkan nomor virtual account LinkAja.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "DA": // DANA
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran DANA:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Buka aplikasi DANA Anda.</li>
+            <li>Pilih menu "Kirim".</li>
+            <li>Masukkan nomor virtual account DANA.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
+          </ol>
+        </div>
+      )
+    case "QR": // QRIS
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran QRIS:</div>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>
+              Buka aplikasi pembayaran yang mendukung QRIS (misalnya, GoPay, OVO, DANA, LinkAja, atau mobile banking).
+            </li>
+            <li>Pilih menu "Bayar" atau "Scan".</li>
+            <li>Scan kode QR yang tersedia.</li>
+            <li>Masukkan jumlah yang akan dibayarkan.</li>
+            <li>Konfirmasi pembayaran dan masukkan PIN jika diperlukan.</li>
+          </ol>
+        </div>
+      )
+    default:
+      return (
+        <div className="bg-white p-3 rounded-md border">
+          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran:</div>
+          <p>Tidak ada instruksi pembayaran yang tersedia untuk metode ini.</p>
+        </div>
+      )
+  }
+}
+
 // Perbarui destructuring di function component
 export function PremiumClient({
   isLoggedIn,
@@ -522,126 +692,37 @@ export function PremiumClient({
 
     // Ekstrak detail pembayaran dari payment_details
     const paymentDetails = currentTransaction.paymentDetails || {}
-    const paymentUrl = paymentDetails.checkout_url || paymentDetails.pay_url || paymentDetails.payment_url || ""
+    const paymentUrl =
+      paymentDetails.checkout_url ||
+      paymentDetails.pay_url ||
+      paymentDetails.payment_url ||
+      paymentDetails.redirect_url ||
+      ""
     const vaNumber = paymentDetails.pay_code || paymentDetails.va_number || ""
     const expiredTime = paymentDetails.expired_time || paymentDetails.expired_at || ""
     const instructions = paymentDetails.instructions || []
-
-    // Tambahkan fungsi untuk menampilkan instruksi pembayaran yang lebih baik
-
-    // Tambahkan fungsi ini di dalam komponen PremiumClient:
-    const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) => {
-      // Jika tidak ada detail pembayaran, tampilkan pesan default
-      if (!paymentDetails) return null
-
-      // Instruksi untuk QRIS
-      if (paymentMethod === "QR" || paymentMethod === "QRIS") {
-        return (
-          <div className="space-y-4 mt-4">
-            <h4 className="font-medium">Cara Pembayaran QRIS</h4>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li>Buka aplikasi e-wallet Anda (OVO, DANA, GoPay, ShopeePay, LinkAja, dll)</li>
-              <li>Pilih menu Scan QR atau QRIS</li>
-              <li>Scan QR code yang ditampilkan atau upload QR code ke aplikasi</li>
-              <li>Periksa detail transaksi dan lakukan pembayaran</li>
-              <li>Pembayaran akan diproses secara otomatis</li>
-            </ol>
-          </div>
-        )
-      }
-
-      // Instruksi untuk Virtual Account
-      if (paymentMethod.includes("VA") || ["BR", "M2", "I1", "BV", "BT", "NC", "BC"].includes(paymentMethod)) {
-        const bankName = getBankName(paymentMethod)
-        return (
-          <div className="space-y-4 mt-4">
-            <h4 className="font-medium">Cara Pembayaran Virtual Account {bankName}</h4>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li>
-                Catat nomor Virtual Account:{" "}
-                <span className="font-mono font-bold">{paymentDetails.pay_code || paymentDetails.va_number}</span>
-              </li>
-              <li>Login ke Internet Banking atau Mobile Banking {bankName}</li>
-              <li>Pilih menu Transfer atau Pembayaran</li>
-              <li>Pilih menu Virtual Account</li>
-              <li>Masukkan nomor Virtual Account</li>
-              <li>Periksa detail transaksi dan lakukan pembayaran</li>
-              <li>Simpan bukti pembayaran</li>
-            </ol>
-          </div>
-        )
-      }
-
-      // Instruksi untuk E-Wallet
-      if (["OV", "DA", "SA", "LF"].includes(paymentMethod)) {
-        const walletName = getWalletName(paymentMethod)
-        return (
-          <div className="space-y-4 mt-4">
-            <h4 className="font-medium">Cara Pembayaran {walletName}</h4>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li>Buka aplikasi {walletName} di smartphone Anda</li>
-              <li>Pilih menu Bayar atau Scan</li>
-              <li>Klik tombol "Lanjutkan Pembayaran" di bawah</li>
-              <li>Anda akan diarahkan ke halaman pembayaran {walletName}</li>
-              <li>Ikuti instruksi pembayaran di aplikasi {walletName}</li>
-              <li>Setelah pembayaran selesai, Anda akan diarahkan kembali ke halaman ini</li>
-            </ol>
-          </div>
-        )
-      }
-
-      // Instruksi untuk Convenience Store
-      if (["A1", "IR"].includes(paymentMethod)) {
-        const storeName = paymentMethod === "A1" ? "Alfamart" : "Indomaret"
-        return (
-          <div className="space-y-4 mt-4">
-            <h4 className="font-medium">Cara Pembayaran di {storeName}</h4>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li>
-                Catat kode pembayaran: <span className="font-mono font-bold">{paymentDetails.pay_code}</span>
-              </li>
-              <li>Kunjungi gerai {storeName} terdekat</li>
-              <li>
-                Beritahu kasir bahwa Anda ingin melakukan pembayaran {activeGateway === "tripay" ? "TriPay" : "Duitku"}
-              </li>
-              <li>Berikan kode pembayaran kepada kasir</li>
-              <li>Lakukan pembayaran sesuai jumlah yang tertera</li>
-              <li>Simpan struk pembayaran sebagai bukti</li>
-            </ol>
-          </div>
-        )
-      }
-
-      return null
-    }
-
-    // Tambahkan fungsi helper untuk mendapatkan nama bank
-    const getBankName = (code: string) => {
-      const bankMap: Record<string, string> = {
-        BR: "BRI",
-        M2: "Mandiri",
-        I1: "BNI",
-        BV: "BSI",
-        BT: "Permata",
-        NC: "CIMB",
-        BC: "BCA",
-      }
-      return bankMap[code] || code
-    }
-
-    // Tambahkan fungsi helper untuk mendapatkan nama e-wallet
-    const getWalletName = (code: string) => {
-      const walletMap: Record<string, string> = {
-        OV: "OVO",
-        DA: "DANA",
-        SA: "ShopeePay",
-        LF: "LinkAja",
-      }
-      return walletMap[code] || code
-    }
+    const gatewayReference = paymentDetails.gateway_reference || ""
 
     return (
       <div className="mt-4 space-y-4">
+        {/* Gateway Reference */}
+        {gatewayReference && (
+          <div className="bg-white p-3 rounded-md border">
+            <div className="text-sm text-muted-foreground mb-1">Gateway Reference:</div>
+            <div className="flex items-center justify-between">
+              <div className="font-mono text-sm">{gatewayReference}</div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(gatewayReference, "Gateway reference")}
+                className="h-8"
+              >
+                <Copy className={`h-4 w-4 ${copiedText === "Gateway reference" ? "text-green-500" : ""}`} />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Nomor Virtual Account atau Kode Pembayaran */}
         {vaNumber && (
           <div className="bg-white p-3 rounded-md border">
@@ -719,32 +800,39 @@ export function PremiumClient({
           : null}
 
         {/* Tombol Tindakan */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex flex-col gap-2 mt-4">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={checkTransactionStatus}
-            disabled={checkingStatus}
-            className="flex-1"
+            variant="default"
+            onClick={() => window.open(paymentUrl, "_blank")}
+            disabled={!paymentUrl}
+            className="w-full"
           >
-            {checkingStatus ? <Clock className="h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Periksa Status
+            <ExternalLink className="h-4 w-4 mr-2" /> Lanjutkan Pembayaran
           </Button>
-          {paymentUrl && (
-            <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="flex-1">
-              <ExternalLink className="h-4 w-4 mr-2" /> Lanjutkan Pembayaran
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={checkTransactionStatus}
+              disabled={checkingStatus}
+              className="flex-1"
+            >
+              {checkingStatus ? <Clock className="h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Periksa Status
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCancelTransaction}
-            disabled={cancellingTransaction}
-            className="flex-1"
-          >
-            {cancellingTransaction ? <Clock className="h-4 w-4 mr-2" /> : <X className="h-4 w-4 mr-2" />}
-            Batalkan
-          </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelTransaction}
+              disabled={cancellingTransaction}
+              className="flex-1"
+            >
+              {cancellingTransaction ? <Clock className="h-4 w-4 mr-2" /> : <X className="h-4 w-4 mr-2" />}
+              Batalkan
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -757,6 +845,13 @@ export function PremiumClient({
     let statusIcon
     let statusTitle
     let statusColor
+    const paymentDetails = currentTransaction.paymentDetails || {}
+    const paymentUrl =
+      paymentDetails.checkout_url ||
+      paymentDetails.pay_url ||
+      paymentDetails.payment_url ||
+      paymentDetails.redirect_url ||
+      ""
 
     switch (currentTransaction.status) {
       case "success":
@@ -790,15 +885,22 @@ export function PremiumClient({
           </div>
           <div className="flex gap-2">
             {currentTransaction.status === "pending" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelTransaction}
-                disabled={cancellingTransaction}
-                className="h-8 px-2"
-              >
-                {cancellingTransaction ? <Clock className="h-4 w-4" /> : <X className="h-4 w-4" />}
-              </Button>
+              <>
+                {paymentUrl && (
+                  <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Lanjutkan
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelTransaction}
+                  disabled={cancellingTransaction}
+                  className="h-8 px-2"
+                >
+                  {cancellingTransaction ? <Clock className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                </Button>
+              </>
             )}
           </div>
         </div>
