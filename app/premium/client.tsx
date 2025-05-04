@@ -137,6 +137,24 @@ const tripayPaymentMethods = [
   },
 ]
 
+// Tambahkan definisi metode pembayaran untuk PayPal
+const paypalPaymentMethods = [
+  {
+    id: "paypal",
+    name: "PayPal",
+    methods: [
+      {
+        id: "PP",
+        name: "PayPal",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment/paypal-logo.png",
+        recommended: true,
+        description: "Bayar dengan PayPal atau kartu kredit/debit",
+        features: ["Proses instan", "Tersedia 24/7", "Pembayaran aman"],
+      },
+    ],
+  },
+]
+
 // Fungsi untuk menampilkan instruksi pembayaran berdasarkan metode pembayaran
 const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) => {
   if (!paymentMethod || !paymentDetails) return null
@@ -231,6 +249,8 @@ export function PremiumClient({
     switch (activeGateway) {
       case "tripay":
         return tripayPaymentMethods
+      case "paypal":
+        return paypalPaymentMethods
       case "duitku":
       default:
         return duitkuPaymentMethods
