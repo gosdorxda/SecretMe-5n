@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
 import {
   CheckCircle,
-  AlertCircle,
   Clock,
   RefreshCw,
   X,
@@ -16,11 +15,17 @@ import {
   Wallet,
   Building,
   QrCode,
-  Lock,
   ExternalLink,
   Copy,
   Info,
   Star,
+  Shield,
+  Zap,
+  Clock3,
+  CreditCard,
+  ChevronRight,
+  Award,
+  Sparkles,
 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -37,10 +42,9 @@ type Transaction = {
   createdAt: string
   updatedAt: string
   gateway: string
-  paymentDetails?: any // Tambahkan field untuk payment details
+  paymentDetails?: any
 }
 
-// Tambahkan activeGateway ke props
 type PremiumClientProps = {
   isLoggedIn: boolean
   isPremium: boolean
@@ -49,33 +53,25 @@ type PremiumClientProps = {
   urlStatus?: string
   urlOrderId?: string
   transaction?: Transaction | null
-  activeGateway: string // Tambahkan prop ini
+  activeGateway: string
 }
 
 // Definisi metode pembayaran untuk Duitku
 const duitkuPaymentMethods = [
   {
-    id: "bank",
-    name: "Transfer Bank",
-    methods: [{ id: "BC", name: "BCA Virtual Account", icon: "/payment-icons/bca.png" }],
-  },
-  {
-    id: "ewallet",
-    name: "E-Wallet",
-    methods: [
-      { id: "OV", name: "OVO", icon: "/payment-icons/ovo.png" },
-      { id: "DA", name: "DANA", icon: "/payment-icons/dana.png" },
-    ],
-  },
-  {
     id: "qris",
     name: "QRIS",
-    methods: [{ id: "QR", name: "QRIS by ShopeePay", icon: "/payment-icons/qris.png", recommended: true }],
+    methods: [
+      {
+        id: "QR",
+        name: "QRIS by ShopeePay",
+        icon: "/payment-icons/qris.png",
+        recommended: true,
+        description: "Bayar dengan aplikasi e-wallet favorit Anda",
+        features: ["Proses instan", "Tersedia 24/7", "Tanpa biaya tambahan"],
+      },
+    ],
   },
-]
-
-// Ubah definisi tripayPaymentMethods menjadi hanya QRIS dan BCA VA
-const tripayPaymentMethods = [
   {
     id: "bank",
     name: "Transfer Bank",
@@ -83,10 +79,36 @@ const tripayPaymentMethods = [
       {
         id: "BC",
         name: "BCA Virtual Account",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
+        icon: "/payment-icons/bca.png",
+        description: "Transfer melalui ATM, m-Banking, atau internet banking",
+        features: ["Verifikasi otomatis", "Aman & terpercaya"],
       },
     ],
   },
+  {
+    id: "ewallet",
+    name: "E-Wallet",
+    methods: [
+      {
+        id: "OV",
+        name: "OVO",
+        icon: "/payment-icons/ovo.png",
+        description: "Bayar langsung dari saldo OVO Anda",
+        features: ["Proses instan", "Tanpa biaya tambahan"],
+      },
+      {
+        id: "DA",
+        name: "DANA",
+        icon: "/payment-icons/dana.png",
+        description: "Bayar langsung dari saldo DANA Anda",
+        features: ["Proses instan", "Tanpa biaya tambahan"],
+      },
+    ],
+  },
+]
+
+// Definisi metode pembayaran untuk TriPay
+const tripayPaymentMethods = [
   {
     id: "qris",
     name: "QRIS",
@@ -96,6 +118,21 @@ const tripayPaymentMethods = [
         name: "QRIS by ShopeePay",
         icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//QRIS_ID_CHNL_LOGO.webp",
         recommended: true,
+        description: "Bayar dengan aplikasi e-wallet favorit Anda",
+        features: ["Proses instan", "Tersedia 24/7", "Tanpa biaya tambahan"],
+      },
+    ],
+  },
+  {
+    id: "bank",
+    name: "Transfer Bank",
+    methods: [
+      {
+        id: "BC",
+        name: "BCA Virtual Account",
+        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
+        description: "Transfer melalui ATM, m-Banking, atau internet banking",
+        features: ["Verifikasi otomatis", "Aman & terpercaya"],
       },
     ],
   },
@@ -108,43 +145,64 @@ const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) =
   switch (paymentMethod) {
     case "BC": // BCA Virtual Account
       return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran BCA Virtual Account:</div>
-          <ol className="list-decimal pl-5 space-y-1">
+        <div className="bg-white p-4 rounded-md border-2 border-gray-100 shadow-sm">
+          <div className="text-sm font-semibold mb-2 flex items-center">
+            <Building className="h-4 w-4 mr-2 text-blue-600" />
+            Instruksi Pembayaran BCA Virtual Account:
+          </div>
+          <ol className="list-decimal pl-5 space-y-2 text-sm">
             <li>Masukkan kartu ATM dan PIN Anda.</li>
-            <li>Pilih menu "Transfer".</li>
+            <li>
+              Pilih menu <span className="font-medium">"Transfer"</span>.
+            </li>
             <li>Masukkan nomor virtual account BCA.</li>
             <li>Masukkan jumlah yang akan dibayarkan.</li>
             <li>Ikuti instruksi selanjutnya untuk menyelesaikan pembayaran.</li>
           </ol>
+          <div className="mt-3 text-xs text-gray-500 bg-blue-50 p-2 rounded-md flex items-start">
+            <Info className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0 text-blue-500" />
+            <span>
+              Pembayaran akan diverifikasi secara otomatis oleh sistem dalam waktu 5-10 menit setelah pembayaran
+              berhasil.
+            </span>
+          </div>
         </div>
       )
     case "QR": // QRIS
       return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran QRIS:</div>
-          <ol className="list-decimal pl-5 space-y-1">
+        <div className="bg-white p-4 rounded-md border-2 border-gray-100 shadow-sm">
+          <div className="text-sm font-semibold mb-2 flex items-center">
+            <QrCode className="h-4 w-4 mr-2 text-green-600" />
+            Instruksi Pembayaran QRIS:
+          </div>
+          <ol className="list-decimal pl-5 space-y-2 text-sm">
+            <li>Buka aplikasi pembayaran yang mendukung QRIS (GoPay, OVO, DANA, LinkAja, atau mobile banking).</li>
             <li>
-              Buka aplikasi pembayaran yang mendukung QRIS (misalnya, GoPay, OVO, DANA, LinkAja, atau mobile banking).
+              Pilih menu <span className="font-medium">"Bayar"</span> atau <span className="font-medium">"Scan"</span>.
             </li>
-            <li>Pilih menu "Bayar" atau "Scan".</li>
             <li>Scan kode QR yang tersedia.</li>
             <li>Masukkan jumlah yang akan dibayarkan.</li>
             <li>Konfirmasi pembayaran dan masukkan PIN jika diperlukan.</li>
           </ol>
+          <div className="mt-3 text-xs text-gray-500 bg-green-50 p-2 rounded-md flex items-start">
+            <Zap className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0 text-green-500" />
+            <span>Pembayaran akan diverifikasi secara instan setelah pembayaran berhasil.</span>
+          </div>
         </div>
       )
     default:
       return (
-        <div className="bg-white p-3 rounded-md border">
-          <div className="text-sm text-muted-foreground mb-1">Instruksi Pembayaran:</div>
-          <p>Tidak ada instruksi pembayaran yang tersedia untuk metode ini.</p>
+        <div className="bg-white p-4 rounded-md border-2 border-gray-100 shadow-sm">
+          <div className="text-sm font-semibold mb-2 flex items-center">
+            <Info className="h-4 w-4 mr-2 text-gray-600" />
+            Instruksi Pembayaran:
+          </div>
+          <p className="text-sm">Tidak ada instruksi pembayaran yang tersedia untuk metode ini.</p>
         </div>
       )
   }
 }
 
-// Perbarui destructuring di function component
 export function PremiumClient({
   isLoggedIn,
   isPremium,
@@ -153,12 +211,11 @@ export function PremiumClient({
   urlStatus,
   urlOrderId,
   transaction,
-  activeGateway, // Tambahkan prop ini
+  activeGateway,
 }: PremiumClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("QR")
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<string>("bank")
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -308,7 +365,6 @@ export function PremiumClient({
       setError(null)
 
       // Panggil server action untuk membuat transaksi
-      // Tambahkan activeGateway sebagai parameter kedua
       const result = await createTransaction(selectedPaymentMethod, activeGateway)
 
       if (!result.success) {
@@ -469,21 +525,6 @@ export function PremiumClient({
     }).format(date)
   }
 
-  // Fungsi untuk mendapatkan warna badge berdasarkan status
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "bg-green-500"
-      case "failed":
-      case "cancelled":
-        return "bg-red-500"
-      case "pending":
-        return "bg-yellow-500"
-      default:
-        return "bg-gray-500"
-    }
-  }
-
   // Fungsi untuk mendapatkan label status
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -541,209 +582,163 @@ export function PremiumClient({
     const gatewayReference = paymentDetails.gateway_reference || ""
 
     return (
-      <div className="mt-4 space-y-4">
-        {/* Gateway Reference */}
-        {gatewayReference && (
-          <div className="bg-white p-3 rounded-md border">
-            <div className="text-sm text-muted-foreground mb-1">Gateway Reference:</div>
-            <div className="flex items-center justify-between">
-              <div className="font-mono text-sm">{gatewayReference}</div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(gatewayReference, "Gateway reference")}
-                className="h-8"
-              >
-                <Copy className={`h-4 w-4 ${copiedText === "Gateway reference" ? "text-green-500" : ""}`} />
-              </Button>
+      <div className="mt-6 space-y-4">
+        <div className="bg-yellow-50 border-2 border-yellow-100 rounded-lg p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="bg-yellow-100 p-2 rounded-full">
+              <Clock3 className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-yellow-800">Menunggu Pembayaran</h3>
+              <p className="text-sm text-yellow-700">Selesaikan pembayaran sebelum batas waktu berakhir</p>
             </div>
           </div>
-        )}
 
-        {/* Nomor Virtual Account atau Kode Pembayaran */}
-        {vaNumber && (
-          <div className="bg-white p-3 rounded-md border">
-            <div className="text-sm text-muted-foreground mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
-            <div className="flex items-center justify-between">
-              <div className="font-mono text-lg font-bold">{vaNumber}</div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
-                className="h-8"
-              >
-                <Copy className={`h-4 w-4 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
-              </Button>
+          {/* Waktu Kadaluarsa */}
+          {expiredTime && (
+            <div className="bg-white p-4 rounded-md border-2 border-yellow-100 mb-4">
+              <div className="text-sm text-gray-500 mb-1">Batas Waktu Pembayaran:</div>
+              <div className="font-medium text-lg">{formatDate(expiredTime)}</div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Waktu Kadaluarsa */}
-        {expiredTime && (
-          <div className="bg-white p-3 rounded-md border">
-            <div className="text-sm text-muted-foreground mb-1">Batas Waktu Pembayaran:</div>
-            <div className="font-medium">{formatDate(expiredTime)}</div>
-          </div>
-        )}
-
-        {/* URL Pembayaran */}
-        {paymentUrl && (
-          <div className="bg-white p-3 rounded-md border">
-            <div className="text-sm text-muted-foreground mb-1">Link Pembayaran:</div>
-            <div className="flex items-center justify-between">
-              <div className="truncate max-w-[200px]">{paymentUrl}</div>
-              <div className="flex gap-2">
+          {/* Nomor Virtual Account atau Kode Pembayaran */}
+          {vaNumber && (
+            <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
+              <div className="text-sm text-gray-500 mb-1">Nomor Virtual Account / Kode Pembayaran:</div>
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-xl font-bold">{vaNumber}</div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(paymentUrl, "Link pembayaran")}
+                  onClick={() => copyToClipboard(vaNumber, "Nomor pembayaran")}
                   className="h-8"
                 >
-                  <Copy className={`h-4 w-4 ${copiedText === "Link pembayaran" ? "text-green-500" : ""}`} />
-                </Button>
-                <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
-                  <ExternalLink className="h-4 w-4 mr-1" /> Buka
+                  <Copy className={`h-4 w-4 mr-1 ${copiedText === "Nomor pembayaran" ? "text-green-500" : ""}`} />
+                  Salin
                 </Button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Instruksi Pembayaran */}
-        {instructions && instructions.length > 0 && (
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="instructions">
-              <AccordionTrigger>Instruksi Pembayaran</AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4">
-                  {instructions.map((instruction: any, index: number) => (
-                    <div key={index} className="space-y-2">
-                      <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
-                      <ol className="list-decimal pl-5 space-y-1">
-                        {instruction.steps &&
-                          instruction.steps.map((step: string, stepIndex: number) => <li key={stepIndex}>{step}</li>)}
-                      </ol>
-                    </div>
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        )}
-
-        {/* Instruksi Pembayaran yang Lebih Baik */}
-        {!instructions || instructions.length === 0
-          ? renderPaymentInstructions(currentTransaction.paymentMethod, currentTransaction.paymentDetails)
-          : null}
-
-        {/* Tombol Tindakan */}
-        <div className="flex flex-col gap-2 mt-4">
-          <Button
-            variant="default"
-            onClick={() => window.open(paymentUrl, "_blank")}
-            disabled={!paymentUrl}
-            className="w-full"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" /> Lanjutkan Pembayaran
-          </Button>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={checkTransactionStatus}
-              disabled={checkingStatus}
-              className="flex-1"
-            >
-              {checkingStatus ? <Clock className="h-4 w-4 mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Periksa Status
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancelTransaction}
-              disabled={cancellingTransaction}
-              className="flex-1"
-            >
-              {cancellingTransaction ? <Clock className="h-4 w-4 mr-2" /> : <X className="h-4 w-4 mr-2" />}
-              Batalkan
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Render status transaksi
-  const renderTransactionStatus = () => {
-    if (!currentTransaction) return null
-
-    let statusIcon
-    let statusTitle
-    let statusColor
-    const paymentDetails = currentTransaction.paymentDetails || {}
-    const paymentUrl =
-      paymentDetails.checkout_url ||
-      paymentDetails.pay_url ||
-      paymentDetails.payment_url ||
-      paymentDetails.redirect_url ||
-      ""
-
-    switch (currentTransaction.status) {
-      case "success":
-        statusIcon = <CheckCircle className="h-5 w-5 text-green-500" />
-        statusTitle = "Pembayaran Berhasil"
-        statusColor = "border-green-200 bg-green-50"
-        break
-      case "failed":
-        statusIcon = <AlertCircle className="h-5 w-5 text-red-500" />
-        statusTitle = "Pembayaran Gagal"
-        statusColor = "border-red-200 bg-red-50"
-        break
-      case "cancelled":
-        statusIcon = <X className="h-5 w-5 text-red-500" />
-        statusTitle = "Pembayaran Dibatalkan"
-        statusColor = "border-red-200 bg-red-50"
-        break
-      case "pending":
-      default:
-        statusIcon = <Clock className="h-5 w-5 text-yellow-500" />
-        statusTitle = "Pembayaran Tertunda"
-        statusColor = "border-yellow-200 bg-yellow-50"
-    }
-
-    return (
-      <div className="mb-4">
-        <div className={`flex justify-between items-center p-3 rounded-lg ${statusColor}`}>
-          <div className="flex items-center gap-2">
-            {statusIcon}
-            <span className="font-medium">{statusTitle}</span>
-          </div>
-          <div className="flex gap-2">
-            {currentTransaction.status === "pending" && (
-              <>
-                {paymentUrl && (
-                  <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
-                    <ExternalLink className="h-4 w-4 mr-1" /> Lanjutkan
-                  </Button>
-                )}
+          {/* Gateway Reference */}
+          {gatewayReference && (
+            <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
+              <div className="text-sm text-gray-500 mb-1">Gateway Reference:</div>
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-sm">{gatewayReference}</div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleCancelTransaction}
-                  disabled={cancellingTransaction}
-                  className="h-8 px-2"
+                  onClick={() => copyToClipboard(gatewayReference, "Gateway reference")}
+                  className="h-8"
                 >
-                  {cancellingTransaction ? <Clock className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                  <Copy className={`h-4 w-4 mr-1 ${copiedText === "Gateway reference" ? "text-green-500" : ""}`} />
+                  Salin
                 </Button>
-              </>
-            )}
+              </div>
+            </div>
+          )}
+
+          {/* URL Pembayaran */}
+          {paymentUrl && (
+            <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
+              <div className="text-sm text-gray-500 mb-1">Link Pembayaran:</div>
+              <div className="flex items-center justify-between">
+                <div className="truncate max-w-[200px]">{paymentUrl}</div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(paymentUrl, "Link pembayaran")}
+                    className="h-8"
+                  >
+                    <Copy className={`h-4 w-4 mr-1 ${copiedText === "Link pembayaran" ? "text-green-500" : ""}`} />
+                    Salin
+                  </Button>
+                  <Button variant="default" size="sm" onClick={() => window.open(paymentUrl, "_blank")} className="h-8">
+                    <ExternalLink className="h-4 w-4 mr-1" /> Buka
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Instruksi Pembayaran */}
+          <div className="mb-4">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="instructions" className="border-2 border-gray-100 rounded-md overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 bg-gray-50 hover:bg-gray-100">
+                  <div className="flex items-center">
+                    <Info className="h-4 w-4 mr-2 text-blue-500" />
+                    <span>Instruksi Pembayaran</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 py-3 bg-white">
+                  {instructions && instructions.length > 0 ? (
+                    <div className="space-y-4">
+                      {instructions.map((instruction: any, index: number) => (
+                        <div key={index} className="space-y-2">
+                          <h4 className="font-medium">{instruction.title || `Metode ${index + 1}`}</h4>
+                          <ol className="list-decimal pl-5 space-y-1">
+                            {instruction.steps &&
+                              instruction.steps.map((step: string, stepIndex: number) => (
+                                <li key={stepIndex}>{step}</li>
+                              ))}
+                          </ol>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    renderPaymentInstructions(currentTransaction.paymentMethod, currentTransaction.paymentDetails)
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+
+          {/* Tombol Tindakan */}
+          <div className="flex flex-col gap-3 mt-6">
+            <Button
+              variant="default"
+              onClick={() => window.open(paymentUrl, "_blank")}
+              disabled={!paymentUrl}
+              className="w-full neo-btn py-3 h-auto"
+            >
+              <ExternalLink className="h-5 w-5 mr-2" /> Lanjutkan Pembayaran
+            </Button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={checkTransactionStatus}
+                disabled={checkingStatus}
+                className="neo-btn-outline"
+              >
+                {checkingStatus ? (
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Periksa Status
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={handleCancelTransaction}
+                disabled={cancellingTransaction}
+                className="neo-btn-outline"
+              >
+                {cancellingTransaction ? (
+                  <Clock className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                Batalkan
+              </Button>
+            </div>
           </div>
         </div>
-
-        {/* Tampilkan detail transaksi pending */}
-        {currentTransaction.status === "pending" && renderPendingTransactionDetails()}
       </div>
     )
   }
@@ -758,17 +753,20 @@ export function PremiumClient({
         </h3>
 
         {!transactions.length && !loadingHistory ? (
-          <div className="text-center py-6 border-2 border-dashed rounded-lg bg-gray-50">
+          <div className="text-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+            <History className="h-10 w-10 text-gray-300 mx-auto mb-3" />
             <p className="text-muted-foreground">Belum ada riwayat transaksi</p>
+            <p className="text-xs text-gray-400 mt-1">Riwayat transaksi Anda akan muncul di sini</p>
           </div>
         ) : loadingHistory ? (
-          <div className="flex justify-center py-6 border-2 border-dashed rounded-lg bg-gray-50">
-            <Clock className="h-6 w-6 text-muted-foreground animate-pulse" />
+          <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-lg bg-gray-50">
+            <Clock className="h-10 w-10 text-gray-300 animate-pulse mb-3" />
+            <p className="text-muted-foreground">Memuat riwayat transaksi...</p>
           </div>
         ) : (
-          <div className="border-2 rounded-lg overflow-hidden">
+          <div className="border-2 rounded-lg overflow-hidden shadow-sm">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-gray-50">
                 <TableRow>
                   <TableHead className="w-[180px]">Tanggal</TableHead>
                   <TableHead>Order ID</TableHead>
@@ -779,7 +777,7 @@ export function PremiumClient({
               </TableHeader>
               <TableBody>
                 {transactions.map((tx) => (
-                  <TableRow key={tx.id}>
+                  <TableRow key={tx.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{formatDate(tx.createdAt)}</TableCell>
                     <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
                     <TableCell>Rp {tx.amount.toLocaleString("id-ID")}</TableCell>
@@ -801,8 +799,14 @@ export function PremiumClient({
         )}
 
         <div className="mt-6 flex justify-center">
-          <Button variant="outline" size="sm" onClick={loadTransactionHistory} disabled={loadingHistory}>
-            {loadingHistory ? <Clock className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadTransactionHistory}
+            disabled={loadingHistory}
+            className="neo-btn-outline"
+          >
+            {loadingHistory ? <Clock className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             {loadingHistory ? "Memuat..." : "Muat Riwayat"}
           </Button>
         </div>
@@ -835,7 +839,7 @@ export function PremiumClient({
     return (
       <div className="mb-6">
         <h3 className="text-lg font-medium mb-4 flex items-center">
-          <Lock className="h-5 w-5 text-green-500 mr-2" />
+          <CreditCard className="h-5 w-5 text-green-500 mr-2" />
           Pilih Metode Pembayaran
           {activeGateway === "tripay" && (
             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">TriPay</span>
@@ -852,33 +856,53 @@ export function PremiumClient({
               <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
               <Label
                 htmlFor={method.id}
-                className="flex items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                className="flex flex-col rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
               >
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-24 h-12 flex items-center justify-center bg-gray-50 rounded-md">
-                    {method.icon ? (
-                      <img
-                        src={method.icon || "/placeholder.svg"}
-                        alt={method.name}
-                        className="max-w-full max-h-full p-1"
-                      />
-                    ) : method.categoryId === "bank" ? (
-                      <Building className="h-6 w-6 text-gray-500" />
-                    ) : method.categoryId === "ewallet" ? (
-                      <Wallet className="h-6 w-6 text-gray-500" />
-                    ) : (
-                      <QrCode className="h-6 w-6 text-gray-500" />
-                    )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border">
+                      {method.icon ? (
+                        <img
+                          src={method.icon || "/placeholder.svg"}
+                          alt={method.name}
+                          className="max-w-full max-h-full p-1"
+                        />
+                      ) : method.categoryId === "bank" ? (
+                        <Building className="h-6 w-6 text-gray-500" />
+                      ) : method.categoryId === "ewallet" ? (
+                        <Wallet className="h-6 w-6 text-gray-500" />
+                      ) : (
+                        <QrCode className="h-6 w-6 text-gray-500" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium text-lg">{method.name}</div>
+                      <div className="text-sm text-muted-foreground">{method.categoryName}</div>
+                      {method.description && <div className="text-xs text-gray-500 mt-1">{method.description}</div>}
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">{method.name}</div>
-                    <div className="text-xs text-muted-foreground">{method.categoryName}</div>
+                  <div className="text-right">
+                    <div className="font-semibold text-lg">Rp {premiumPrice.toLocaleString("id-ID")}</div>
+                    <div className="text-xs text-muted-foreground">Sekali bayar</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-semibold">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                  <div className="text-xs text-muted-foreground">Sekali bayar</div>
-                </div>
+
+                {/* Features */}
+                {method.features && method.features.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-dashed">
+                    <div className="flex flex-wrap gap-2">
+                      {method.features.map((feature, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </Label>
 
               {/* Badge untuk metode yang direkomendasikan */}
@@ -900,9 +924,9 @@ export function PremiumClient({
   // Jika user sudah premium, tampilkan pesan sukses
   if (isPremium) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-6 text-center">
+      <div className="container max-w-6xl mx-auto py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2">Akun Premium</h1>
             <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
           </div>
@@ -914,40 +938,69 @@ export function PremiumClient({
                   <CardTitle className="text-2xl">Status Premium</CardTitle>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold">Aktif</div>
+                  <Badge variant="success" className="text-base py-1 px-3">
+                    Aktif
+                  </Badge>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 relative">
-              <div className="mb-6 p-3 rounded-lg border-green-200 bg-green-50">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="font-medium">Akun Anda sudah Premium</span>
+            <CardContent className="pt-8 pb-6 relative">
+              <div className="mb-8 p-4 rounded-lg border-green-200 bg-green-50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <CheckCircle className="h-6 w-6 text-green-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-green-800">Akun Anda sudah Premium</h3>
+                    <p className="text-sm text-green-700">Semua fitur premium telah diaktifkan untuk akun Anda</p>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-center mb-6">
+              <div className="flex items-center justify-center mb-8">
                 <div className="bg-gradient-to-r from-gray-800 to-black p-8 rounded-full shadow-lg">
-                  <Lock className="h-12 w-12 text-white" />
+                  <Award className="h-16 w-16 text-yellow-400" />
                 </div>
               </div>
 
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-semibold mb-2">Premium Aktif</h3>
-                <p className="text-muted-foreground">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-semibold mb-3">Premium Aktif</h3>
+                <p className="text-muted-foreground max-w-lg mx-auto">
                   Terima kasih telah menjadi pengguna premium. Nikmati semua fitur eksklusif SecretMe tanpa batasan.
                 </p>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg border-2 text-center">
+                  <Shield className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+                  <h4 className="font-medium">Privasi Terjamin</h4>
+                  <p className="text-xs text-gray-500">Keamanan data Anda adalah prioritas kami</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border-2 text-center">
+                  <Zap className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                  <h4 className="font-medium">Fitur Tanpa Batas</h4>
+                  <p className="text-xs text-gray-500">Akses semua fitur premium tanpa batasan</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg border-2 text-center">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-purple-500" />
+                  <h4 className="font-medium">Pengalaman Premium</h4>
+                  <p className="text-xs text-gray-500">Nikmati pengalaman pengguna yang lebih baik</p>
+                </div>
+              </div>
             </CardContent>
-            <CardFooter className="border-t">
-              <Button onClick={() => router.push("/dashboard")} variant="default" className="w-full neo-btn">
+            <CardFooter className="border-t p-6">
+              <Button
+                onClick={() => router.push("/dashboard")}
+                variant="default"
+                className="w-full neo-btn py-3 h-auto text-base"
+              >
                 Kembali ke Dashboard
               </Button>
             </CardFooter>
           </Card>
 
           {/* Riwayat Transaksi untuk pengguna premium */}
-          <Card className="mb-8 neo-card border-2">{renderTransactionHistory()}</Card>
+          <Card className="mb-8 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -957,121 +1010,282 @@ export function PremiumClient({
   if (!transaction) {
     // If no transaction exists, just render the premium upgrade UI without transaction status
     return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-6 text-center">
+      <div className="container max-w-6xl mx-auto py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <Card className="mb-8 neo-card border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-              <div className="flex flex-col items-center justify-center">
-                <div className="text-center">
-                  <div className="text-3xl font-bold mb-1">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                  <div className="text-xs text-gray-500">Sekali bayar seumur hidup</div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6 relative">
-              <div className="mb-6 p-3 rounded-lg border-gray-200 bg-gray-50">
-                <div className="flex items-center gap-2">
-                  <Info className="h-5 w-5 text-gray-500" />
-                  <span className="font-medium">Status Akun: Free</span>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div className="md:col-span-2">
+              <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
+                <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl">Pilih Metode Pembayaran</CardTitle>
+                    <Badge variant="outline" className="text-base py-1 px-3 bg-white">
+                      {activeGateway === "tripay" ? "TriPay" : "Duitku"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 pb-4 relative">
+                  <div className="mb-6 p-4 rounded-lg border-2 border-gray-200 bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-full border">
+                        <Info className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Status Akun: Free</h3>
+                        <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Metode Pembayaran */}
-              {renderPaymentMethods()}
+                  {/* Metode Pembayaran */}
+                  {renderPaymentMethods()}
 
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
-                <Lock className="h-4 w-4 text-green-500" />
-                <span>Pembayaran aman & terenkripsi</span>
-              </div>
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg border">
+                    <Shield className="h-4 w-4 text-green-500" />
+                    <span>Pembayaran aman & terenkripsi</span>
+                  </div>
 
-              {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
-            </CardContent>
-            <CardFooter className="border-t">
-              <Button onClick={handlePayment} disabled={isLoading} variant="default" className="w-full neo-btn">
-                {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
-              </Button>
-            </CardFooter>
-          </Card>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
+                      {error}
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="border-t p-6">
+                  <Button
+                    onClick={handlePayment}
+                    disabled={isLoading}
+                    variant="default"
+                    className="w-full neo-btn py-3 h-auto text-base flex items-center justify-center"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
+                      </>
+                    ) : (
+                      <>
+                        Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+
+            <div className="md:col-span-1">
+              <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
+                <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
+                  <CardTitle className="text-xl">Ringkasan Pembelian</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 pb-4">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-dashed">
+                      <span className="font-medium">Premium Membership</span>
+                      <span className="font-semibold">Rp {premiumPrice.toLocaleString("id-ID")}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center pb-3 border-b">
+                      <span className="font-medium">Biaya Layanan</span>
+                      <span className="text-green-600 font-medium">Gratis</span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="font-semibold text-lg">Total</span>
+                      <span className="font-bold text-xl">Rp {premiumPrice.toLocaleString("id-ID")}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 bg-yellow-50 border-2 border-yellow-100 rounded-lg p-4">
+                    <h4 className="font-medium flex items-center text-yellow-800 mb-2">
+                      <Star className="h-4 w-4 mr-2 text-yellow-600" /> Keuntungan Premium
+                    </h4>
+                    <ul className="space-y-2">
+                      <li className="flex items-start">
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">Akses semua fitur tanpa batasan</span>
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">Sekali bayar, akses seumur hidup</span>
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">Dukungan prioritas</span>
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">Fitur eksklusif premium</span>
+                      </li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
 
           {/* Riwayat Transaksi di bawah card utama */}
-          <Card className="mb-8 neo-card border-2">{renderTransactionHistory()}</Card>
+          <Card className="mb-8 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6 text-center">
+    <div className="container max-w-6xl mx-auto py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <Card className="mb-8 neo-card border-2 shadow-lg overflow-hidden">
-          <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-            <div className="flex flex-col items-center justify-center">
-              <div className="text-center">
-                <div className="text-3xl font-bold mb-1">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                <div className="text-xs text-gray-500">Sekali bayar seumur hidup</div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6 relative">
-            {/* Status akun dan pembayaran */}
-            {currentTransaction && currentTransaction.status === "pending" ? (
-              <div className="mb-6 p-3 rounded-lg border-yellow-200 bg-yellow-50">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-yellow-500" />
-                  <span className="font-medium">Pembayaran Tertunda</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+          <div className="md:col-span-2">
+            <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
+              <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl">Status Pembayaran</CardTitle>
+                  {currentTransaction ? (
+                    <Badge
+                      variant={
+                        currentTransaction.status === "success"
+                          ? "success"
+                          : currentTransaction.status === "pending"
+                            ? "warning"
+                            : "destructive"
+                      }
+                      className="text-base py-1 px-3"
+                    >
+                      {getStatusLabel(currentTransaction.status)}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-base py-1 px-3 bg-white">
+                      Belum Ada Transaksi
+                    </Badge>
+                  )}
                 </div>
-                {/* Tampilkan detail transaksi pending */}
-                {renderPendingTransactionDetails()}
-              </div>
-            ) : (
-              <div className="mb-6 p-3 rounded-lg border-gray-200 bg-gray-50">
-                <div className="flex items-center gap-2">
-                  <Info className="h-5 w-5 text-gray-500" />
-                  <span className="font-medium">Status Akun: Free</span>
+              </CardHeader>
+              <CardContent className="pt-6 pb-4 relative">
+                {/* Status akun dan pembayaran */}
+                {currentTransaction && currentTransaction.status === "pending" ? (
+                  renderPendingTransactionDetails()
+                ) : (
+                  <>
+                    <div className="mb-6 p-4 rounded-lg border-2 border-gray-200 bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-full border">
+                          <Info className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">Status Akun: Free</h3>
+                          <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metode Pembayaran */}
+                    {renderPaymentMethods()}
+
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg border">
+                      <Shield className="h-4 w-4 text-green-500" />
+                      <span>Pembayaran aman & terenkripsi</span>
+                    </div>
+                  </>
+                )}
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
+                    {error}
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="border-t p-6">
+                {currentTransaction && currentTransaction.status === "pending" ? (
+                  <Button
+                    onClick={() => router.push("/")}
+                    variant="default"
+                    className="w-full neo-btn py-3 h-auto text-base"
+                  >
+                    Kembali ke Beranda
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handlePayment}
+                    disabled={isLoading}
+                    variant="default"
+                    className="w-full neo-btn py-3 h-auto text-base flex items-center justify-center"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
+                      </>
+                    ) : (
+                      <>
+                        Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          </div>
+
+          <div className="md:col-span-1">
+            <Card className="neo-card border-2 shadow-lg overflow-hidden h-full">
+              <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
+                <CardTitle className="text-xl">Ringkasan Pembelian</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 pb-4">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center pb-3 border-b border-dashed">
+                    <span className="font-medium">Premium Membership</span>
+                    <span className="font-semibold">Rp {premiumPrice.toLocaleString("id-ID")}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center pb-3 border-b">
+                    <span className="font-medium">Biaya Layanan</span>
+                    <span className="text-green-600 font-medium">Gratis</span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="font-semibold text-lg">Total</span>
+                    <span className="font-bold text-xl">Rp {premiumPrice.toLocaleString("id-ID")}</span>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Hanya tampilkan form pembayaran jika tidak ada transaksi pending */}
-            {currentTransaction && currentTransaction.status === "pending" ? null : (
-              <>
-                {/* Metode Pembayaran */}
-                {renderPaymentMethods()}
-
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
-                  <Lock className="h-4 w-4 text-green-500" />
-                  <span>Pembayaran aman & terenkripsi</span>
+                <div className="mt-6 bg-yellow-50 border-2 border-yellow-100 rounded-lg p-4">
+                  <h4 className="font-medium flex items-center text-yellow-800 mb-2">
+                    <Star className="h-4 w-4 mr-2 text-yellow-600" /> Keuntungan Premium
+                  </h4>
+                  <ul className="space-y-2">
+                    <li className="flex items-start">
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Akses semua fitur tanpa batasan</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Sekali bayar, akses seumur hidup</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Dukungan prioritas</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Fitur eksklusif premium</span>
+                    </li>
+                  </ul>
                 </div>
-              </>
-            )}
-
-            {error && <div className="text-red-500 text-sm mt-2 text-center">{error}</div>}
-          </CardContent>
-          <CardFooter className="border-t">
-            {currentTransaction && currentTransaction.status === "pending" ? (
-              <Button onClick={() => router.push("/")} variant="default" className="w-full neo-btn">
-                Kembali ke Beranda
-              </Button>
-            ) : (
-              <Button onClick={handlePayment} disabled={isLoading} variant="default" className="w-full neo-btn">
-                {isLoading ? <Clock className="h-4 w-4 mr-2" /> : "Lanjutkan ke Pembayaran"}
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
         {/* Riwayat Transaksi di bawah card utama */}
-        <Card className="mb-8 neo-card border-2">{renderTransactionHistory()}</Card>
+        <Card className="mb-8 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
       </div>
     </div>
   )
