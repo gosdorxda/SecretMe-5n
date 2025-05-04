@@ -5,8 +5,17 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
+// Periksa apakah ada pengambilan harga dari database di server actions
+// Jika ada, ubah untuk menggunakan environment variables
+
+// Tambahkan kode berikut di awal file (jika belum ada):
+const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+
+// Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
+
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
-export async function createTransaction(paymentMethod: string, gatewayName = "duitku") {
+export async function createTransaction(paymentMethod: string, gatewayName = activeGateway) {
   try {
     const supabase = createClient()
 
@@ -56,13 +65,13 @@ export async function createTransaction(paymentMethod: string, gatewayName = "du
     }
 
     // Get premium price from config or env
-    const { data: configData } = await supabase
-      .from("site_config")
-      .select("config")
-      .eq("type", "premium_settings")
-      .single()
+    // const { data: configData } = await supabase
+    //   .from("site_config")
+    //   .select("config")
+    //   .eq("type", "premium_settings")
+    //   .single()
 
-    const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+    // const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
 
     // Generate order ID
     const orderId = generateOrderId(session.user.id)
@@ -87,7 +96,7 @@ export async function createTransaction(paymentMethod: string, gatewayName = "du
     }
 
     // Get payment gateway
-    const gateway = await getPaymentGateway(gatewayName || "duitku")
+    const gateway = await getPaymentGateway(gatewayName || activeGateway)
 
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
@@ -289,7 +298,7 @@ export async function cancelTransaction(transactionId: string) {
     )
 
     // Coba batalkan transaksi di gateway pembayaran
-    const gatewayName = transactionData.payment_gateway || "duitku"
+    const gatewayName = transactionData.payment_gateway || activeGateway
     console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
 
     // Periksa apakah ada referensi gateway
