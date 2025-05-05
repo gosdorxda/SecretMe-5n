@@ -21,6 +21,20 @@ export async function POST(request: NextRequest) {
     // Get raw request body as text for signature verification
     const rawBody = await clonedRequest.text()
 
+    // Parse webhook payload for logging
+    let payload
+    try {
+      payload = JSON.parse(rawBody)
+      logger.debug("Webhook payload received", {
+        event_type: payload.event_type,
+        resource_type: payload.resource_type,
+        resource_id: payload.resource?.id,
+      })
+    } catch (error) {
+      logger.error("Failed to parse webhook payload", error)
+      payload = { error: "Invalid JSON" }
+    }
+
     // Verify webhook signature
     const webhookId = process.env.PAYPAL_WEBHOOK_ID || ""
     if (!webhookId) {
@@ -30,26 +44,44 @@ export async function POST(request: NextRequest) {
 
     const isSignatureValid = await verifyPayPalWebhookSignature(rawBody, headers, webhookId)
 
+    // SELALU log webhook ke payment_notification_logs, bahkan jika ini adalah test webhook
+    const supabase = createClient()
+
+    // Log webhook ke payment_notification_logs
+    const logEntry = {
+      request_id: logger.requestId,
+      gateway: "paypal",
+      raw_payload: payload,
+      headers: headers,
+      status: "received",
+      order_id: payload.resource?.id || "unknown",
+      event_type: payload.event_type || "unknown",
+      signature_valid: isSignatureValid,
+    }
+
+    await supabase.from("payment_notification_logs").insert(logEntry)
+    logger.debug("Webhook logged to payment_notification_logs", { logId: logger.requestId })
+
     if (!isSignatureValid) {
       logger.error("Invalid PayPal webhook signature")
 
       // Log invalid webhook attempt
-      const supabase = createClient()
-      await supabase.from("payment_notification_logs").insert({
-        request_id: requestId,
-        gateway: "paypal",
-        raw_payload: { error: "Invalid signature" },
-        headers: headers,
-        status: "invalid_signature",
-        event_type: "security_alert",
-      })
+      await supabase
+        .from("payment_notification_logs")
+        .update({
+          status: "invalid_signature",
+          event_type: "security_alert",
+        })
+        .eq("request_id", logger.requestId)
 
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+      // Di development mode, kita tetap proses webhook meskipun signature tidak valid
+      if (process.env.NODE_ENV !== "production") {
+        logger.warn("DEVELOPMENT MODE: Processing webhook despite invalid signature")
+      } else {
+        // Di production, kita reject webhook dengan signature tidak valid
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+      }
     }
-
-    // Parse webhook payload
-    const payload = JSON.parse(rawBody)
-    logger.debug("Webhook payload received", { payload })
 
     // Extract important information from the payload
     const eventType = payload.event_type
@@ -71,23 +103,13 @@ export async function POST(request: NextRequest) {
       eventType: eventType,
     })
 
-    // SELALU log webhook ke payment_notification_logs, bahkan jika ini adalah test webhook
-    const supabase = createClient()
-
-    // Log webhook ke payment_notification_logs
-    const logEntry = {
-      request_id: logger.requestId,
-      gateway: "paypal",
-      raw_payload: payload,
-      headers: headers,
-      status: "received",
-      order_id: orderId || "unknown",
-      event_type: eventType || "unknown",
-      signature_valid: isSignatureValid,
-    }
-
-    await supabase.from("payment_notification_logs").insert(logEntry)
-    logger.debug("Webhook logged to payment_notification_logs", { logId: logger.requestId })
+    // Update log entry with order ID
+    await supabase
+      .from("payment_notification_logs")
+      .update({
+        order_id: orderId || "unknown",
+      })
+      .eq("request_id", logger.requestId)
 
     // Check if this is a test webhook
     const isTestWebhook =
