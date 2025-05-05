@@ -906,7 +906,7 @@ export function PremiumClient({
               {/* Badge untuk metode yang direkomendasikan */}
               {method.recommended && (
                 <div className="absolute -top-2 -right-2 z-10">
-                  <div className="bg-main text-white text-xs px-3 py-1 rounded-md shadow-md flex items-center gap-1">
+                  <div className="bg-main text-white text-xs px-3 py-1 rounded-md flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     Rekomendasi
                   </div>
@@ -926,11 +926,11 @@ export function PremiumClient({
     return (
       <div className="container max-w-6xl mx-auto py-12 px-4">
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <div className="text-9xl mb-8 animate-bounce-slow">🎉</div>
-          <h2 className="text-2xl font-bold text-center mb-6 text-main">Selamat!</h2>
+          <div className="text-9xlanimate-bounce-slow">🎉</div>
+          <h2 className="text-2xl font-bold text-center mb-6">Selamat!</h2>
           <p className="text-center text-muted-foreground mb-10">Akun premium Anda berhasil diaktivasi.</p>
           <Button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/dashboard")}
             variant="default"
             size="lg"
             className="w-full max-w-xs py-3 h-auto text-base bg-main hover:bg-main/90"
@@ -949,7 +949,7 @@ export function PremiumClient({
       <div className="container max-w-6xl mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2 text-main">Upgrade ke Premium</h1>
+            <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
@@ -1025,7 +1025,7 @@ export function PremiumClient({
               <>
                 <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
                   <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded-md border">
+                    <div className="bg-white p-2 rounded-md border border-2 border-muted">
                       <Info className="h-5 w-5 text-blue-500" />
                     </div>
                     <div>
