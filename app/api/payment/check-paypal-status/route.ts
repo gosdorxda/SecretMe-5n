@@ -113,7 +113,6 @@ export async function GET(request: NextRequest) {
         .from("users")
         .update({
           is_premium: true,
-          premium_since: new Date().toISOString(),
         })
         .eq("id", user.id)
 
