@@ -31,7 +31,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { PayPalIcon } from "@/components/paypal-icon"
 
 type Transaction = {
   id: string
@@ -910,47 +909,6 @@ export function PremiumClient({
               )}
             </div>
           ))}
-          <div key="paypal" className="relative">
-            <RadioGroupItem value="paypal" id="paypal" className="peer sr-only" />
-            <Label
-              htmlFor="paypal"
-              className="flex flex-col rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border-2 border-muted">
-                    <PayPalIcon className="h-8 w-8 text-[#0070ba]" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-lg">PayPal</div>
-                    <div className="text-sm text-muted-foreground">International Payment</div>
-                    <div className="text-xs text-gray-500 mt-1">Pay with PayPal or credit card</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold text-lg">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                  <div className="text-xs text-muted-foreground">Sekali bayar</div>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-3 border-t border-dashed">
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md">
-                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                    Secure Payment
-                  </span>
-                  <span className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md">
-                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                    International
-                  </span>
-                  <span className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md">
-                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                    Credit Card
-                  </span>
-                </div>
-              </div>
-            </Label>
-          </div>
         </RadioGroup>
       </div>
     )

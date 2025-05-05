@@ -37,8 +37,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface PremiumSettings {
   price: number
   activeGateway: string
-  paypalBusinessEmail?: string
-  paypalMode?: string
 }
 
 interface Transaction {
@@ -151,8 +149,6 @@ export default function PremiumSettings() {
         setSettings({
           price: data.config.price || Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_PRICE || "49000", 10),
           activeGateway: data.config.activeGateway || process.env.NEXT_PUBLIC_ACTIVE_PAYMENT_GATEWAY || "duitku",
-          paypalBusinessEmail: data.config.paypalBusinessEmail || "",
-          paypalMode: data.config.paypalMode || "sandbox",
         })
       }
     } catch (error) {
@@ -720,45 +716,6 @@ export default function PremiumSettings() {
                   <p className="text-sm text-muted-foreground">
                     Gateway yang dipilih akan digunakan untuk semua transaksi baru
                   </p>
-                </div>
-
-                {/* Tambahkan bagian konfigurasi PayPal di halaman admin */}
-                {/* Cari bagian yang menampilkan pengaturan gateway dan tambahkan PayPal */}
-
-                {/* Contoh: */}
-                {/* Setelah pengaturan gateway yang ada, tambahkan: */}
-                <div className="grid gap-4 mt-6">
-                  <h3 className="text-lg font-medium">Konfigurasi PayPal</h3>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="paypal_business_email">PayPal Business Email</Label>
-                    <Input
-                      id="paypal_business_email"
-                      value={settings.paypalBusinessEmail || ""}
-                      onChange={(e) => setSettings((prev) => ({ ...prev, paypalBusinessEmail: e.target.value }))}
-                      placeholder="your-business@example.com"
-                    />
-                    <p className="text-sm text-muted-foreground">Email bisnis PayPal Anda untuk menerima pembayaran</p>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="paypal_mode">Mode PayPal</Label>
-                    <Select
-                      value={settings.paypalMode || "sandbox"}
-                      onValueChange={(value) => setSettings((prev) => ({ ...prev, paypalMode: value }))}
-                    >
-                      <SelectTrigger id="paypal_mode">
-                        <SelectValue placeholder="Pilih mode" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sandbox">Sandbox (Testing)</SelectItem>
-                        <SelectItem value="production">Production</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Mode sandbox untuk pengujian, production untuk pembayaran nyata
-                    </p>
-                  </div>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start gap-2 mt-4">
