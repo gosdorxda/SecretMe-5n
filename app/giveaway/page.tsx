@@ -3,6 +3,7 @@ import { Gift, Share2, UserPlus, Award, ExternalLink, Check, Lock } from "lucide
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 
 export const metadata = {
   title: "Giveaway - SecretMe",
@@ -34,15 +35,20 @@ export default function GiveawayPage() {
           </p>
         </div>
 
-        {/* Main Content */}
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          {/* Left Column - Prize Info */}
-          <Card className="neo-card overflow-hidden">
-            <div className="bg-[var(--main)] p-4 text-center">
-              <h2 className="text-heading-3 text-black font-bold">Hadiah Giveaway</h2>
-            </div>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
+        {/* Combined Card for Prize Info and How to Join */}
+        <Card className="neo-card mb-12">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-heading-3 flex items-center gap-2">
+              <Award className="h-6 w-6 text-[var(--main)]" />
+              Hadiah & Cara Mengikuti
+            </CardTitle>
+            <CardDescription>Ikuti langkah mudah dan menangkan hadiah menarik!</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Prize Info Section */}
+            <div className="mb-6">
+              <h3 className="font-bold text-lg mb-3">Hadiah Giveaway</h3>
+              <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div className="flex items-start gap-3">
                   <Award className="h-6 w-6 text-[var(--main)] mt-1 flex-shrink-0" />
                   <div>
@@ -57,25 +63,22 @@ export default function GiveawayPage() {
                     <p>Rp 50.000 tunai (9 orang)</p>
                   </div>
                 </div>
-                <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-[var(--border-radius)]">
-                  <p className="text-sm">
-                    <span className="font-bold">Periode Giveaway:</span> 1 - 30 Juni 2025
-                  </p>
-                  <p className="text-sm mt-2">
-                    <span className="font-bold">Pengumuman Pemenang:</span> 5 Juli 2025
-                  </p>
-                </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-[var(--border-radius)]">
+                <p className="text-sm">
+                  <span className="font-bold">Periode Giveaway:</span> 1 - 30 Juni 2025
+                </p>
+                <p className="text-sm mt-2">
+                  <span className="font-bold">Pengumuman Pemenang:</span> 5 Juli 2025
+                </p>
+              </div>
+            </div>
 
-          {/* Right Column - How to Join */}
-          <Card className="neo-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-heading-3">Cara Mengikuti</CardTitle>
-              <CardDescription>Ikuti 3 langkah mudah ini untuk kesempatan menang!</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <Separator className="my-6" />
+
+            {/* How to Join Section */}
+            <div>
+              <h3 className="font-bold text-lg mb-3">Cara Mengikuti</h3>
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="h-8 w-8 rounded-full bg-[var(--main)] flex items-center justify-center text-black font-bold flex-shrink-0">
@@ -129,23 +132,9 @@ export default function GiveawayPage() {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Animated Banner */}
-        <div className="relative overflow-hidden rounded-[var(--border-radius)] mb-12 border-2 border-black">
-          <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 p-8 text-center relative">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('/placeholder.svg?key=u535e')] opacity-20"></div>
-            <div className="relative z-10">
-              <h2 className="text-heading-2 text-black font-bold mb-4">Kesempatan Terbatas!</h2>
-              <p className="text-black text-lg mb-4">Jangan lewatkan kesempatan untuk memenangkan hadiah tunai!</p>
-              <Link href="/register">
-                <Button className="neo-btn text-lg px-6 py-3">Daftar & Ikuti Sekarang</Button>
-              </Link>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Winners Table */}
         <Card className="neo-card mb-8">
