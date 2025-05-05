@@ -25,7 +25,7 @@ export function CheckPayPalStatus({ orderId }: { orderId: string }) {
 
       const data = await response.json()
 
-      if (data.success) {
+      if (data.success && data.transaction?.status === "success") {
         toast({
           title: "Pembayaran Berhasil!",
           description: "Akun Anda telah diupgrade ke premium.",
@@ -36,10 +36,17 @@ export function CheckPayPalStatus({ orderId }: { orderId: string }) {
         setTimeout(() => {
           window.location.reload()
         }, 2000)
+      } else if (data.transaction?.status === "pending") {
+        toast({
+          title: "Pembayaran Masih Diproses",
+          description: "Pembayaran Anda sedang diproses. Silakan coba periksa kembali nanti.",
+          variant: "default",
+        })
       } else {
         toast({
           title: "Status Pembayaran",
-          description: data.message || "Status pembayaran: " + data.status,
+          description: data.message || `Status pembayaran: ${data.transaction?.status || "belum diketahui"}`,
+          variant: "default",
         })
       }
     } catch (error) {

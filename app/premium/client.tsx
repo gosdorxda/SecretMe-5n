@@ -603,6 +603,7 @@ export function PremiumClient({
     const customerEmail = paymentDetails.customer_email || ""
     const amount = currentTransaction.amount || premiumPrice
     const paymentMethod = currentTransaction.paymentMethod || ""
+    const isPayPal = currentTransaction.gateway === "paypal"
 
     return (
       <div className="space-y-4">
@@ -613,7 +614,11 @@ export function PremiumClient({
             </div>
             <div>
               <h3 className="font-semibold text-yellow-800">Menunggu Pembayaran</h3>
-              <p className="text-sm text-yellow-700">Selesaikan pembayaran sebelum batas waktu berakhir</p>
+              <p className="text-sm text-yellow-700">
+                {isPayPal
+                  ? "Verifikasi pembayaran PayPal Anda untuk mengaktifkan akun premium"
+                  : "Selesaikan pembayaran sebelum batas waktu berakhir"}
+              </p>
             </div>
           </div>
 
@@ -624,7 +629,10 @@ export function PremiumClient({
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Metode Pembayaran:</span>
-                <span className="font-medium">{paymentMethod}</span>
+                <span className="font-medium flex items-center">
+                  {isPayPal && <img src="/payment-icons/paypal.png" alt="PayPal" className="h-4 mr-1" />}
+                  {paymentMethod}
+                </span>
               </div>
 
               <div className="flex justify-between">
@@ -647,6 +655,18 @@ export function PremiumClient({
               )}
             </div>
           </div>
+
+          {/* Tambahkan tombol verifikasi PayPal jika gateway adalah PayPal */}
+          {isPayPal && (
+            <div className="mb-4 bg-blue-50 p-4 rounded-md border-2 border-blue-100">
+              <h4 className="font-medium text-blue-800 mb-2">Verifikasi Pembayaran PayPal</h4>
+              <p className="text-sm text-blue-700 mb-3">
+                Jika Anda sudah menyelesaikan pembayaran di PayPal, klik tombol di bawah untuk mengaktifkan akun premium
+                Anda.
+              </p>
+              <CheckPayPalStatus orderId={currentTransaction.orderId} />
+            </div>
+          )}
 
           {/* Waktu Kadaluarsa */}
           {expiredTime && (
@@ -695,14 +715,17 @@ export function PremiumClient({
               <span>Instruksi Pembayaran</span>
             </div>
 
-            {currentTransaction.gateway === "paypal" ? (
+            {isPayPal ? (
               <div className="space-y-2">
                 <h4 className="font-medium">Pembayaran PayPal</h4>
                 <ol className="list-decimal pl-5 space-y-1">
                   <li className="text-sm">Selesaikan pembayaran di situs PayPal.</li>
                   <li className="text-sm">Setelah pembayaran selesai, Anda akan diarahkan kembali ke halaman ini.</li>
                   <li className="text-sm">
-                    Klik tombol "Verifikasi Pembayaran PayPal" di bawah untuk mengonfirmasi status pembayaran.
+                    Klik tombol "Verifikasi Pembayaran PayPal" di atas untuk mengonfirmasi status pembayaran.
+                  </li>
+                  <li className="text-sm">
+                    Setelah verifikasi berhasil, akun Anda akan otomatis diupgrade ke premium.
                   </li>
                 </ol>
               </div>
@@ -763,17 +786,6 @@ export function PremiumClient({
               </Button>
             </div>
           </div>
-          {/* Tambahkan tombol verifikasi PayPal jika gateway adalah PayPal */}
-          {currentTransaction.gateway === "paypal" && (
-            <div className="mt-4 bg-blue-50 p-4 rounded-md border-2 border-blue-100">
-              <h4 className="font-medium text-blue-800 mb-2 text-center">Verifikasi Pembayaran PayPal</h4>
-              <p className="text-sm text-blue-700 mb-3 text-center">
-                Jika Anda sudah menyelesaikan pembayaran di PayPal, klik tombol di bawah untuk mengaktifkan akun premium
-                Anda.
-              </p>
-              <CheckPayPalStatus orderId={currentTransaction.orderId} />
-            </div>
-          )}
         </div>
       </div>
     )
