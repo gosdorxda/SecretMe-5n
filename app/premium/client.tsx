@@ -43,7 +43,6 @@ type Transaction = {
   updatedAt: string
   gateway: string
   paymentDetails?: any
-  gatewayReference?: string
 }
 
 type PremiumClientProps = {
@@ -275,7 +274,6 @@ export function PremiumClient({
         updatedAt: transaction.updated_at,
         gateway: transaction.payment_gateway,
         paymentDetails: transaction.payment_details || {},
-        gatewayReference: transaction.gateway_reference || transaction.order_id,
       }
       setCurrentTransaction(formattedTransaction)
       initializedRef.current = true
@@ -379,30 +377,6 @@ export function PremiumClient({
       })
     }
   }, [urlStatus, urlOrderId, toast])
-
-  // Efek untuk memeriksa status PayPal secara otomatis setelah redirect dari PayPal
-  useEffect(() => {
-    // Cek apakah ini redirect dari PayPal (PayPal menambahkan parameter token dan PayerID)
-    const urlParams = new URLSearchParams(window.location.search)
-    const paypalToken = urlParams.get("token")
-    const payerId = urlParams.get("PayerID")
-
-    // Jika ini adalah redirect dari PayPal dan transaksi pending dan gateway adalah PayPal
-    if (
-      paypalToken &&
-      payerId &&
-      currentTransaction?.status === "pending" &&
-      currentTransaction?.gateway === "paypal"
-    ) {
-      // Auto check status setelah page load
-      setTimeout(() => {
-        checkTransactionStatus()
-      }, 1500) // Delay sedikit untuk memastikan page sudah fully loaded
-
-      // Log untuk debugging
-      console.log("Auto checking PayPal payment status after redirect")
-    }
-  }, [currentTransaction])
 
   // Perbarui fungsi handlePayment untuk mengirim activeGateway
   const handlePayment = async () => {
@@ -682,48 +656,6 @@ export function PremiumClient({
             </div>
           )}
 
-          {/* Tampilan khusus untuk transaksi PayPal yang pending */}
-          {currentTransaction.gateway === "paypal" && (
-            <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
-              <div className="text-center mb-4">
-                <img src="/payment-icons/paypal.png" alt="PayPal" className="h-16 mx-auto mb-2" />
-                <div className="font-medium text-lg">PayPal Payment</div>
-                <div className="text-sm text-gray-500">
-                  Order ID: {currentTransaction.gatewayReference || currentTransaction.orderId}
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-md mb-4">
-                <div className="flex items-center">
-                  <Info className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
-                  <div className="text-sm">
-                    <span className="font-medium">Status Pembayaran PayPal:</span> Transaksi sedang diproses atau
-                    menunggu verifikasi.
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-sm mb-4">
-                <p>Jika Anda telah menyelesaikan pembayaran melalui PayPal:</p>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Pembayaran Anda sedang diverifikasi oleh sistem</li>
-                  <li>Akun akan otomatis ditingkatkan ke Premium setelah verifikasi selesai</li>
-                  <li>
-                    Jika dalam beberapa menit status belum berubah, gunakan tombol "Verifikasi Pembayaran PayPal" di
-                    bawah ini
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-4">
-                <CheckPayPalStatus
-                  orderId={currentTransaction.gatewayReference || currentTransaction.orderId}
-                  onSuccess={() => window.location.reload()}
-                />
-              </div>
-            </div>
-          )}
-
           {/* QR Code untuk QRIS */}
           {qrCodeUrl && paymentMethod === "QR" && (
             <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4 text-center">
@@ -881,9 +813,7 @@ export function PremiumClient({
                         {getStatusLabel(tx.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      {tx.gateway === "paypal" ? "PayPal" : tx.paymentMethod || tx.gateway || "-"}
-                    </TableCell>
+                    <TableCell className="text-right">{tx.paymentMethod || tx.gateway || "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
