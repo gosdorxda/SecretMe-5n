@@ -739,7 +739,7 @@ export function PremiumClient({
     return (
       <div className="p-4">
         <h3 className="text-lg font-medium mb-4 flex items-center">
-          <History className="mr-2 h-5 w-5 text-main" />
+          <History className="mr-2 h-5 w-5" />
           Riwayat Transaksi
         </h3>
 
@@ -832,7 +832,7 @@ export function PremiumClient({
     return (
       <div className="mb-6">
         <h3 className="text-lg font-medium mb-4 flex items-center">
-          <CreditCard className="h-5 w-5 text-main mr-2" />
+          <CreditCard className="h-5 w-5 text-green-500 mr-2" />
           Pilih Metode Pembayaran
           {activeGateway === "tripay" && (
             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md">TriPay</span>
@@ -889,7 +889,7 @@ export function PremiumClient({
                           key={index}
                           className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
                         >
-                          <CheckCircle className="h-3 w-3 mr-1 text-main" />
+                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
                           {feature}
                         </span>
                       ))}
@@ -948,12 +948,12 @@ export function PremiumClient({
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <Card className="mb-6 neo-card border-2 border-main/20 shadow-lg overflow-hidden">
+          <Card className="mb-6 neo-card border-2 shadow-lg overflow-hidden">
             <CardContent className="pt-6 pb-4 relative">
-              <div className="mb-6 p-4 rounded-md border-2 border-main/20 bg-main/5">
+              <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-3">
-                  <div className="bg-white p-2 rounded-md border border-main/30">
-                    <Info className="h-5 w-5 text-main" />
+                  <div className="bg-white p-2 rounded-md border">
+                    <Info className="h-5 w-5 text-blue-500" />
                   </div>
                   <div>
                     <h3 className="font-semibold">Status Akun: Free</h3>
@@ -966,7 +966,7 @@ export function PremiumClient({
               {renderPaymentMethods()}
 
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md border">
-                <Shield className="h-4 w-4 text-main" />
+                <Shield className="h-4 w-4 text-green-500" />
                 <span>Pembayaran aman & terenkripsi</span>
               </div>
 
@@ -1011,13 +1011,13 @@ export function PremiumClient({
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <Card className="mb-6 neo-card border-2 border-main/20 shadow-lg overflow-hidden">
+        <Card className="mb-6 neo-card border-2 shadow-lg overflow-hidden">
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
             {currentTransaction && currentTransaction.status === "pending" ? (
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium flex items-center">
-                  <Clock3 className="h-5 w-5 mr-2 text-main" />
+                  <Clock3 className="h-5 w-5 mr-2 text-yellow-600" />
                   Status Pembayaran
                 </h3>
                 <Badge variant="warning" className="text-base py-1 px-3">
@@ -1030,10 +1030,10 @@ export function PremiumClient({
               renderPendingTransactionDetails()
             ) : (
               <>
-                <div className="mb-6 p-4 rounded-md border-2 border-main/20 bg-main/5">
+                <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
                   <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded-md border border-main/30">
-                      <Info className="h-5 w-5 text-main" />
+                    <div className="bg-white p-2 rounded-md border">
+                      <Info className="h-5 w-5 text-blue-500" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Status Akun: Free</h3>
@@ -1046,7 +1046,7 @@ export function PremiumClient({
                 {renderPaymentMethods()}
 
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md">
-                  <Shield className="h-4 w-4 text-main" />
+                  <Shield className="h-4 w-4 text-green-500" />
                   <span>Pembayaran aman & terenkripsi</span>
                 </div>
               </>
