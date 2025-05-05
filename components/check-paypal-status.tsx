@@ -37,12 +37,12 @@ export function CheckPayPalStatus({ orderId, gatewayReference, onSuccess }: Chec
         // Jika ada callback onSuccess, panggil
         if (onSuccess) {
           onSuccess()
+        } else {
+          // Reload halaman setelah 2 detik
+          setTimeout(() => {
+            window.location.reload()
+          }, 2000)
         }
-
-        // Reload halaman setelah 2 detik
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
       } else if (data.transaction?.status === "pending") {
         toast({
           title: "Pembayaran Masih Diproses",
