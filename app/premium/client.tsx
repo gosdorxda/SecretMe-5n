@@ -739,7 +739,7 @@ export function PremiumClient({
     return (
       <div className="p-4">
         <h3 className="text-lg font-medium mb-4 flex items-center">
-          <History className="mr-2 h-5 w-5" />
+          <History className="mr-2 h-5 w-5 text-main" />
           Riwayat Transaksi
         </h3>
 
@@ -756,36 +756,38 @@ export function PremiumClient({
           </div>
         ) : (
           <div className="border-2 rounded-md overflow-hidden shadow-sm">
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead className="w-[180px]">Tanggal</TableHead>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Jumlah</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Metode</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.map((tx) => (
-                  <TableRow key={tx.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{formatDate(tx.createdAt)}</TableCell>
-                    <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
-                    <TableCell>Rp {tx.amount.toLocaleString("id-ID")}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          tx.status === "success" ? "success" : tx.status === "pending" ? "warning" : "destructive"
-                        }
-                      >
-                        {getStatusLabel(tx.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{tx.paymentMethod || tx.gateway || "-"}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead className="w-[180px]">Tanggal</TableHead>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Jumlah</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Metode</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((tx) => (
+                    <TableRow key={tx.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium">{formatDate(tx.createdAt)}</TableCell>
+                      <TableCell className="font-mono text-xs">{tx.orderId}</TableCell>
+                      <TableCell>Rp {tx.amount.toLocaleString("id-ID")}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            tx.status === "success" ? "success" : tx.status === "pending" ? "warning" : "destructive"
+                          }
+                        >
+                          {getStatusLabel(tx.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{tx.paymentMethod || tx.gateway || "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
 
@@ -830,7 +832,7 @@ export function PremiumClient({
     return (
       <div className="mb-6">
         <h3 className="text-lg font-medium mb-4 flex items-center">
-          <CreditCard className="h-5 w-5 text-green-500 mr-2" />
+          <CreditCard className="h-5 w-5 text-main mr-2" />
           Pilih Metode Pembayaran
           {activeGateway === "tripay" && (
             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md">TriPay</span>
@@ -847,9 +849,9 @@ export function PremiumClient({
               <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
               <Label
                 htmlFor={method.id}
-                className="flex flex-col rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
+                className="flex flex-col rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-main [&:has([data-state=checked])]:border-main transition-all duration-200"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border-2 border-muted">
                       {method.icon ? (
@@ -872,7 +874,7 @@ export function PremiumClient({
                       {method.description && <div className="text-xs text-gray-500 mt-1">{method.description}</div>}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="w-full md:w-auto text-left md:text-right mt-2 md:mt-0">
                     <div className="font-semibold text-lg">Rp {premiumPrice.toLocaleString("id-ID")}</div>
                     <div className="text-xs text-muted-foreground">Sekali bayar</div>
                   </div>
@@ -887,7 +889,7 @@ export function PremiumClient({
                           key={index}
                           className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
                         >
-                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                          <CheckCircle className="h-3 w-3 mr-1 text-main" />
                           {feature}
                         </span>
                       ))}
@@ -899,7 +901,7 @@ export function PremiumClient({
               {/* Badge untuk metode yang direkomendasikan */}
               {method.recommended && (
                 <div className="absolute -top-2 -right-2 z-10">
-                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs px-3 py-1 rounded-md shadow-md flex items-center gap-1">
+                  <div className="bg-main text-white text-xs px-3 py-1 rounded-md shadow-md flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     Rekomendasi
                   </div>
@@ -919,14 +921,14 @@ export function PremiumClient({
     return (
       <div className="container max-w-6xl mx-auto py-12 px-4">
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <div className="text-9xl mb-8">🎉</div>
-          <h2 className="text-2xl font-bold text-center mb-6">Selamat!</h2>
+          <div className="text-9xl mb-8 animate-bounce-slow">🎉</div>
+          <h2 className="text-2xl font-bold text-center mb-6 text-main">Selamat!</h2>
           <p className="text-center text-muted-foreground mb-10">Akun premium Anda berhasil diaktivasi.</p>
           <Button
             onClick={() => router.push("/")}
             variant="default"
             size="lg"
-            className="w-full max-w-xs py-3 h-auto text-base"
+            className="w-full max-w-xs py-3 h-auto text-base bg-main hover:bg-main/90"
           >
             Kembali ke Beranda
           </Button>
@@ -942,16 +944,16 @@ export function PremiumClient({
       <div className="container max-w-6xl mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
+            <h1 className="text-3xl font-bold mb-2 text-main">Upgrade ke Premium</h1>
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
+          <Card className="mb-6 neo-card border-2 border-main/20 shadow-lg overflow-hidden">
             <CardContent className="pt-6 pb-4 relative">
-              <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
+              <div className="mb-6 p-4 rounded-md border-2 border-main/20 bg-main/5">
                 <div className="flex items-center gap-3">
-                  <div className="bg-white p-2 rounded-md border">
-                    <Info className="h-5 w-5 text-blue-500" />
+                  <div className="bg-white p-2 rounded-md border border-main/30">
+                    <Info className="h-5 w-5 text-main" />
                   </div>
                   <div>
                     <h3 className="font-semibold">Status Akun: Free</h3>
@@ -964,7 +966,7 @@ export function PremiumClient({
               {renderPaymentMethods()}
 
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md border">
-                <Shield className="h-4 w-4 text-green-500" />
+                <Shield className="h-4 w-4 text-main" />
                 <span>Pembayaran aman & terenkripsi</span>
               </div>
 
@@ -979,7 +981,7 @@ export function PremiumClient({
                 onClick={handlePayment}
                 disabled={isLoading}
                 variant="success"
-                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3"
+                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3 bg-main hover:bg-main/90"
               >
                 {isLoading ? (
                   <>
@@ -995,7 +997,7 @@ export function PremiumClient({
           </Card>
 
           {/* Riwayat Transaksi di bawah card utama */}
-          <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
+          <Card className="mb-6 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )
@@ -1005,21 +1007,33 @@ export function PremiumClient({
     <div className="container max-w-6xl mx-auto py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
+          <h1 className="text-3xl font-bold mb-2 text-main">Upgrade ke Premium</h1>
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
+        <Card className="mb-6 neo-card border-2 border-main/20 shadow-lg overflow-hidden">
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
+            {currentTransaction && currentTransaction.status === "pending" ? (
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium flex items-center">
+                  <Clock3 className="h-5 w-5 mr-2 text-main" />
+                  Status Pembayaran
+                </h3>
+                <Badge variant="warning" className="text-base py-1 px-3">
+                  {getStatusLabel(currentTransaction.status)}
+                </Badge>
+              </div>
+            ) : null}
+
             {currentTransaction && currentTransaction.status === "pending" ? (
               renderPendingTransactionDetails()
             ) : (
               <>
-                <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
+                <div className="mb-6 p-4 rounded-md border-2 border-main/20 bg-main/5">
                   <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded-md border">
-                      <Info className="h-5 w-5 text-blue-500" />
+                    <div className="bg-white p-2 rounded-md border border-main/30">
+                      <Info className="h-5 w-5 text-main" />
                     </div>
                     <div>
                       <h3 className="font-semibold">Status Akun: Free</h3>
@@ -1032,7 +1046,7 @@ export function PremiumClient({
                 {renderPaymentMethods()}
 
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md">
-                  <Shield className="h-4 w-4 text-green-500" />
+                  <Shield className="h-4 w-4 text-main" />
                   <span>Pembayaran aman & terenkripsi</span>
                 </div>
               </>
@@ -1049,7 +1063,7 @@ export function PremiumClient({
               <Button
                 onClick={() => router.push("/")}
                 variant="default"
-                className="w-full neo-btn py-3 h-auto text-base mt-3"
+                className="w-full neo-btn py-3 h-auto text-base mt-3 bg-main hover:bg-main/90"
               >
                 Kembali ke Beranda
               </Button>
@@ -1058,7 +1072,7 @@ export function PremiumClient({
                 onClick={handlePayment}
                 disabled={isLoading}
                 variant="success"
-                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3"
+                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3 bg-main hover:bg-main/90"
               >
                 {isLoading ? (
                   <>
@@ -1075,7 +1089,7 @@ export function PremiumClient({
         </Card>
 
         {/* Riwayat Transaksi di bawah card utama */}
-        <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
+        <Card className="mb-6 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
       </div>
     </div>
   )
