@@ -24,8 +24,6 @@ import {
   Clock3,
   CreditCard,
   ChevronRight,
-  Award,
-  Sparkles,
 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -131,7 +129,7 @@ const tripayPaymentMethods = [
         name: "BCA Virtual Account",
         icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
         description: "Transfer melalui ATM, m-Banking, atau internet banking",
-        features: ["Verifikasi otomatis", "Aman & terpercaya"],
+        features: ["Aman & terpercaya"],
       },
     ],
   },
@@ -914,86 +912,29 @@ export function PremiumClient({
     )
   }
 
+  // Ubah tampilan untuk status premium berhasil menjadi lebih sederhana
+
   // Jika user sudah premium, tampilkan pesan sukses
   if (isPremium) {
     return (
       <div className="container max-w-6xl mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Akun Premium</h1>
-            <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
-          </div>
-
           <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">Status Premium</CardTitle>
-                </div>
-                <div className="text-right">
-                  <Badge variant="success" className="text-base py-1 px-3">
-                    Aktif
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
             <CardContent className="pt-8 pb-6 relative">
-              <div className="mb-8 p-4 rounded-md border-green-200 bg-green-50">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-md">
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-green-800">Akun Anda sudah Premium</h3>
-                    <p className="text-sm text-green-700">Semua fitur premium telah diaktifkan untuk akun Anda</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center mb-8">
-                <div className="bg-gradient-to-r from-gray-800 to-black p-8 rounded-md shadow-lg">
-                  <Award className="h-16 w-16 text-yellow-400" />
-                </div>
-              </div>
-
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-semibold mb-3">Premium Aktif</h3>
-                <p className="text-muted-foreground max-w-lg mx-auto">
-                  Terima kasih telah menjadi pengguna premium. Nikmati semua fitur eksklusif SecretMe tanpa batasan.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
-                  <Shield className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                  <h4 className="font-medium">Privasi Terjamin</h4>
-                  <p className="text-xs text-gray-500">Keamanan data Anda adalah prioritas kami</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
-                  <Zap className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                  <h4 className="font-medium">Fitur Tanpa Batas</h4>
-                  <p className="text-xs text-gray-500">Akses semua fitur premium tanpa batasan</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
-                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-                  <h4 className="font-medium">Pengalaman Premium</h4>
-                  <p className="text-xs text-gray-500">Nikmati pengalaman pengguna yang lebih baik</p>
-                </div>
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="text-8xl mb-6">🎉</div>
+                <h2 className="text-2xl font-bold text-center mb-2">Selamat!</h2>
+                <p className="text-center text-muted-foreground mb-8">Akun premium Anda berhasil diaktivasi.</p>
+                <Button
+                  onClick={() => router.push("/")}
+                  variant="default"
+                  className="w-full max-w-xs neo-btn py-3 h-auto text-base"
+                >
+                  Kembali ke Beranda
+                </Button>
               </div>
             </CardContent>
-            <CardFooter className="border-t p-6">
-              <Button
-                onClick={() => router.push("/dashboard")}
-                variant="default"
-                className="w-full neo-btn py-3 h-auto text-base mt-3"
-              >
-                Kembali ke Dashboard
-              </Button>
-            </CardFooter>
           </Card>
-
-          {/* Riwayat Transaksi untuk pengguna premium */}
-          <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
         </div>
       </div>
     )

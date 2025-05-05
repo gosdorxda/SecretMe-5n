@@ -136,71 +136,84 @@ export function PaymentStatusPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {transaction && (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">ID Transaksi:</span>
-                <span className="font-mono">{transaction.plan_id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jumlah:</span>
-                <span>{formatCurrency(transaction.amount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Metode Pembayaran:</span>
-                <span>{transaction.payment_method || "Belum dipilih"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status:</span>
-                <span
-                  className={
-                    transaction.status === "success"
-                      ? "text-green-500"
-                      : transaction.status === "failed" || transaction.status === "expired"
-                        ? "text-red-500"
-                        : "text-yellow-500"
-                  }
-                >
-                  {transaction.status === "success"
-                    ? "Berhasil"
-                    : transaction.status === "failed"
-                      ? "Gagal"
-                      : transaction.status === "expired"
-                        ? "Kadaluarsa"
-                        : "Tertunda"}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {transaction?.status === "pending" && (
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={checkTransactionStatus}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Memeriksa...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Periksa Status Pembayaran
-                  </>
-                )}
+          {transaction?.status === "success" ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="text-8xl mb-6">🎉</div>
+              <h2 className="text-2xl font-bold text-center mb-2">Selamat!</h2>
+              <p className="text-center text-muted-foreground mb-8">Akun premium Anda berhasil diaktivasi.</p>
+              <Button variant="default" size="lg" className="w-full max-w-xs" asChild>
+                <Link href="/">Kembali ke Beranda</Link>
               </Button>
             </div>
+          ) : (
+            <>
+              {transaction && (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">ID Transaksi:</span>
+                    <span className="font-mono">{transaction.plan_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Jumlah:</span>
+                    <span>{formatCurrency(transaction.amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Metode Pembayaran:</span>
+                    <span>{transaction.payment_method || "Belum dipilih"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <span
+                      className={
+                        transaction.status === "success"
+                          ? "text-green-500"
+                          : transaction.status === "failed" || transaction.status === "expired"
+                            ? "text-red-500"
+                            : "text-yellow-500"
+                      }
+                    >
+                      {transaction.status === "success"
+                        ? "Berhasil"
+                        : transaction.status === "failed"
+                          ? "Gagal"
+                          : transaction.status === "expired"
+                            ? "Kadaluarsa"
+                            : "Tertunda"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {transaction?.status === "pending" && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={checkTransactionStatus}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Memeriksa...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Periksa Status Pembayaran
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              <div className="mt-4">
+                <Button variant="default" size="sm" className="w-full" asChild>
+                  <Link href="/premium">Kembali ke Halaman Premium</Link>
+                </Button>
+              </div>
+            </>
           )}
-          <div className="mt-4">
-            <Button variant="default" size="sm" className="w-full" asChild>
-              <Link href="/premium">Kembali ke Halaman Premium</Link>
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
