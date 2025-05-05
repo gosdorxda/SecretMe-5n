@@ -137,24 +137,6 @@ const tripayPaymentMethods = [
   },
 ]
 
-// Tambahkan definisi metode pembayaran untuk PayPal
-const paypalPaymentMethods = [
-  {
-    id: "paypal",
-    name: "PayPal",
-    methods: [
-      {
-        id: "PAYPAL",
-        name: "PayPal",
-        icon: "https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg",
-        recommended: true,
-        description: "Bayar dengan PayPal, kartu kredit, atau kartu debit",
-        features: ["Proses instan", "Tersedia 24/7", "Aman & terpercaya"],
-      },
-    ],
-  },
-]
-
 // Fungsi untuk menampilkan instruksi pembayaran berdasarkan metode pembayaran
 const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) => {
   if (!paymentMethod || !paymentDetails) return null
@@ -207,25 +189,6 @@ const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) =
           </div>
         </div>
       )
-    case "PAYPAL": // PayPal
-      return (
-        <div className="bg-white p-4 rounded-md border-2 border-gray-100 shadow-sm">
-          <div className="text-sm font-semibold mb-2 flex items-center">
-            <Info className="h-4 w-4 mr-2 text-blue-600" />
-            Instruksi Pembayaran PayPal:
-          </div>
-          <ol className="list-decimal pl-5 space-y-2 text-sm">
-            <li>Anda akan diarahkan ke halaman PayPal untuk menyelesaikan pembayaran.</li>
-            <li>Masuk ke akun PayPal Anda atau bayar sebagai tamu dengan kartu kredit/debit.</li>
-            <li>Konfirmasi pembayaran di halaman PayPal.</li>
-            <li>Anda akan diarahkan kembali ke situs kami setelah pembayaran selesai.</li>
-          </ol>
-          <div className="mt-3 text-xs text-gray-500 bg-blue-50 p-2 rounded-md flex items-start">
-            <Shield className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0 text-blue-500" />
-            <span>PayPal menyediakan perlindungan pembeli dan enkripsi data untuk keamanan transaksi Anda.</span>
-          </div>
-        </div>
-      )
     default:
       return (
         <div className="bg-white p-4 rounded-md border-2 border-gray-100 shadow-sm">
@@ -268,8 +231,6 @@ export function PremiumClient({
     switch (activeGateway) {
       case "tripay":
         return tripayPaymentMethods
-      case "paypal":
-        return paypalPaymentMethods
       case "duitku":
       default:
         return duitkuPaymentMethods
@@ -278,15 +239,6 @@ export function PremiumClient({
 
   // Gunakan metode pembayaran yang sesuai dengan gateway aktif
   const currentPaymentMethods = getPaymentMethodsForGateway()
-
-  // Set default payment method based on gateway
-  useEffect(() => {
-    if (activeGateway === "paypal") {
-      setSelectedPaymentMethod("PAYPAL")
-    } else if (activeGateway === "tripay" || activeGateway === "duitku") {
-      setSelectedPaymentMethod("QR")
-    }
-  }, [activeGateway])
 
   // Format transaksi untuk client
   useEffect(() => {
@@ -370,7 +322,6 @@ export function PremiumClient({
     if (currentTransaction?.status === "pending") {
       // Initial check
       checkStatus()
-
       // Set up interval for subsequent checks
       intervalRef.current = setInterval(checkStatus, 10000)
     }
@@ -858,8 +809,8 @@ export function PremiumClient({
 
   // Render metode pembayaran
   const renderPaymentMethods = () => {
-    // Urutkan metode pembayaran: PayPal, QRIS, E-Wallet, Transfer Bank
-    const orderedCategories = ["paypal", "qris", "ewallet", "bank"]
+    // Urutkan metode pembayaran: QRIS, E-Wallet, Transfer Bank
+    const orderedCategories = ["qris", "ewallet", "bank"]
 
     // Flatten semua metode pembayaran dari semua kategori
     const allMethods = []
@@ -883,9 +834,6 @@ export function PremiumClient({
         <h3 className="text-lg font-medium mb-4 flex items-center">
           <CreditCard className="h-5 w-5 text-green-500 mr-2" />
           Pilih Metode Pembayaran
-          {activeGateway === "paypal" && (
-            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md">PayPal</span>
-          )}
           {activeGateway === "tripay" && (
             <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-md">TriPay</span>
           )}
@@ -1067,7 +1015,7 @@ export function PremiumClient({
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">Pilih Metode Pembayaran</CardTitle>
                 <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                  {activeGateway === "tripay" ? "TriPay" : activeGateway === "paypal" ? "PayPal" : "Duitku"}
+                  {activeGateway === "tripay" ? "TriPay" : "Duitku"}
                 </Badge>
               </div>
             </CardHeader>
