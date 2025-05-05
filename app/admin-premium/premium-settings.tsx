@@ -711,7 +711,6 @@ export default function PremiumSettings() {
                     <SelectContent>
                       <SelectItem value="duitku">Duitku</SelectItem>
                       <SelectItem value="tripay">TriPay</SelectItem>
-                      <SelectItem value="paypal">PayPal</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">

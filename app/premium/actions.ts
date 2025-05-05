@@ -4,9 +4,15 @@ import { createClient } from "@/lib/supabase/server"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
-import { validateTransaction } from "@/lib/payment/transaction-validator"
-import { withRetry } from "@/lib/payment/retry-handler"
 
+// Periksa apakah ada pengambilan harga dari database di server actions
+// Jika ada, ubah untuk menggunakan environment variables
+
+// Tambahkan kode berikut di awal file (jika belum ada):
+// const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+// const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+
+// Dengan kode ini:
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
   const supabase = createClient()
@@ -37,6 +43,8 @@ async function getPremiumSettings() {
   return { premiumPrice, activeGateway }
 }
 
+// Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
+
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
 export async function createTransaction(paymentMethod: string, gatewayName: string | undefined) {
   try {
@@ -57,36 +65,18 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: "Unauthorized" }
     }
 
-    // Validasi transaksi untuk mencegah duplicate payment
-    const validationResult = await validateTransaction(user.id, premiumPrice)
-    if (!validationResult.valid) {
-      // Handle berbagai alasan validasi gagal
-      if (validationResult.reason === "already_premium") {
-        return { success: false, error: "Anda sudah menjadi pengguna premium" }
-      }
-
-      if (validationResult.reason === "pending_transaction") {
-        return {
-          success: false,
-          error: "Anda memiliki transaksi yang sedang diproses",
-          pendingTransaction: validationResult.existingTransaction,
-        }
-      }
-
-      if (validationResult.reason === "recent_success") {
-        return {
-          success: false,
-          error: "Anda telah berhasil melakukan pembayaran dalam 24 jam terakhir",
-          successTransaction: validationResult.existingTransaction,
-        }
-      }
-
-      if (validationResult.reason === "invalid_amount") {
-        return { success: false, error: "Jumlah pembayaran tidak valid" }
-      }
-
-      return { success: false, error: "Validasi transaksi gagal" }
-    }
+    // Kirim request ke API dengan gatewayName
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
+    const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        paymentMethod,
+        gatewayName: finalGatewayName, // Tambahkan gatewayName ke body request
+      }),
+    })
 
     // Get user session
     const {
@@ -111,12 +101,19 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: "Anda sudah menjadi pengguna premium" }
     }
 
+    // Get premium price from config or env
+    // const { data: configData } = await supabase
+    //   .from("site_config")
+    //   .select("config")
+    //   .eq("type", "premium_settings")
+    //   .single()
+
+    // const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+
     // Generate order ID
     const orderId = generateOrderId(session.user.id)
 
-    // Create transaction record with idempotency key to prevent duplicates
-    const idempotencyKey = `${session.user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-
+    // Create transaction record
     const { data: transaction, error: transactionError } = await supabase
       .from("premium_transactions")
       .insert({
@@ -124,11 +121,8 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
         plan_id: orderId,
         amount: premiumPrice,
         status: "pending",
-        payment_gateway: finalGatewayName,
-        // Set payment method to "PayPal" if using PayPal gateway
-        payment_method: finalGatewayName === "paypal" ? "PayPal" : paymentMethod,
-        idempotency_key: idempotencyKey,
-        created_at: new Date().toISOString(),
+        payment_gateway: finalGatewayName, // Gunakan gatewayName yang dipilih
+        payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
       })
       .select()
       .single()
@@ -141,31 +135,20 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Get payment gateway
     const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
 
-    // Create transaction in payment gateway with retry logic
-    const result = await withRetry(
-      async () => {
-        return await gateway.createTransaction({
-          userId: session.user.id,
-          userEmail: userData.email || session.user.email || "",
-          userName: userData.name || "User",
-          amount: premiumPrice,
-          orderId: orderId,
-          description: "SecretMe Premium Lifetime",
-          successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
-          failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
-          pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
-          notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-          paymentMethod: paymentMethod,
-        })
-      },
-      {
-        maxRetries: 3,
-        initialDelay: 1000,
-      },
-      (attempt, error, delay) => {
-        console.warn(`Retry attempt ${attempt} for creating transaction: ${error.message}`)
-      },
-    )
+    // Create transaction in payment gateway
+    const result = await gateway.createTransaction({
+      userId: session.user.id,
+      userEmail: userData.email || session.user.email || "",
+      userName: userData.name || "User",
+      amount: premiumPrice,
+      orderId: orderId,
+      description: "SecretMe Premium Lifetime",
+      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
+      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
+      pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
+      notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
+      paymentMethod: paymentMethod, // Teruskan metode pembayaran ke gateway
+    })
 
     if (!result.success) {
       // Update transaction status to failed
@@ -181,72 +164,22 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: result.error || "Gagal membuat transaksi" }
     }
 
-    // PERBAIKAN: Pastikan gateway_reference selalu diisi dengan ID PayPal
-    const gatewayReference = result.gatewayReference || result.token
-
-    // Log transaksi ke payment_notification_logs
-    await supabase.from("payment_notification_logs").insert({
-      request_id: `create-tx-${Date.now()}`,
-      gateway: finalGatewayName,
-      raw_payload: {
-        action: "create-transaction",
-        userId: session.user.id,
-        orderId: orderId,
-        amount: premiumPrice,
-        gatewayReference: gatewayReference,
-      },
-      status: "created",
-      transaction_id: transaction.id,
-      order_id: orderId,
-      event_type: "transaction-created",
-    })
-
-    // Update transaction with gateway_reference
-    const { error: updateError } = await supabase
+    // Update transaction with gateway reference
+    await supabase
       .from("premium_transactions")
       .update({
-        gateway_reference: gatewayReference,
         payment_details: {
-          gateway_reference: gatewayReference,
+          gateway_reference: result.gatewayReference,
           redirect_url: result.redirectUrl,
-          token: result.token,
-          created_at: new Date().toISOString(),
-          payment_method: paymentMethod,
-          gateway: finalGatewayName,
-          idempotency_key: idempotencyKey,
         },
       })
       .eq("id", transaction.id)
-
-    if (updateError) {
-      console.error("Error updating transaction with gateway_reference:", updateError)
-      // Fallback update if gateway_reference column has issues
-      await supabase
-        .from("premium_transactions")
-        .update({
-          payment_details: {
-            gateway_reference: gatewayReference,
-            redirect_url: result.redirectUrl,
-            token: result.token,
-            created_at: new Date().toISOString(),
-            payment_method: paymentMethod,
-            gateway: finalGatewayName,
-            idempotency_key: idempotencyKey,
-          },
-        })
-        .eq("id", transaction.id)
-    }
-
-    // Log untuk debugging
-    console.log(`Transaction ${transaction.id} created with gateway_reference: ${gatewayReference}`)
 
     return {
       success: true,
       redirectUrl: result.redirectUrl,
       orderId: orderId,
       token: result.token,
-      gatewayReference: gatewayReference, // Tambahkan gatewayReference ke respons
-      transactionId: transaction.id,
     }
   } catch (error: any) {
     console.error("Error creating transaction:", error)
@@ -296,18 +229,6 @@ export async function getLatestTransaction() {
       return { success: true, isPremium: false, hasTransaction: false }
     }
 
-    // Coba dapatkan gateway_reference dari kolom atau dari payment_details
-    let gatewayReference = transactionData.gateway_reference
-
-    if (!gatewayReference && transactionData.payment_details) {
-      const details =
-        typeof transactionData.payment_details === "string"
-          ? JSON.parse(transactionData.payment_details)
-          : transactionData.payment_details
-
-      gatewayReference = details?.gateway_reference || details?.token || null
-    }
-
     // Format transaksi untuk client
     const transaction = {
       id: transactionData.id,
@@ -318,8 +239,6 @@ export async function getLatestTransaction() {
       createdAt: transactionData.created_at,
       updatedAt: transactionData.updated_at,
       gateway: transactionData.payment_gateway,
-      gatewayReference: gatewayReference, // Gunakan gateway_reference yang sudah diambil
-      paymentDetails: transactionData.payment_details || {}, // Tambahkan payment_details
     }
 
     return { success: true, isPremium: false, hasTransaction: true, transaction }
@@ -355,28 +274,16 @@ export async function getTransactionHistory() {
     }
 
     // Format transaksi untuk client
-    const transactions = transactionsData.map((tx) => {
-      // Coba dapatkan gateway_reference dari kolom atau dari payment_details
-      let gatewayReference = tx.gateway_reference
-
-      if (!gatewayReference && tx.payment_details) {
-        const details = typeof tx.payment_details === "string" ? JSON.parse(tx.payment_details) : tx.payment_details
-
-        gatewayReference = details?.gateway_reference || details?.token || null
-      }
-
-      return {
-        id: tx.id,
-        orderId: tx.plan_id,
-        status: tx.status,
-        amount: tx.amount,
-        paymentMethod: tx.payment_method || "",
-        createdAt: tx.created_at,
-        updatedAt: tx.updated_at,
-        gateway: tx.payment_gateway,
-        gatewayReference: gatewayReference, // Gunakan gateway_reference yang sudah diambil
-      }
-    })
+    const transactions = transactionsData.map((tx) => ({
+      id: tx.id,
+      orderId: tx.plan_id,
+      status: tx.status,
+      amount: tx.amount,
+      paymentMethod: tx.payment_method || "",
+      createdAt: tx.created_at,
+      updatedAt: tx.updated_at,
+      gateway: tx.payment_gateway,
+    }))
 
     return { success: true, transactions }
   } catch (error: any) {
@@ -432,17 +339,7 @@ export async function cancelTransaction(transactionId: string) {
     console.log(`[${requestId}] 🔍 Detected payment gateway: ${gatewayName}`)
 
     // Periksa apakah ada referensi gateway
-    let gatewayReference = transactionData.gateway_reference
-
-    // Jika tidak ada di kolom gateway_reference, coba ambil dari payment_details
-    if (!gatewayReference && transactionData.payment_details) {
-      const details =
-        typeof transactionData.payment_details === "string"
-          ? JSON.parse(transactionData.payment_details)
-          : transactionData.payment_details
-
-      gatewayReference = details?.gateway_reference || details?.token || null
-    }
+    const gatewayReference = transactionData.payment_details?.gateway_reference
 
     // Untuk TriPay, kita tidak memanggil API cancel dan membiarkan transaksi expired dengan sendirinya
     if (gatewayName !== "tripay" && gatewayReference) {
@@ -482,49 +379,21 @@ export async function cancelTransaction(transactionId: string) {
 
     // Update status transaksi di database lokal
     console.log(`[${requestId}] 📝 Updating transaction status to cancelled in database`)
+    const { error: updateError } = await supabase
+      .from("premium_transactions")
+      .update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+        payment_details: {
+          ...transactionData.payment_details,
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: "user",
+        },
+      })
+      .eq("id", transactionId)
 
-    try {
-      // Coba update dengan gateway_reference jika kolom ada
-      const { error: updateError } = await supabase
-        .from("premium_transactions")
-        .update({
-          status: "cancelled",
-          updated_at: new Date().toISOString(),
-          gateway_reference: gatewayReference, // Coba update gateway_reference jika kolom ada
-          payment_details: {
-            ...transactionData.payment_details,
-            gateway_reference: gatewayReference, // Selalu update di payment_details
-            cancelled_at: new Date().toISOString(),
-            cancelled_by: "user",
-          },
-        })
-        .eq("id", transactionId)
-
-      if (updateError) {
-        console.error(`[${requestId}] ⚠️ Error updating with gateway_reference: ${updateError.message}`)
-
-        // Jika gagal karena kolom gateway_reference tidak ada, update tanpa kolom tersebut
-        const { error: fallbackUpdateError } = await supabase
-          .from("premium_transactions")
-          .update({
-            status: "cancelled",
-            updated_at: new Date().toISOString(),
-            payment_details: {
-              ...transactionData.payment_details,
-              gateway_reference: gatewayReference, // Selalu update di payment_details
-              cancelled_at: new Date().toISOString(),
-              cancelled_by: "user",
-            },
-          })
-          .eq("id", transactionId)
-
-        if (fallbackUpdateError) {
-          console.error(`[${requestId}] ❌ Failed to update transaction status:`, fallbackUpdateError)
-          return { success: false, error: "Failed to cancel transaction" }
-        }
-      }
-    } catch (error: any) {
-      console.error(`[${requestId}] ❌ Error updating transaction:`, error)
+    if (updateError) {
+      console.error(`[${requestId}] ❌ Failed to update transaction status:`, updateError)
       return { success: false, error: "Failed to cancel transaction" }
     }
 

@@ -31,7 +31,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { CheckPayPalStatus } from "@/components/check-paypal-status"
 
 type Transaction = {
   id: string
@@ -138,24 +137,6 @@ const tripayPaymentMethods = [
   },
 ]
 
-// Tambahkan definisi metode pembayaran untuk PayPal
-const paypalPaymentMethods = [
-  {
-    id: "paypal",
-    name: "PayPal",
-    methods: [
-      {
-        id: "PP",
-        name: "PayPal",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment/paypal-logo.png",
-        recommended: true,
-        description: "Bayar dengan PayPal atau kartu kredit/debit",
-        features: ["Proses instan", "Tersedia 24/7", "Pembayaran aman"],
-      },
-    ],
-  },
-]
-
 // Fungsi untuk menampilkan instruksi pembayaran berdasarkan metode pembayaran
 const renderPaymentInstructions = (paymentMethod: string, paymentDetails: any) => {
   if (!paymentMethod || !paymentDetails) return null
@@ -250,8 +231,6 @@ export function PremiumClient({
     switch (activeGateway) {
       case "tripay":
         return tripayPaymentMethods
-      case "paypal":
-        return paypalPaymentMethods
       case "duitku":
       default:
         return duitkuPaymentMethods
@@ -603,7 +582,6 @@ export function PremiumClient({
     const customerEmail = paymentDetails.customer_email || ""
     const amount = currentTransaction.amount || premiumPrice
     const paymentMethod = currentTransaction.paymentMethod || ""
-    const isPayPal = currentTransaction.gateway === "paypal"
 
     return (
       <div className="space-y-4">
@@ -614,11 +592,7 @@ export function PremiumClient({
             </div>
             <div>
               <h3 className="font-semibold text-yellow-800">Menunggu Pembayaran</h3>
-              <p className="text-sm text-yellow-700">
-                {isPayPal
-                  ? "Verifikasi pembayaran PayPal Anda untuk mengaktifkan akun premium"
-                  : "Selesaikan pembayaran sebelum batas waktu berakhir"}
-              </p>
+              <p className="text-sm text-yellow-700">Selesaikan pembayaran sebelum batas waktu berakhir</p>
             </div>
           </div>
 
@@ -629,10 +603,7 @@ export function PremiumClient({
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Metode Pembayaran:</span>
-                <span className="font-medium flex items-center">
-                  {isPayPal && <img src="/payment-icons/paypal.png" alt="PayPal" className="h-4 mr-1" />}
-                  {paymentMethod}
-                </span>
+                <span className="font-medium">{paymentMethod}</span>
               </div>
 
               <div className="flex justify-between">
@@ -655,18 +626,6 @@ export function PremiumClient({
               )}
             </div>
           </div>
-
-          {/* Tambahkan tombol verifikasi PayPal jika gateway adalah PayPal */}
-          {isPayPal && (
-            <div className="mb-4 bg-blue-50 p-4 rounded-md border-2 border-blue-100">
-              <h4 className="font-medium text-blue-800 mb-2">Verifikasi Pembayaran PayPal</h4>
-              <p className="text-sm text-blue-700 mb-3">
-                Jika Anda sudah menyelesaikan pembayaran di PayPal, klik tombol di bawah untuk mengaktifkan akun premium
-                Anda.
-              </p>
-              <CheckPayPalStatus orderId={currentTransaction.orderId} />
-            </div>
-          )}
 
           {/* Waktu Kadaluarsa */}
           {expiredTime && (
@@ -715,21 +674,7 @@ export function PremiumClient({
               <span>Instruksi Pembayaran</span>
             </div>
 
-            {isPayPal ? (
-              <div className="space-y-2">
-                <h4 className="font-medium">Pembayaran PayPal</h4>
-                <ol className="list-decimal pl-5 space-y-1">
-                  <li className="text-sm">Selesaikan pembayaran di situs PayPal.</li>
-                  <li className="text-sm">Setelah pembayaran selesai, Anda akan diarahkan kembali ke halaman ini.</li>
-                  <li className="text-sm">
-                    Klik tombol "Verifikasi Pembayaran PayPal" di atas untuk mengonfirmasi status pembayaran.
-                  </li>
-                  <li className="text-sm">
-                    Setelah verifikasi berhasil, akun Anda akan otomatis diupgrade ke premium.
-                  </li>
-                </ol>
-              </div>
-            ) : paymentDetails.instructions && paymentDetails.instructions.length > 0 ? (
+            {paymentDetails.instructions && paymentDetails.instructions.length > 0 ? (
               <div className="space-y-4">
                 {paymentDetails.instructions.map((instruction: any, index: number) => (
                   <div key={index} className="space-y-2">
