@@ -1016,19 +1016,6 @@ export function PremiumClient({
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <div className="mb-4 flex items-start gap-2 bg-blue-50 border border-blue-100 p-3 rounded-md text-xs text-blue-700">
-          <div className="mt-0.5">
-            <Info className="h-4 w-4 text-blue-500" />
-          </div>
-          <div>
-            <p className="font-medium mb-0.5">Pembayaran Aman & Terpercaya</p>
-            <p>
-              Transaksi diproses melalui TriPay, gateway pembayaran resmi dengan lisensi dari Bank Indonesia. Semua data
-              transaksi dienkripsi dan dilindungi sesuai standar keamanan perbankan.
-            </p>
-          </div>
-        </div>
-
         <Card className="mb-6 neo-card border-2 overflow-hidden">
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
