@@ -2,6 +2,8 @@ import type { PaymentGateway } from "./types"
 import { DuitkuGateway } from "./duitku-gateway"
 // Hapus import MidtransGateway
 import { TriPayGateway } from "./tripay-gateway"
+// Tambahkan import PayPalIPNGateway
+import { PayPalIPNGateway } from "./paypal-ipn-gateway"
 
 // Cache for payment config
 let paymentConfigCache: any = null
@@ -87,7 +89,8 @@ export async function getPaymentGateway(gatewayName = "duitku"): Promise<Payment
   }
 
   switch (gatewayName.toLowerCase()) {
-    // Hapus case midtrans
+    case "paypal":
+      return new PayPalIPNGateway()
     case "tripay":
       return new TriPayGateway()
     case "duitku":

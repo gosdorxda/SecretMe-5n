@@ -80,8 +80,16 @@ export async function POST(request: NextRequest) {
 
     logger.info(`Transaction record created for order: ${orderId}`)
 
-    // Get payment gateway
+    // Pastikan endpoint ini mendukung gateway PayPal
+    // Tambahkan case untuk PayPal dalam switch statement yang menangani gateway
+
+    // Contoh:
+    // Dalam fungsi yang menangani request, tambahkan case untuk PayPal
     const gateway = await getPaymentGateway(gatewayName)
+
+    // Pastikan gateway name bisa berupa "paypal"
+    // Tidak perlu mengubah logika utama karena kita sudah mengimplementasikan PayPalIPNGateway
+    // yang mengikuti interface PaymentGateway yang sama
     logger.info(`Using payment gateway: ${gatewayName}`)
 
     // Prepare callback URLs
