@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
@@ -917,24 +917,19 @@ export function PremiumClient({
   // Jika user sudah premium, tampilkan pesan sukses
   if (isPremium) {
     return (
-      <div className="container max-w-6xl mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-            <CardContent className="pt-8 pb-6 relative">
-              <div className="flex flex-col items-center justify-center py-8">
-                <div className="text-8xl mb-6">🎉</div>
-                <h2 className="text-2xl font-bold text-center mb-2">Selamat!</h2>
-                <p className="text-center text-muted-foreground mb-8">Akun premium Anda berhasil diaktivasi.</p>
-                <Button
-                  onClick={() => router.push("/")}
-                  variant="default"
-                  className="w-full max-w-xs neo-btn py-3 h-auto text-base"
-                >
-                  Kembali ke Beranda
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="container max-w-6xl mx-auto py-12 px-4">
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="text-9xl mb-8">🎉</div>
+          <h2 className="text-2xl font-bold text-center mb-6">Selamat!</h2>
+          <p className="text-center text-muted-foreground mb-10">Akun premium Anda berhasil diaktivasi.</p>
+          <Button
+            onClick={() => router.push("/")}
+            variant="default"
+            size="lg"
+            className="w-full max-w-xs py-3 h-auto text-base"
+          >
+            Kembali ke Beranda
+          </Button>
         </div>
       </div>
     )
@@ -952,15 +947,7 @@ export function PremiumClient({
           </div>
 
           <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">Pilih Metode Pembayaran</CardTitle>
-                <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                  {activeGateway === "tripay" ? "TriPay" : "Duitku"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4 relative">
+            <CardContent className="pt-6 pb-4 relative">
               <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-3">
                   <div className="bg-white p-2 rounded-md border">
@@ -1023,29 +1010,6 @@ export function PremiumClient({
         </div>
 
         <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-          <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl">Status Pembayaran</CardTitle>
-              {currentTransaction ? (
-                <Badge
-                  variant={
-                    currentTransaction.status === "success"
-                      ? "success"
-                      : currentTransaction.status === "pending"
-                        ? "warning"
-                        : "destructive"
-                  }
-                  className="text-base py-1 px-3"
-                >
-                  {getStatusLabel(currentTransaction.status)}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                  Belum Ada Transaksi
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
             {currentTransaction && currentTransaction.status === "pending" ? (
