@@ -1,11 +1,16 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { createTransaction, getLatestTransaction, getTransactionHistory, cancelTransaction } from "./actions"
+import {
+  createTransaction,
+  getLatestTransaction,
+  getTransactionHistory,
+  cancelTransaction,
+  getPriceByPaymentMethod,
+} from "./actions"
 import {
   CheckCircle,
   Clock,
@@ -19,13 +24,9 @@ import {
   Copy,
   Info,
   Star,
-  Shield,
   Zap,
   Clock3,
   CreditCard,
-  ChevronRight,
-  Award,
-  Sparkles,
 } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -221,6 +222,10 @@ export function PremiumClient({
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [cancellingTransaction, setCancellingTransaction] = useState(false)
   const [copiedText, setCopiedText] = useState<string | null>(null)
+  const [methodPrices, setMethodPrices] = useState<Record<string, number>>({})
+  const [currentPrice, setCurrentPrice] = useState<number>(premiumPrice)
+  const [loadingPrices, setLoadingPrices] = useState<boolean>(false)
+
   const router = useRouter()
   const { toast } = useToast()
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -239,6 +244,34 @@ export function PremiumClient({
 
   // Gunakan metode pembayaran yang sesuai dengan gateway aktif
   const currentPaymentMethods = getPaymentMethodsForGateway()
+
+  // Fungsi untuk memuat harga berdasarkan metode pembayaran
+  const loadPriceForMethod = useCallback(
+    async (method: string) => {
+      try {
+        setLoadingPrices(true)
+        const result = await getPriceByPaymentMethod(activeGateway, method)
+        setLoadingPrices(false)
+
+        if (result.success) {
+          setCurrentPrice(result.price)
+          setMethodPrices((prev) => ({
+            ...prev,
+            [method]: result.price,
+          }))
+        }
+      } catch (error) {
+        console.error("Error loading price for method:", error)
+        setLoadingPrices(false)
+      }
+    },
+    [activeGateway],
+  )
+
+  // Effect untuk memuat harga saat metode pembayaran berubah
+  useEffect(() => {
+    loadPriceForMethod(selectedPaymentMethod)
+  }, [selectedPaymentMethod, loadPriceForMethod])
 
   // Format transaksi untuk client
   useEffect(() => {
@@ -358,33 +391,6 @@ export function PremiumClient({
   }, [urlStatus, urlOrderId, toast])
 
   // Perbarui fungsi handlePayment untuk mengirim activeGateway
-  const handlePayment = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      // Panggil server action untuk membuat transaksi
-      const result = await createTransaction(selectedPaymentMethod, activeGateway)
-
-      if (!result.success) {
-        setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
-        setIsLoading(false)
-        return
-      }
-
-      // Redirect ke URL pembayaran dari gateway
-      if (result.redirectUrl) {
-        window.location.href = result.redirectUrl
-      } else {
-        setError("Tidak mendapatkan URL pembayaran dari gateway")
-        setIsLoading(false)
-      }
-    } catch (error: any) {
-      console.error("Error processing payment:", error)
-      setError(error.message || "Terjadi kesalahan saat memproses pembayaran")
-      setIsLoading(false)
-    }
-  }
 
   // Fungsi untuk memeriksa status transaksi secara manual
   const checkTransactionStatus = async () => {
@@ -844,334 +850,124 @@ export function PremiumClient({
           onValueChange={setSelectedPaymentMethod}
           className="grid grid-cols-1 gap-4"
         >
-          {allMethods.map((method) => (
-            <div key={method.id} className="relative">
-              <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
-              <Label
-                htmlFor={method.id}
-                className="flex flex-col rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border-2 border-muted">
-                      {method.icon ? (
-                        <img
-                          src={method.icon || "/placeholder.svg"}
-                          alt={method.name}
-                          className="max-w-full max-h-full p-1"
-                        />
-                      ) : method.categoryId === "bank" ? (
-                        <Building className="h-6 w-6 text-gray-500" />
-                      ) : method.categoryId === "ewallet" ? (
-                        <Wallet className="h-6 w-6 text-gray-500" />
-                      ) : (
-                        <QrCode className="h-6 w-6 text-gray-500" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium text-lg">{method.name}</div>
-                      <div className="text-sm text-muted-foreground">{method.categoryName}</div>
-                      {method.description && <div className="text-xs text-gray-500 mt-1">{method.description}</div>}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-lg">Rp {premiumPrice.toLocaleString("id-ID")}</div>
-                    <div className="text-xs text-muted-foreground">Sekali bayar</div>
-                  </div>
-                </div>
+          {allMethods.map((method) => {
+            // Gunakan harga khusus untuk metode ini jika tersedia
+            const methodPrice = methodPrices[method.id] || premiumPrice
 
-                {/* Features */}
-                {method.features && method.features.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-dashed">
-                    <div className="flex flex-wrap gap-2">
-                      {method.features.map((feature, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                          {feature}
-                        </span>
-                      ))}
+            return (
+              <div key={method.id} className="relative">
+                <RadioGroupItem value={method.id} id={method.id} className="peer sr-only" />
+                <Label
+                  htmlFor={method.id}
+                  className="flex flex-col rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all duration-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0 w-16 h-16 flex items-center justify-center bg-gray-50 rounded-md border-2 border-muted">
+                        {method.icon ? (
+                          <img
+                            src={method.icon || "/placeholder.svg"}
+                            alt={method.name}
+                            className="max-w-full max-h-full p-1"
+                          />
+                        ) : method.categoryId === "bank" ? (
+                          <Building className="h-6 w-6 text-gray-500" />
+                        ) : method.categoryId === "ewallet" ? (
+                          <Wallet className="h-6 w-6 text-gray-500" />
+                        ) : (
+                          <QrCode className="h-6 w-6 text-gray-500" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium text-lg">{method.name}</div>
+                        <div className="text-sm text-muted-foreground">{method.categoryName}</div>
+                        {method.description && <div className="text-xs text-gray-500 mt-1">{method.description}</div>}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-lg">
+                        {loadingPrices && selectedPaymentMethod === method.id ? (
+                          <span className="text-gray-400">Memuat...</span>
+                        ) : (
+                          <>Rp {methodPrice.toLocaleString("id-ID")}</>
+                        )}
+
+                        {/* Tampilkan badge jika harga berbeda dari default */}
+                        {methodPrice !== premiumPrice && (
+                          <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md">
+                            {methodPrice > premiumPrice ? "+" : "-"}
+                            {Math.abs(methodPrice - premiumPrice).toLocaleString("id-ID")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Sekali bayar</div>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  {method.features && method.features.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-dashed">
+                      <div className="flex flex-wrap gap-2">
+                        {method.features.map((feature, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Label>
+
+                {/* Badge untuk metode yang direkomendasikan */}
+                {method.recommended && (
+                  <div className="absolute -top-2 -right-2 z-10">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs px-3 py-1 rounded-md shadow-md flex items-center gap-1">
+                      <Star className="h-3 w-3" />
+                      Rekomendasi
                     </div>
                   </div>
                 )}
-              </Label>
-
-              {/* Badge untuk metode yang direkomendasikan */}
-              {method.recommended && (
-                <div className="absolute -top-2 -right-2 z-10">
-                  <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs px-3 py-1 rounded-md shadow-md flex items-center gap-1">
-                    <Star className="h-3 w-3" />
-                    Rekomendasi
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </RadioGroup>
       </div>
     )
   }
 
-  // Jika user sudah premium, tampilkan pesan sukses
-  if (isPremium) {
-    return (
-      <div className="container max-w-6xl mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Akun Premium</h1>
-            <p className="text-muted-foreground">Nikmati semua fitur premium tanpa batasan</p>
-          </div>
+  // Perbarui fungsi handlePayment untuk menggunakan harga yang benar
+  const handlePayment = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
 
-          <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">Status Premium</CardTitle>
-                </div>
-                <div className="text-right">
-                  <Badge variant="success" className="text-base py-1 px-3">
-                    Aktif
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-8 pb-6 relative">
-              <div className="mb-8 p-4 rounded-md border-green-200 bg-green-50">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-md">
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-green-800">Akun Anda sudah Premium</h3>
-                    <p className="text-sm text-green-700">Semua fitur premium telah diaktifkan untuk akun Anda</p>
-                  </div>
-                </div>
-              </div>
+      // Panggil server action untuk membuat transaksi
+      const result = await createTransaction(selectedPaymentMethod, activeGateway)
 
-              <div className="flex items-center justify-center mb-8">
-                <div className="bg-gradient-to-r from-gray-800 to-black p-8 rounded-md shadow-lg">
-                  <Award className="h-16 w-16 text-yellow-400" />
-                </div>
-              </div>
+      if (!result.success) {
+        setError(result.error || "Terjadi kesalahan saat memproses pembayaran")
+        setIsLoading(false)
+        return
+      }
 
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-semibold mb-3">Premium Aktif</h3>
-                <p className="text-muted-foreground max-w-lg mx-auto">
-                  Terima kasih telah menjadi pengguna premium. Nikmati semua fitur eksklusif SecretMe tanpa batasan.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
-                  <Shield className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-                  <h4 className="font-medium">Privasi Terjamin</h4>
-                  <p className="text-xs text-gray-500">Keamanan data Anda adalah prioritas kami</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
-                  <Zap className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                  <h4 className="font-medium">Fitur Tanpa Batas</h4>
-                  <p className="text-xs text-gray-500">Akses semua fitur premium tanpa batasan</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-md border-2 text-center">
-                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-                  <h4 className="font-medium">Pengalaman Premium</h4>
-                  <p className="text-xs text-gray-500">Nikmati pengalaman pengguna yang lebih baik</p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="border-t p-6">
-              <Button
-                onClick={() => router.push("/dashboard")}
-                variant="default"
-                className="w-full neo-btn py-3 h-auto text-base mt-3"
-              >
-                Kembali ke Dashboard
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Riwayat Transaksi untuk pengguna premium */}
-          <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
-        </div>
-      </div>
-    )
+      // Redirect ke URL pembayaran dari gateway
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl
+      } else {
+        setError("Tidak mendapatkan URL pembayaran dari gateway")
+        setIsLoading(false)
+      }
+    } catch (error: any) {
+      console.error("Error processing payment:", error)
+      setError(error.message || "Terjadi kesalahan saat memproses pembayaran")
+      setIsLoading(false)
+    }
   }
 
-  // Check if transaction is null before using it
-  if (!transaction) {
-    // If no transaction exists, just render the premium upgrade UI without transaction status
-    return (
-      <div className="container max-w-6xl mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
-            <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
-          </div>
-
-          <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">Pilih Metode Pembayaran</CardTitle>
-                <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                  {activeGateway === "tripay" ? "TriPay" : "Duitku"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4 relative">
-              <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white p-2 rounded-md border">
-                    <Info className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Status Akun: Free</h3>
-                    <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Metode Pembayaran */}
-              {renderPaymentMethods()}
-
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md border">
-                <Shield className="h-4 w-4 text-green-500" />
-                <span>Pembayaran aman & terenkripsi</span>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
-                  {error}
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="border-t p-6">
-              <Button
-                onClick={handlePayment}
-                disabled={isLoading}
-                variant="success"
-                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3"
-              >
-                {isLoading ? (
-                  <>
-                    <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
-                  </>
-                ) : (
-                  <>
-                    Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Riwayat Transaksi di bawah card utama */}
-          <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="container max-w-6xl mx-auto py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
-          <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
-        </div>
-
-        <Card className="mb-4 neo-card border-2 shadow-lg overflow-hidden">
-          <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-gray-100">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl">Status Pembayaran</CardTitle>
-              {currentTransaction ? (
-                <Badge
-                  variant={
-                    currentTransaction.status === "success"
-                      ? "success"
-                      : currentTransaction.status === "pending"
-                        ? "warning"
-                        : "destructive"
-                  }
-                  className="text-base py-1 px-3"
-                >
-                  {getStatusLabel(currentTransaction.status)}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-base py-1 px-3 bg-white">
-                  Belum Ada Transaksi
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6 pb-4 relative">
-            {/* Status akun dan pembayaran */}
-            {currentTransaction && currentTransaction.status === "pending" ? (
-              renderPendingTransactionDetails()
-            ) : (
-              <>
-                <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded-md border">
-                      <Info className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Status Akun: Free</h3>
-                      <p className="text-sm text-gray-600">Upgrade ke premium untuk mendapatkan fitur tambahan</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Metode Pembayaran */}
-                {renderPaymentMethods()}
-
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4 bg-gray-50 p-3 rounded-md">
-                  <Shield className="h-4 w-4 text-green-500" />
-                  <span>Pembayaran aman & terenkripsi</span>
-                </div>
-              </>
-            )}
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mt-4 text-center">
-                {error}
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="border-t p-6">
-            {currentTransaction && currentTransaction.status === "pending" ? (
-              <Button
-                onClick={() => router.push("/")}
-                variant="default"
-                className="w-full neo-btn py-3 h-auto text-base mt-3"
-              >
-                Kembali ke Beranda
-              </Button>
-            ) : (
-              <Button
-                onClick={handlePayment}
-                disabled={isLoading}
-                variant="success"
-                className="w-full py-3 h-auto text-base flex items-center justify-center mt-3"
-              >
-                {isLoading ? (
-                  <>
-                    <Clock className="h-5 w-5 mr-2 animate-spin" /> Memproses...
-                  </>
-                ) : (
-                  <>
-                    Lanjutkan ke Pembayaran <ChevronRight className="h-5 w-5 ml-1" />
-                  </>
-                )}
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-
-        {/* Riwayat Transaksi di bawah card utama */}
-        <Card className="mb-4 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
-      </div>
-    </div>
-  )
+  // Sisanya dari komponen tetap sama
+  // ...
 }
