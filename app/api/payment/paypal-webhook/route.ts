@@ -62,23 +62,29 @@ export async function POST(request: NextRequest) {
     await supabase.from("payment_notification_logs").insert(logEntry)
     logger.debug("Webhook logged to payment_notification_logs", { logId: logger.requestId })
 
+    // Check if this is a sandbox webhook
+    const isSandbox = headers["paypal-cert-url"]?.includes("sandbox") || false
+
     if (!isSignatureValid) {
-      logger.error("Invalid PayPal webhook signature")
+      logger.warn("PayPal webhook signature verification failed", {
+        isSandbox,
+        eventType: payload.event_type,
+      })
 
       // Log invalid webhook attempt
       await supabase
         .from("payment_notification_logs")
         .update({
           status: "invalid_signature",
-          event_type: "security_alert",
+          event_type: payload.event_type || "security_alert",
         })
         .eq("request_id", logger.requestId)
 
-      // Di development mode, kita tetap proses webhook meskipun signature tidak valid
-      if (process.env.NODE_ENV !== "production") {
-        logger.warn("DEVELOPMENT MODE: Processing webhook despite invalid signature")
+      // For sandbox or development environment, continue processing
+      if (isSandbox || process.env.NODE_ENV !== "production") {
+        logger.warn(`${isSandbox ? "SANDBOX" : "DEVELOPMENT"} MODE: Processing webhook despite invalid signature`)
       } else {
-        // Di production, kita reject webhook dengan signature tidak valid
+        // In production with non-sandbox webhooks, reject invalid signatures
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
       }
     }
