@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server"
 
-// Type definitions
 export type PaymentMethodPrice = {
   id: string
   payment_gateway: string
@@ -12,36 +11,32 @@ export type PaymentMethodPrice = {
   updated_at: string
 }
 
-/**
- * Get price for a specific payment method
- */
-export async function getPriceForPaymentMethod(gateway: string, method: string): Promise<number | null> {
+// Fungsi untuk mendapatkan harga berdasarkan metode pembayaran
+export async function getPriceForPaymentMethod(gatewayName: string, paymentMethod: string): Promise<number | null> {
   try {
     const supabase = createClient()
 
-    // Try to get the specific price for this method
+    // Cari harga khusus untuk metode pembayaran ini
     const { data, error } = await supabase
       .from("payment_method_prices")
       .select("price")
-      .eq("payment_gateway", gateway)
-      .eq("payment_method", method)
+      .eq("payment_gateway", gatewayName)
+      .eq("payment_method", paymentMethod)
       .single()
 
     if (error || !data) {
-      console.log(`No specific price found for ${gateway}/${method}, using default price`)
+      console.log(`No specific price found for ${gatewayName}/${paymentMethod}`)
       return null
     }
 
     return data.price
   } catch (error) {
-    console.error("Error fetching price for payment method:", error)
+    console.error("Error getting price for payment method:", error)
     return null
   }
 }
 
-/**
- * Get all prices for all payment methods
- */
+// Fungsi untuk mendapatkan semua harga metode pembayaran
 export async function getAllPaymentMethodPrices(): Promise<PaymentMethodPrice[]> {
   try {
     const supabase = createClient()
@@ -53,37 +48,33 @@ export async function getAllPaymentMethodPrices(): Promise<PaymentMethodPrice[]>
       .order("payment_method", { ascending: true })
 
     if (error) {
-      console.error("Error fetching payment method prices:", error)
-      return []
+      throw error
     }
 
     return data || []
   } catch (error) {
-    console.error("Error fetching all payment method prices:", error)
+    console.error("Error getting all payment method prices:", error)
     return []
   }
 }
 
-/**
- * Update price for a specific payment method
- */
-export async function updatePaymentMethodPrice(gateway: string, method: string, price: number): Promise<boolean> {
+// Fungsi untuk memperbarui harga metode pembayaran
+export async function updatePaymentMethodPrice(
+  gatewayName: string,
+  paymentMethod: string,
+  price: number,
+): Promise<boolean> {
   try {
     const supabase = createClient()
 
-    const { error } = await supabase.from("payment_method_prices").upsert(
-      {
-        payment_gateway: gateway,
-        payment_method: method,
-        price: price,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "payment_gateway,payment_method" },
-    )
+    const { error } = await supabase
+      .from("payment_method_prices")
+      .update({ price, updated_at: new Date().toISOString() })
+      .eq("payment_gateway", gatewayName)
+      .eq("payment_method", paymentMethod)
 
     if (error) {
-      console.error("Error updating payment method price:", error)
-      return false
+      throw error
     }
 
     return true

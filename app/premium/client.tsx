@@ -114,7 +114,7 @@ const tripayPaymentMethods = [
     name: "QRIS",
     methods: [
       {
-        id: "QR",
+        id: "QRIS",
         name: "QRIS by ShopeePay",
         icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//QRIS_ID_CHNL_LOGO.webp",
         recommended: true,
@@ -128,11 +128,11 @@ const tripayPaymentMethods = [
     name: "Transfer Bank",
     methods: [
       {
-        id: "BC",
+        id: "BCAVA",
         name: "BCA Virtual Account",
         icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
         description: "Transfer melalui ATM, m-Banking, atau internet banking",
-        features: ["Verifikasi otomatis", "Aman & terpercaya"],
+        features: ["Aman & terpercaya"],
       },
     ],
   },
@@ -213,9 +213,20 @@ export function PremiumClient({
   transaction,
   activeGateway,
 }: PremiumClientProps) {
+  // Tambahkan di awal fungsi PremiumClient
+  console.log("PremiumClient props:", {
+    isLoggedIn,
+    isPremium,
+    userName,
+    premiumPrice,
+    urlStatus,
+    urlOrderId,
+    transaction,
+    activeGateway,
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("QR")
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(activeGateway === "tripay" ? "QRIS" : "QR")
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null)
   const [checkingStatus, setCheckingStatus] = useState(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])

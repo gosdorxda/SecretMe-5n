@@ -1,25 +1,23 @@
-import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { getVerifiedUser, isAdmin } from "@/lib/supabase/server"
 import PremiumSettings from "./premium-settings"
 import PaymentMethodPrices from "./payment-method-prices"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminPremiumPage() {
-  const supabase = createClient()
+  // Dapatkan user terverifikasi
+  const { user, error } = await getVerifiedUser()
 
-  // Verifikasi user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/login")
+  if (error || !user) {
+    redirect("/login?redirect=/admin-premium")
   }
 
-  // Verifikasi admin
-  const { data: userData } = await supabase.from("users").select("is_admin").eq("id", user.id).single()
+  // Periksa apakah user adalah admin
+  const adminStatus = await isAdmin(user.id)
 
-  if (!userData?.is_admin) {
-    redirect("/dashboard")
+  if (!adminStatus) {
+    redirect("/dashboard?error=unauthorized")
   }
 
   return (
