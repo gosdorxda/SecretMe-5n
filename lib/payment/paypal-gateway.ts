@@ -1,5 +1,10 @@
 import type { PaymentGateway, PaymentTransactionRequest, PaymentTransactionResult } from "./types"
 import { createPaymentLogger } from "./payment-logger"
+// Import retry dan error handler
+import { withRetry } from "./retry-handler"
+import { handlePayPalError, PayPalError } from "./paypal-error-handler"
+import { sendAdminAlert } from "@/lib/notifications/admin-alerts"
+import { createClient } from "@supabase/supabase-js"
 
 interface PayPalOrderResponse {
   id: string
@@ -157,42 +162,123 @@ export class PayPalGateway implements PaymentGateway {
     }
   }
 
+  // Perbarui method checkOrderStatus dengan retry dan error handling
   async checkOrderStatus(orderId: string): Promise<{
     success: boolean
     status?: string
     details?: any
     error?: string
   }> {
-    try {
-      // Get access token
-      const accessToken = await this.getAccessToken()
+    const requestId = `check-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    const logger = createPaymentLogger("paypal", requestId)
 
-      // Check order status
-      const response = await fetch(`${this.baseUrl}/v2/checkout/orders/${orderId}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+    try {
+      logger.info("Checking PayPal order status", { orderId })
+
+      // Gunakan withRetry untuk operasi yang bisa gagal
+      const result = await withRetry(
+        async () => {
+          // Get access token
+          const accessToken = await this.getAccessToken()
+
+          // Check order status
+          const response = await fetch(`${this.baseUrl}/v2/checkout/orders/${orderId}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          })
+
+          if (!response.ok) {
+            const errorText = await response.text()
+            throw new PayPalError(`Failed to check PayPal order status: ${response.status}`, {
+              status: response.status,
+              details: errorText,
+              retryable: response.status >= 500, // 5xx errors are retryable
+            })
+          }
+
+          return await response.json()
         },
+        {
+          maxRetries: 3,
+          initialDelay: 1000,
+        },
+        (attempt, error, delay) => {
+          logger.warn(`Retry attempt ${attempt} for order ${orderId}`, {
+            error: error.message,
+            delay,
+          })
+
+          // Log retry attempt ke database
+          const supabase = createClient()
+          supabase
+            .from("payment_notification_logs")
+            .insert({
+              request_id: `${requestId}-retry-${attempt}`,
+              gateway: "paypal",
+              raw_payload: { action: "retry-check-status", orderId, attempt },
+              status: "retry",
+              order_id: orderId,
+              event_type: "status-check-retry",
+              error: error.message,
+            })
+            .then()
+            .catch((err) => {
+              logger.error("Failed to log retry attempt", err)
+            })
+        },
+      )
+
+      logger.info("PayPal order status retrieved successfully", {
+        orderId,
+        status: result.status,
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        return {
-          success: false,
-          error: `Failed to check PayPal order status: ${response.status} ${errorText}`,
-        }
-      }
-
-      const data = await response.json()
       return {
         success: true,
-        status: data.status,
-        details: data,
+        status: result.status,
+        details: result,
       }
     } catch (error: any) {
+      // Gunakan error handler khusus
+      const paypalError = handlePayPalError(error, `Check order status for ${orderId}`, requestId)
+
+      // Log error ke database
+      try {
+        const supabase = createClient()
+        await supabase.from("payment_notification_logs").insert({
+          request_id: requestId,
+          gateway: "paypal",
+          raw_payload: { action: "check-status", orderId },
+          status: "error",
+          order_id: orderId,
+          event_type: "status-check-error",
+          error: paypalError.message,
+        })
+      } catch (logError) {
+        logger.error("Failed to log error", logError)
+      }
+
+      // Untuk error kritis, kirim notifikasi ke admin
+      if (!paypalError.retryable) {
+        sendAdminAlert({
+          title: "Critical PayPal Error",
+          message: `Failed to check order status for ${orderId}: ${paypalError.message}`,
+          data: {
+            orderId,
+            errorDetails: paypalError.details,
+            timestamp: new Date().toISOString(),
+          },
+          level: "critical",
+        }).catch((alertError) => {
+          logger.error("Failed to send admin alert", alertError)
+        })
+      }
+
       return {
         success: false,
-        error: error.message || "Failed to check PayPal order status",
+        error: paypalError.message,
       }
     }
   }

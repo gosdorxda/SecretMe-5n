@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
+import { validateTransaction } from "@/lib/payment/transaction-validator"
+import { withRetry } from "@/lib/payment/retry-handler"
 
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
@@ -55,6 +57,37 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       return { success: false, error: "Unauthorized" }
     }
 
+    // Validasi transaksi untuk mencegah duplicate payment
+    const validationResult = await validateTransaction(user.id, premiumPrice)
+    if (!validationResult.valid) {
+      // Handle berbagai alasan validasi gagal
+      if (validationResult.reason === "already_premium") {
+        return { success: false, error: "Anda sudah menjadi pengguna premium" }
+      }
+
+      if (validationResult.reason === "pending_transaction") {
+        return {
+          success: false,
+          error: "Anda memiliki transaksi yang sedang diproses",
+          pendingTransaction: validationResult.existingTransaction,
+        }
+      }
+
+      if (validationResult.reason === "recent_success") {
+        return {
+          success: false,
+          error: "Anda telah berhasil melakukan pembayaran dalam 24 jam terakhir",
+          successTransaction: validationResult.existingTransaction,
+        }
+      }
+
+      if (validationResult.reason === "invalid_amount") {
+        return { success: false, error: "Jumlah pembayaran tidak valid" }
+      }
+
+      return { success: false, error: "Validasi transaksi gagal" }
+    }
+
     // Get user session
     const {
       data: { session },
@@ -81,7 +114,9 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Generate order ID
     const orderId = generateOrderId(session.user.id)
 
-    // Create transaction record
+    // Create transaction record with idempotency key to prevent duplicates
+    const idempotencyKey = `${session.user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+
     const { data: transaction, error: transactionError } = await supabase
       .from("premium_transactions")
       .insert({
@@ -92,6 +127,8 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
         payment_gateway: finalGatewayName,
         // Set payment method to "PayPal" if using PayPal gateway
         payment_method: finalGatewayName === "paypal" ? "PayPal" : paymentMethod,
+        idempotency_key: idempotencyKey,
+        created_at: new Date().toISOString(),
       })
       .select()
       .single()
@@ -104,20 +141,31 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Get payment gateway
     const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
 
-    // Create transaction in payment gateway
-    const result = await gateway.createTransaction({
-      userId: session.user.id,
-      userEmail: userData.email || session.user.email || "",
-      userName: userData.name || "User",
-      amount: premiumPrice,
-      orderId: orderId,
-      description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
-      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
-      notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-      paymentMethod: paymentMethod,
-    })
+    // Create transaction in payment gateway with retry logic
+    const result = await withRetry(
+      async () => {
+        return await gateway.createTransaction({
+          userId: session.user.id,
+          userEmail: userData.email || session.user.email || "",
+          userName: userData.name || "User",
+          amount: premiumPrice,
+          orderId: orderId,
+          description: "SecretMe Premium Lifetime",
+          successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
+          failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
+          pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
+          notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
+          paymentMethod: paymentMethod,
+        })
+      },
+      {
+        maxRetries: 3,
+        initialDelay: 1000,
+      },
+      (attempt, error, delay) => {
+        console.warn(`Retry attempt ${attempt} for creating transaction: ${error.message}`)
+      },
+    )
 
     if (!result.success) {
       // Update transaction status to failed
@@ -153,12 +201,11 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       event_type: "transaction-created",
     })
 
-    // PERBAIKAN: Coba update dengan gateway_reference, jika gagal karena kolom tidak ada,
-    // simpan di payment_details saja
+    // Update transaction with gateway_reference
     const { error: updateError } = await supabase
       .from("premium_transactions")
       .update({
-        gateway_reference: gatewayReference, // Simpan ID referensi di gateway_reference
+        gateway_reference: gatewayReference,
         payment_details: {
           gateway_reference: gatewayReference,
           redirect_url: result.redirectUrl,
@@ -166,13 +213,14 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
           created_at: new Date().toISOString(),
           payment_method: paymentMethod,
           gateway: finalGatewayName,
+          idempotency_key: idempotencyKey,
         },
       })
       .eq("id", transaction.id)
 
     if (updateError) {
       console.error("Error updating transaction with gateway_reference:", updateError)
-      // Jika gagal karena kolom gateway_reference belum ada, update payment_details saja
+      // Fallback update if gateway_reference column has issues
       await supabase
         .from("premium_transactions")
         .update({
@@ -183,6 +231,7 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
             created_at: new Date().toISOString(),
             payment_method: paymentMethod,
             gateway: finalGatewayName,
+            idempotency_key: idempotencyKey,
           },
         })
         .eq("id", transaction.id)

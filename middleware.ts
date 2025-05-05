@@ -3,6 +3,9 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import type { Database } from "@/lib/supabase/database.types"
 
+// Import IP capture middleware
+import { captureUserIp } from "@/lib/middleware/ip-capture"
+
 // Tambahkan cache untuk middleware
 const MIDDLEWARE_CACHE_DURATION = 30 * 1000 // 30 detik
 const middlewareCache = new Map<string, { result: NextResponse; timestamp: number }>()
@@ -164,6 +167,11 @@ export async function middleware(req: NextRequest) {
 
       // Menjadi:
       return NextResponse.redirect(new URL("/premium", req.url))
+    }
+
+    // Capture user IP for fraud detection
+    if (req.nextUrl.pathname.startsWith("/premium") || req.nextUrl.pathname.startsWith("/api/payment")) {
+      return captureUserIp(req)
     }
 
     return res

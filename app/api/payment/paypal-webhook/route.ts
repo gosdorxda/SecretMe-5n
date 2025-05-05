@@ -1,18 +1,54 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createPaymentLogger } from "@/lib/payment/logger"
+import { verifyPayPalWebhookSignature } from "@/lib/payment/paypal-webhook-verifier"
+import { checkForFraud } from "@/lib/payment/fraud-detector"
+import { sendAdminAlert } from "@/lib/notifications/admin-alerts"
 
 export async function POST(request: NextRequest) {
-  const logger = createPaymentLogger("paypal-webhook")
+  const requestId = `webhook-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+  const logger = createPaymentLogger("paypal-webhook", requestId)
   logger.info("PayPal webhook received")
 
   try {
+    // Clone request for multiple reads
+    const clonedRequest = request.clone()
+
     // Log request headers
     const headers = Object.fromEntries(request.headers.entries())
     logger.debug("Request headers received", { headers })
 
+    // Get raw request body as text for signature verification
+    const rawBody = await clonedRequest.text()
+
+    // Verify webhook signature
+    const webhookId = process.env.PAYPAL_WEBHOOK_ID || ""
+    if (!webhookId) {
+      logger.error("PAYPAL_WEBHOOK_ID environment variable not set")
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
+
+    const isSignatureValid = await verifyPayPalWebhookSignature(rawBody, headers, webhookId)
+
+    if (!isSignatureValid) {
+      logger.error("Invalid PayPal webhook signature")
+
+      // Log invalid webhook attempt
+      const supabase = createClient()
+      await supabase.from("payment_notification_logs").insert({
+        request_id: requestId,
+        gateway: "paypal",
+        raw_payload: { error: "Invalid signature" },
+        headers: headers,
+        status: "invalid_signature",
+        event_type: "security_alert",
+      })
+
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+    }
+
     // Parse webhook payload
-    const payload = await request.json()
+    const payload = JSON.parse(rawBody)
     logger.debug("Webhook payload received", { payload })
 
     // Extract important information from the payload
@@ -47,6 +83,7 @@ export async function POST(request: NextRequest) {
       status: "received",
       order_id: orderId || "unknown",
       event_type: eventType || "unknown",
+      signature_valid: isSignatureValid,
     }
 
     await supabase.from("payment_notification_logs").insert(logEntry)
@@ -185,12 +222,166 @@ export async function POST(request: NextRequest) {
       })
       .eq("request_id", logger.requestId)
 
+    // Verify payment amount if it's a payment capture event
+    if (eventType === "PAYMENT.CAPTURE.COMPLETED" && transaction) {
+      const capturedAmount = payload.resource?.amount?.value
+      const capturedCurrency = payload.resource?.amount?.currency_code
+
+      // Verify payment amount (convert IDR to USD for comparison)
+      const expectedAmountUSD = (transaction.amount / 15000).toFixed(2)
+
+      if (capturedCurrency !== "USD") {
+        logger.warn("Unexpected currency in PayPal capture", {
+          expected: "USD",
+          received: capturedCurrency,
+        })
+
+        // Continue processing but log the discrepancy
+      }
+
+      if (capturedAmount && Number.parseFloat(capturedAmount) < Number.parseFloat(expectedAmountUSD) * 0.95) {
+        // Amount is significantly less than expected (allowing 5% tolerance for exchange rate fluctuations)
+        logger.error("PayPal payment amount mismatch", {
+          expected: expectedAmountUSD,
+          received: capturedAmount,
+          transactionId: transaction.id,
+        })
+
+        // Update log entry with error
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "amount_mismatch",
+            error: `Amount mismatch: expected ~${expectedAmountUSD} USD, got ${capturedAmount} ${capturedCurrency}`,
+          })
+          .eq("request_id", logger.requestId)
+
+        // Still process the payment but flag it for review
+        await supabase
+          .from("premium_transactions")
+          .update({
+            status: "review",
+            payment_details: {
+              ...transaction.payment_details,
+              captureId: captureId,
+              eventType: eventType,
+              webhookData: payload,
+              gateway_reference: orderId,
+              processed_at: new Date().toISOString(),
+              review_reason: "amount_mismatch",
+              expected_amount_usd: expectedAmountUSD,
+              received_amount: capturedAmount,
+              received_currency: capturedCurrency,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", transaction.id)
+
+        return NextResponse.json({
+          success: true,
+          message: "Payment flagged for review due to amount mismatch",
+        })
+      }
+    }
+
+    // Check for duplicate webhook events
+    if (eventType === "PAYMENT.CAPTURE.COMPLETED" && transaction && transaction.status === "success") {
+      logger.warn("Duplicate PayPal webhook event received", {
+        transactionId: transaction.id,
+        currentStatus: transaction.status,
+        eventType,
+      })
+
+      // Update log entry with duplicate status
+      await supabase
+        .from("payment_notification_logs")
+        .update({
+          status: "duplicate",
+          parsed_payload: {
+            captureId: captureId,
+            eventType: eventType,
+            status: "duplicate",
+          },
+        })
+        .eq("request_id", logger.requestId)
+
+      return NextResponse.json({
+        success: true,
+        message: "Duplicate webhook event ignored",
+      })
+    }
+
     // Process the webhook based on event type
     if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
       logger.info("Processing payment capture completed", {
         transactionId: transaction.id,
         userId: transaction.user_id,
       })
+
+      // Check for potential fraud
+      const fraudCheck = await checkForFraud(transaction.user_id, transaction.id, {
+        ...transaction.payment_details,
+        amount: transaction.amount,
+        gateway: "paypal",
+      })
+
+      if (fraudCheck.isSuspicious && fraudCheck.riskLevel === "high") {
+        logger.warn("High risk transaction detected", {
+          transactionId: transaction.id,
+          userId: transaction.user_id,
+          reasons: fraudCheck.reasons,
+        })
+
+        // Flag transaction for review
+        const { error: updateError } = await supabase
+          .from("premium_transactions")
+          .update({
+            status: "review",
+            payment_details: {
+              ...transaction.payment_details,
+              captureId: captureId,
+              eventType: eventType,
+              webhookData: payload,
+              gateway_reference: orderId,
+              processed_at: new Date().toISOString(),
+              fraud_check: fraudCheck,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", transaction.id)
+
+        // Send alert to admin
+        await sendAdminAlert({
+          title: "High Risk PayPal Transaction",
+          message: `Transaction ${transaction.id} flagged as high risk`,
+          data: {
+            transactionId: transaction.id,
+            userId: transaction.user_id,
+            reasons: fraudCheck.reasons,
+            orderId,
+          },
+          level: "warning",
+        })
+
+        // Update log entry
+        await supabase
+          .from("payment_notification_logs")
+          .update({
+            status: "fraud_review",
+            parsed_payload: {
+              captureId: captureId,
+              eventType: eventType,
+              status: "review",
+              fraud_check: fraudCheck,
+            },
+          })
+          .eq("request_id", logger.requestId)
+
+        return NextResponse.json({
+          success: true,
+          message: "Payment flagged for review due to fraud risk",
+        })
+      }
 
       // Update transaction status
       const { error: updateError } = await supabase
@@ -206,6 +397,7 @@ export async function POST(request: NextRequest) {
             webhookData: payload,
             gateway_reference: orderId,
             processed_at: new Date().toISOString(),
+            fraud_check: fraudCheck,
           },
           updated_at: new Date().toISOString(),
         })
