@@ -953,7 +953,7 @@ export function PremiumClient({
             <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
           </div>
 
-          <Card className="mb-6 neo-card border-2 shadow-lg overflow-hidden">
+          <Card className="mb-6 neo-card border-2 overflow-hidden">
             <CardContent className="pt-6 pb-4 relative">
               <div className="mb-6 p-4 rounded-md border-2 border-gray-200 bg-gray-50">
                 <div className="flex items-center gap-3">
@@ -1012,11 +1012,11 @@ export function PremiumClient({
     <div className="container max-w-6xl mx-auto py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2 text-main">Upgrade ke Premium</h1>
+          <h1 className="text-3xl font-bold mb-2">Upgrade ke Premium</h1>
           <p className="text-muted-foreground">Akses semua fitur premium dengan sekali bayar seumur hidup</p>
         </div>
 
-        <Card className="mb-6 neo-card border-2 shadow-lg overflow-hidden">
+        <Card className="mb-6 neo-card border-2 overflow-hidden">
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
             {currentTransaction && currentTransaction.status === "pending" ? (
@@ -1082,7 +1082,7 @@ export function PremiumClient({
         </Card>
 
         {/* Riwayat Transaksi di bawah card utama */}
-        <Card className="mb-6 neo-card border-2 shadow-sm">{renderTransactionHistory()}</Card>
+        <Card className="mb-6 neo-card border-2">{renderTransactionHistory()}</Card>
       </div>
     </div>
   )
