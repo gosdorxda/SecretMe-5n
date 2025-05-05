@@ -1,7 +1,7 @@
 import type { PaymentGateway } from "./types"
 import { DuitkuGateway } from "./duitku-gateway"
-// Hapus import MidtransGateway
 import { TriPayGateway } from "./tripay-gateway"
+import { PayPalSimpleGateway } from "./paypal-simple-gateway"
 
 // Cache for payment config
 let paymentConfigCache: any = null
@@ -28,9 +28,11 @@ export async function getPaymentConfig() {
         duitku: {
           isProduction: process.env.NODE_ENV === "production",
         },
-        // Hapus konfigurasi midtrans
         tripay: {
           isProduction: process.env.TRIPAY_USE_PRODUCTION === "true",
+        },
+        paypal: {
+          isProduction: true, // PayPal Pay Links selalu menggunakan produksi
         },
       },
     }
@@ -48,9 +50,11 @@ export async function getPaymentConfig() {
         duitku: {
           isProduction: process.env.NODE_ENV === "production",
         },
-        // Hapus konfigurasi midtrans
         tripay: {
           isProduction: process.env.TRIPAY_USE_PRODUCTION === "true",
+        },
+        paypal: {
+          isProduction: true,
         },
       },
     }
@@ -87,9 +91,10 @@ export async function getPaymentGateway(gatewayName = "duitku"): Promise<Payment
   }
 
   switch (gatewayName.toLowerCase()) {
-    // Hapus case midtrans
     case "tripay":
       return new TriPayGateway()
+    case "paypal":
+      return new PayPalSimpleGateway()
     case "duitku":
     default:
       return new DuitkuGateway()
