@@ -596,7 +596,12 @@ export function PremiumClient({
 
           {/* Detail Pembayaran */}
           <div className="bg-white p-4 rounded-md border-2 border-gray-100 mb-4">
-            <h4 className="font-medium mb-3 pb-2 border-b">Detail Pembayaran</h4>
+            <h4 className="font-medium mb-3 pb-2 border-b flex items-center justify-between">
+              <span>Detail Pembayaran</span>
+              <Badge variant="warning" className="rounded-md text-xs py-1">
+                {getStatusLabel(currentTransaction.status)}
+              </Badge>
+            </h4>
 
             <div className="space-y-3">
               <div className="flex justify-between">
@@ -1014,18 +1019,6 @@ export function PremiumClient({
         <Card className="mb-6 neo-card border-2 shadow-lg overflow-hidden">
           <CardContent className="pt-6 pb-4 relative">
             {/* Status akun dan pembayaran */}
-            {currentTransaction && currentTransaction.status === "pending" ? (
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium flex items-center">
-                  <Clock3 className="h-5 w-5 mr-2 text-yellow-600" />
-                  Status Pembayaran
-                </h3>
-                <Badge variant="warning" className="text-base py-1 px-3">
-                  {getStatusLabel(currentTransaction.status)}
-                </Badge>
-              </div>
-            ) : null}
-
             {currentTransaction && currentTransaction.status === "pending" ? (
               renderPendingTransactionDetails()
             ) : (
