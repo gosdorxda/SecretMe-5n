@@ -21,34 +21,10 @@ export default async function PremiumPage({
   let userName = ""
   let transaction = null
 
-  if (isLoggedIn) {
-    // Get user data
-    const { data: userData } = await supabase
-      .from("users")
-      .select("name, is_premium")
-      .eq("id", session.user.id)
-      .single()
+  // Get URL parameters for status
+  const urlStatus = searchParams.status as string | undefined
+  const urlOrderId = searchParams.order_id as string | undefined
 
-    if (userData) {
-      isPremium = userData.is_premium || false
-      userName = userData.name || ""
-    }
-
-    // Get latest transaction
-    const { data: transactionData } = await supabase
-      .from("premium_transactions")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single()
-
-    if (transactionData) {
-      transaction = transactionData
-    }
-  }
-
-  // Get premium price and active gateway from database first, then fallback to env
   let premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
   let activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
 
@@ -71,9 +47,49 @@ export default async function PremiumPage({
     }
   }
 
-  // Get URL parameters for status
-  const urlStatus = searchParams.status as string | undefined
-  const urlOrderId = searchParams.order_id as string | undefined
+  if (isLoggedIn) {
+    // Get authenticated user data
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      // If no authenticated user, treat as not logged in
+      return (
+        <PremiumClient
+          isLoggedIn={false}
+          isPremium={false}
+          userName=""
+          premiumPrice={premiumPrice}
+          urlStatus={urlStatus}
+          urlOrderId={urlOrderId}
+          transaction={null}
+          activeGateway={activeGateway}
+        />
+      )
+    }
+
+    // Get user data
+    const { data: userData } = await supabase.from("users").select("name, is_premium").eq("id", user.id).single()
+
+    if (userData) {
+      isPremium = userData.is_premium || false
+      userName = userData.name || ""
+    }
+
+    // Get latest transaction
+    const { data: transactionData } = await supabase
+      .from("premium_transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    if (transactionData) {
+      transaction = transactionData
+    }
+  }
 
   return (
     <PremiumClient
