@@ -5,78 +5,71 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { RefreshCw } from "lucide-react"
 
-interface CheckPayPalStatusProps {
-  orderId: string
-  gatewayReference?: string
-  onSuccess?: () => void
-}
-
-export function CheckPayPalStatus({ orderId, gatewayReference, onSuccess }: CheckPayPalStatusProps) {
-  const [isChecking, setIsChecking] = useState(false)
+export function CheckPayPalStatus({ orderId }: { orderId: string }) {
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
   const handleCheckStatus = async () => {
-    setIsChecking(true)
     try {
-      // Gunakan orderId untuk memeriksa status
-      const response = await fetch(`/api/payment/check-paypal-status?order_id=${orderId}`)
+      setIsLoading(true)
+      const response = await fetch(`/api/payment/check-paypal-status?order_id=${orderId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Gagal memeriksa status pembayaran")
+        throw new Error("Failed to check PayPal status")
       }
 
       const data = await response.json()
 
-      if (data.transaction?.status === "success") {
+      if (data.success) {
         toast({
           title: "Pembayaran Berhasil!",
-          description: "Akun Anda telah diupgrade ke Premium. Halaman akan dimuat ulang.",
+          description: "Akun Anda telah diupgrade ke premium.",
+          variant: "default",
         })
 
-        // Jika ada callback onSuccess, panggil
-        if (onSuccess) {
-          onSuccess()
-        }
-
-        // Reload halaman setelah 2 detik
+        // Refresh halaman setelah 2 detik
         setTimeout(() => {
           window.location.reload()
         }, 2000)
-      } else if (data.transaction?.status === "pending") {
-        toast({
-          title: "Pembayaran Masih Diproses",
-          description: "Pembayaran Anda sedang diproses. Silakan coba periksa kembali nanti.",
-          variant: "default",
-        })
       } else {
         toast({
           title: "Status Pembayaran",
-          description: `Status: ${data.transaction?.status || "unknown"}`,
-          variant: "default",
+          description: data.message || "Status pembayaran: " + data.status,
         })
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error checking PayPal status:", error)
       toast({
         title: "Error",
-        description: error.message || "Terjadi kesalahan saat memeriksa status pembayaran",
+        description: "Gagal memeriksa status pembayaran PayPal",
         variant: "destructive",
       })
     } finally {
-      setIsChecking(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <Button onClick={handleCheckStatus} disabled={isChecking} className="w-full" variant="outline">
-      {isChecking ? (
+    <Button
+      onClick={handleCheckStatus}
+      disabled={isLoading}
+      className="w-full py-3 h-auto bg-blue-600 hover:bg-blue-700 text-white"
+    >
+      {isLoading ? (
         <>
-          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-          Memeriksa Status...
+          <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+          Memverifikasi Pembayaran...
         </>
       ) : (
-        "Verifikasi Pembayaran PayPal"
+        <>
+          <RefreshCw className="mr-2 h-5 w-5" />
+          Verifikasi Pembayaran PayPal
+        </>
       )}
     </Button>
   )

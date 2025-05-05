@@ -695,7 +695,18 @@ export function PremiumClient({
               <span>Instruksi Pembayaran</span>
             </div>
 
-            {paymentDetails.instructions && paymentDetails.instructions.length > 0 ? (
+            {currentTransaction.gateway === "paypal" ? (
+              <div className="space-y-2">
+                <h4 className="font-medium">Pembayaran PayPal</h4>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li className="text-sm">Selesaikan pembayaran di situs PayPal.</li>
+                  <li className="text-sm">Setelah pembayaran selesai, Anda akan diarahkan kembali ke halaman ini.</li>
+                  <li className="text-sm">
+                    Klik tombol "Verifikasi Pembayaran PayPal" di bawah untuk mengonfirmasi status pembayaran.
+                  </li>
+                </ol>
+              </div>
+            ) : paymentDetails.instructions && paymentDetails.instructions.length > 0 ? (
               <div className="space-y-4">
                 {paymentDetails.instructions.map((instruction: any, index: number) => (
                   <div key={index} className="space-y-2">
@@ -754,11 +765,13 @@ export function PremiumClient({
           </div>
           {/* Tambahkan tombol verifikasi PayPal jika gateway adalah PayPal */}
           {currentTransaction.gateway === "paypal" && (
-            <div className="mt-4">
-              <CheckPayPalStatus orderId={currentTransaction.orderId} />
-              <p className="text-xs text-center mt-2 text-gray-500">
-                Jika Anda sudah menyelesaikan pembayaran di PayPal, klik tombol di atas untuk memverifikasi status.
+            <div className="mt-4 bg-blue-50 p-4 rounded-md border-2 border-blue-100">
+              <h4 className="font-medium text-blue-800 mb-2 text-center">Verifikasi Pembayaran PayPal</h4>
+              <p className="text-sm text-blue-700 mb-3 text-center">
+                Jika Anda sudah menyelesaikan pembayaran di PayPal, klik tombol di bawah untuk mengaktifkan akun premium
+                Anda.
               </p>
+              <CheckPayPalStatus orderId={currentTransaction.orderId} />
             </div>
           )}
         </div>

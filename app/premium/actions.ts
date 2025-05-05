@@ -90,7 +90,8 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
         amount: premiumPrice,
         status: "pending",
         payment_gateway: finalGatewayName,
-        payment_method: paymentMethod,
+        // Set payment method to "PayPal" if using PayPal gateway
+        payment_method: finalGatewayName === "paypal" ? "PayPal" : paymentMethod,
       })
       .select()
       .single()
