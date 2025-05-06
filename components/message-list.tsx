@@ -168,10 +168,10 @@ export function MessageList({
                           </svg>
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex items-center text-xs">
-                        <span className="font-medium text-[var(--text)]">Anonim</span>
-                        <span className="mx-1.5 text-[var(--text)]/50">·</span>
-                        <span className="text-[var(--text)]/50">
+                      <div className="flex items-center">
+                        <span className="text-sm font-semibold text-[var(--text)]">Anonim</span>
+                        <span className="mx-1.5 text-xs text-[var(--text)]/50">·</span>
+                        <span className="text-xs text-[var(--text)]/50">
                           {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
                         </span>
                       </div>
