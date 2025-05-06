@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
 import { ProfileSchema } from "@/components/profile-schema"
-import { SocialMediaIcons } from "@/components/social-media-icons"
+import { CustomSocialIcons } from "@/components/custom-social-icons"
 
 // Tambahkan metadata statis untuk SEO dasar
 export const metadata = {
@@ -159,9 +159,9 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             </p>
           )}
 
-          {/* Social media icons - Menggunakan komponen baru */}
+          {/* Social media links - Menggunakan komponen CustomSocialIcons */}
           {user.is_premium && (
-            <SocialMediaIcons
+            <CustomSocialIcons
               instagramUrl={user.instagram_url}
               facebookUrl={user.facebook_url}
               linkedinUrl={user.linkedin_url}
