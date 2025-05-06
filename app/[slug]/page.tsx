@@ -119,7 +119,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
           {/* Avatar with animation */}
           <div className="relative mb-4">
             {user.is_premium && (
-              <Badge className="absolute -top-2 -right-2 z-10 bg-[rgb(250,204,21)] text-black border border-black flex items-center gap-1">
+              <Badge variant="premium" className="absolute -top-2 -right-2 z-10 flex items-center gap-1">
                 <Crown className="h-3 w-3" /> Premium
               </Badge>
             )}
@@ -202,7 +202,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                   href={user.tiktok_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-black text-white border-2 border-[var(--border)"
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-black text-white border-2 border-[var(--border)]"
                   title="TikTok"
                 >
                   <span className="font-bold text-sm">T</span>
