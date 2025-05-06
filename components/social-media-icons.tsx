@@ -22,7 +22,7 @@ export function SocialMediaIcons({ instagramUrl, facebookUrl, linkedinUrl, tikto
         <SocialIcon
           url={instagramUrl}
           network="instagram"
-          style={{ width: 36, height: 36 }}
+          style={{ width: 30, height: 30 }}
           target="_blank"
           rel="noopener noreferrer"
         />
@@ -31,7 +31,7 @@ export function SocialMediaIcons({ instagramUrl, facebookUrl, linkedinUrl, tikto
         <SocialIcon
           url={facebookUrl}
           network="facebook"
-          style={{ width: 36, height: 36 }}
+          style={{ width: 30, height: 30 }}
           target="_blank"
           rel="noopener noreferrer"
         />
@@ -40,7 +40,8 @@ export function SocialMediaIcons({ instagramUrl, facebookUrl, linkedinUrl, tikto
         <SocialIcon
           url={linkedinUrl}
           network="linkedin"
-          style={{ width: 36, height: 36 }}
+          style={{ width: 30, height: 30 }}
+          bgColor="#0077B5"
           target="_blank"
           rel="noopener noreferrer"
         />
@@ -49,7 +50,7 @@ export function SocialMediaIcons({ instagramUrl, facebookUrl, linkedinUrl, tikto
         <SocialIcon
           url={tiktokUrl}
           network="tiktok"
-          style={{ width: 36, height: 36 }}
+          style={{ width: 30, height: 30 }}
           target="_blank"
           rel="noopener noreferrer"
         />
