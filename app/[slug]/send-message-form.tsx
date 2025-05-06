@@ -104,6 +104,15 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     setIsSending(true)
 
     try {
+      // Verifikasi user terlebih dahulu jika ada session
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+
+      // Jika ada error dalam verifikasi user, log error tapi tetap lanjutkan
+      // karena pengiriman pesan anonim tidak memerlukan autentikasi
+      if (userError) {
+        console.error("User verification error:", userError.message)
+      }
+
       // Periksa rate limit sebelum mengirim pesan
       const isAllowed = await checkRateLimit()
 

@@ -31,6 +31,15 @@ export function SendMessageFormWithNotification({ userId, username }: SendMessag
     setIsSubmitting(true)
 
     try {
+      // Verifikasi user terlebih dahulu jika ada session
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+
+      // Jika ada error dalam verifikasi user, log error tapi tetap lanjutkan
+      // karena pengiriman pesan anonim tidak memerlukan autentikasi
+      if (userError) {
+        console.error("User verification error:", userError.message)
+      }
+
       // Check rate limit first
       const rateLimitResponse = await fetch("/api/rate-limit/check", {
         method: "POST",

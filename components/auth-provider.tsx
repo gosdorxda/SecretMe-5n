@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Function to refresh session data
+  // Fungsi untuk refresh session data
   const refreshSession = useCallback(async () => {
     if (refreshingRef.current) return
     refreshingRef.current = true
@@ -86,10 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cachedSession !== undefined) {
         // We have a valid cached session or null (meaning no session)
         setSession(cachedSession)
-        setUser(cachedSession?.user ?? null)
-        setLoading(false)
 
-        // Jika ada session, verifikasi dengan getUser()
+        // Selalu verifikasi user dengan getUser() bahkan jika menggunakan cache
         if (cachedSession) {
           // Verifikasi user dengan server auth
           const { data: userData, error: userError } = await supabase.auth.getUser()
@@ -101,8 +99,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Error verifying user:", userError)
             await signOut()
           }
+        } else {
+          setUser(null)
         }
 
+        setLoading(false)
         refreshingRef.current = false
         return
       }
@@ -124,8 +125,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Jika ada session, verifikasi dengan getUser()
-      let verifiedUser = sessionData?.session?.user ?? null
+      // Jika ada session, SELALU verifikasi dengan getUser()
+      let verifiedUser = null
 
       if (sessionData?.session) {
         // Verifikasi user dengan server auth

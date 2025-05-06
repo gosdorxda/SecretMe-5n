@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
 import { User, Crown, Instagram, Facebook, Linkedin } from "lucide-react"
@@ -19,23 +19,9 @@ export default async function ProfilePage({ params }: { params: { slug: string }
   const { slug } = params
   const supabase = createClient()
 
-  // Cek session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // Jika ada session, verifikasi user dengan getUser()
-  let userId = null
-  if (session) {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (!userError && user) {
-      userId = user.id
-    }
-  }
+  // Gunakan getVerifiedUser untuk mendapatkan user yang terverifikasi
+  const { user: authUser } = await getVerifiedUser()
+  const userId = authUser?.id || null
 
   let user = null
 
