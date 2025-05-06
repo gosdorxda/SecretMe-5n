@@ -2,12 +2,13 @@ import { notFound, redirect } from "next/navigation"
 import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
-import { User, Crown, Instagram, Facebook, Linkedin } from "lucide-react"
+import { User, Crown } from "lucide-react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
 import { ProfileSchema } from "@/components/profile-schema"
+import { SocialMediaIcons } from "@/components/social-media-icons"
 
 // Tambahkan metadata statis untuk SEO dasar
 export const metadata = {
@@ -104,9 +105,6 @@ export default async function ProfilePage({ params }: { params: { slug: string }
   // Count total messages
   const messageCount = messages?.length || 0
 
-  // Check if user has any social media links
-  const hasSocialLinks = user.instagram_url || user.facebook_url || user.linkedin_url || user.tiktok_url
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
       {/* Tambahkan komponen SEO */}
@@ -161,54 +159,14 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             </p>
           )}
 
-          {/* Social media links */}
-          {user.is_premium && hasSocialLinks && (
-            <div className="flex gap-2 mt-3">
-              {user.instagram_url && (
-                <a
-                  href={user.instagram_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white border-2 border-[var(--border)]"
-                  title="Instagram"
-                >
-                  <Instagram className="h-4 w-4" />
-                </a>
-              )}
-              {user.facebook_url && (
-                <a
-                  href={user.facebook_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white border-2 border-[var(--border)]"
-                  title="Facebook"
-                >
-                  <Facebook className="h-4 w-4" />
-                </a>
-              )}
-              {user.linkedin_url && (
-                <a
-                  href={user.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-700 text-white border-2 border-[var(--border)]"
-                  title="LinkedIn"
-                >
-                  <Linkedin className="h-4 w-4" />
-                </a>
-              )}
-              {user.tiktok_url && (
-                <a
-                  href={user.tiktok_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-black text-white border-2 border-[var(--border)]"
-                  title="TikTok"
-                >
-                  <span className="font-bold text-sm">T</span>
-                </a>
-              )}
-            </div>
+          {/* Social media icons - Menggunakan komponen baru */}
+          {user.is_premium && (
+            <SocialMediaIcons
+              instagramUrl={user.instagram_url}
+              facebookUrl={user.facebook_url}
+              linkedinUrl={user.linkedin_url}
+              tiktokUrl={user.tiktok_url}
+            />
           )}
         </div>
 
