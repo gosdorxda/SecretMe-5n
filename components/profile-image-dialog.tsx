@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Download, Share2 } from "lucide-react"
 import Image from "next/image"
@@ -253,6 +253,7 @@ export function ProfileImageDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Bagikan Profil Sebagai Gambar</DialogTitle>
+          <DialogDescription>Buat dan bagikan gambar profil Anda dengan mudah</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center space-y-4">
