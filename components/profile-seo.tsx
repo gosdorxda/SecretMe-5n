@@ -25,24 +25,7 @@ export function ProfileSeo({ user }: ProfileSeoProps) {
   const profileUrl = `${origin}/${username}`
   const title = `${user.name} (@${username}) | SecretMe`
   const description = user.bio || `Kirim pesan anonim ke ${user.name} melalui SecretMe`
-
-  // Tambahkan parameter bio dan avatarUrl ke URL OG image
-  const ogImageParams = new URLSearchParams({
-    username: username.toString(),
-    name: user.name,
-  })
-
-  // Tambahkan bio jika ada
-  if (user.bio) {
-    ogImageParams.append("bio", user.bio)
-  }
-
-  // Tambahkan avatar_url jika ada
-  if (user.avatar_url) {
-    ogImageParams.append("avatarUrl", user.avatar_url)
-  }
-
-  const imageUrl = `${origin}/api/og?${ogImageParams.toString()}`
+  const imageUrl = user.avatar_url || `${origin}/api/og?username=${username}&name=${encodeURIComponent(user.name)}`
 
   return (
     <>

@@ -10,8 +10,6 @@ export async function GET(request: NextRequest) {
     // Get username and name from query params
     const username = searchParams.get("username")
     const name = searchParams.get("name") || "User"
-    const bio = searchParams.get("bio") || `Kirim pesan anonim ke ${name} melalui SecretMe`
-    const avatarUrl = searchParams.get("avatarUrl") || null
 
     if (!username) {
       return new Response("Missing username parameter", { status: 400 })
@@ -36,7 +34,7 @@ export async function GET(request: NextRequest) {
           fontFamily: "Inter",
         }}
       >
-        {/* Background elements - subtle circles similar to template-image-generator */}
+        {/* Background elements */}
         <div
           style={{
             position: "absolute",
@@ -61,131 +59,92 @@ export async function GET(request: NextRequest) {
           }}
         />
 
-        {/* Main card with shadow and border - similar to profile image template */}
+        {/* Logo and branding */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "8px",
+              backgroundColor: "#fd9745",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: "12px",
+              border: "2px solid black",
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                stroke="black"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <span style={{ fontSize: "24px", fontWeight: "bold" }}>
+            Secret<span style={{ color: "#fd9745" }}>Me</span>
+          </span>
+        </div>
+
+        {/* Profile info */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            width: "70%",
-            padding: "40px",
-            backgroundColor: "white",
+            justifyContent: "center",
+            padding: "20px",
+            background: "white",
             borderRadius: "16px",
             border: "2px solid black",
             boxShadow: "4px 4px 0px 0px black",
+            width: "80%",
+            maxWidth: "500px",
           }}
         >
-          {/* Avatar with glow effect */}
           <div
             style={{
-              position: "relative",
-              marginBottom: "24px",
+              width: "80px",
+              height: "80px",
+              borderRadius: "50%",
+              backgroundColor: "#f3f4f6",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "16px",
+              border: "2px solid black",
             }}
           >
-            {/* Glow effect */}
-            <div
-              style={{
-                position: "absolute",
-                width: "120px",
-                height: "120px",
-                borderRadius: "60px",
-                background: "radial-gradient(circle, rgba(253, 151, 69, 0.5) 0%, rgba(253, 151, 69, 0) 70%)",
-                top: "-10px",
-                left: "-10px",
-                zIndex: 0,
-              }}
-            />
-
-            {/* Avatar circle */}
-            <div
-              style={{
-                width: "100px",
-                height: "100px",
-                borderRadius: "50%",
-                backgroundColor: "#fd9745",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "2px solid black",
-                position: "relative",
-                zIndex: 1,
-                overflow: "hidden",
-              }}
-            >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl || "/placeholder.svg"}
-                  alt={name}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              ) : (
-                <span style={{ fontSize: "40px", fontWeight: "bold", color: "white" }}>
-                  {name.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
+            <span style={{ fontSize: "32px", fontWeight: "bold" }}>{name.charAt(0).toUpperCase()}</span>
           </div>
 
-          {/* Name and username */}
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <h1 style={{ fontSize: "32px", margin: "0 0 8px 0" }}>{name}</h1>
-            <p style={{ fontSize: "18px", color: "#6b7280", margin: "0 0 16px 0" }}>@{username}</p>
+          <h1 style={{ fontSize: "32px", margin: "0 0 8px 0" }}>{name}</h1>
+          <p style={{ fontSize: "18px", color: "#4b5563", margin: "0 0 16px 0" }}>@{username}</p>
 
-            {/* Bio with max 2 lines */}
-            {bio && (
-              <p
-                style={{
-                  fontSize: "16px",
-                  color: "#4b5563",
-                  margin: "0 0 24px 0",
-                  maxWidth: "400px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  display: "-webkit-box",
-                  WebkitLineClamp: "2",
-                  WebkitBoxOrient: "vertical",
-                }}
-              >
-                {bio}
-              </p>
-            )}
-          </div>
-
-          {/* CTA Button */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: "#fd9745",
-              color: "white",
-              padding: "12px 24px",
+              color: "black",
+              padding: "8px 16px",
               borderRadius: "8px",
               fontWeight: "bold",
               border: "2px solid black",
-              boxShadow: "2px 2px 0px 0px black",
             }}
           >
-            Kirimi Saya Pesan Anonim
+            Kirim Pesan Anonim
           </div>
-        </div>
-
-        {/* SecretMe branding */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "20px",
-            textAlign: "center",
-            color: "#6b7280",
-            fontSize: "14px",
-            fontWeight: "bold",
-          }}
-        >
-          Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu
         </div>
       </div>,
       {
