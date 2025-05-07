@@ -197,18 +197,7 @@ export async function generateTemplateImage({
         ctx.textBaseline = "top"
         ctx.fillText("Pesan Anonim", headerX, headerY)
 
-        // Hitung lebar teks "Pesan Anonim" untuk menentukan posisi titik
-        const pesanAnonimWidth = ctx.measureText("Pesan Anonim").width
-        const dotX = headerX + pesanAnonimWidth + 15 // Tambahkan jarak 30px setelah teks
-
-        // Draw dot separator dengan warna abu-abu
-        ctx.fillStyle = "#6b7280" // Ubah warna titik menjadi abu-abu
-        ctx.fillText("•", dotX, headerY)
-
-        // Draw date - sejajarkan dengan teks lainnya
-        ctx.fillStyle = "#6b7280"
-        ctx.font = `28px ${PRIMARY_FONT}`
-        ctx.fillText(date, dotX + 30, headerY + 2) // Tambahkan jarak 30px setelah titik
+        // Hapus titik pemisah dan tanggal
 
         // Sesuaikan posisi "Untuk: @username" agar sejajar dengan avatar
         const usernameY = headerY + 45 // Jarak yang konsisten dari teks di atasnya
