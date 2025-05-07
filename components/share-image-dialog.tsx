@@ -77,7 +77,7 @@ export function ShareImageDialog({
     try {
       await shareTemplateImage(
         imagePreview,
-        `Pesan untuk @${username}`,
+        `Pesan anonim untuk @${username} dari SecretMe`,
         `Pesan anonim untuk @${username} dari SecretMe`,
       )
       onOpenChange(false)
