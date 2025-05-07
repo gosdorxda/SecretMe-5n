@@ -27,9 +27,9 @@ const themeColors: ThemeColors = {
   avatarBg: "#fd9745", // Warna avatar sesuai dengan --main di proyek
 }
 
-// Konstanta untuk resolusi dan kualitas
-const CANVAS_WIDTH = 1800
-const CANVAS_HEIGHT = 945
+// Konstanta untuk resolusi dan kualitas - UKURAN DIKECILKAN
+const CANVAS_WIDTH = 720
+const CANVAS_HEIGHT = 378 // Mempertahankan rasio aspek yang sama (720 / 1800 * 945)
 const EXPORT_QUALITY = 1.0
 
 // Font yang sesuai dengan proyek (font default dari Tailwind CSS)
@@ -58,7 +58,7 @@ export async function generateTemplateImage({
       // Gunakan warna tema yang sudah didefinisikan
       const colors = themeColors
 
-      // Create high-resolution canvas
+      // Create canvas with smaller dimensions
       const canvas = document.createElement("canvas")
       canvas.width = CANVAS_WIDTH
       canvas.height = CANVAS_HEIGHT
@@ -76,17 +76,17 @@ export async function generateTemplateImage({
       ctx.fillStyle = colors.background
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      // Calculate card width (fixed)
+      // Calculate card width (fixed) - Sesuaikan dengan ukuran canvas baru
       const cardWidth = CANVAS_WIDTH * 0.7
       const cardLeft = (CANVAS_WIDTH - cardWidth) / 2
 
-      // Set up constants for layout
-      const padding = 40
-      const avatarSize = 80
-      const headerHeight = padding * 2 + avatarSize - 15 // Kurangi headerHeight untuk mendekatkan konten pesan
-      const footerHeight = padding * 2 + 50 // Space for button + padding
-      const messageLineHeight = 56
-      const messageFont = `44px ${PRIMARY_FONT}`
+      // Set up constants for layout - Sesuaikan dengan ukuran canvas baru
+      const padding = 16 // Dikurangi dari 40
+      const avatarSize = 32 // Dikurangi dari 80
+      const headerHeight = padding * 2 + avatarSize - 6 // Disesuaikan
+      const footerHeight = padding * 2 + 20 // Disesuaikan
+      const messageLineHeight = 22 // Dikurangi dari 56
+      const messageFont = `18px ${PRIMARY_FONT}` // Dikurangi dari 44px
 
       // Calculate how many lines the message will take
       ctx.font = messageFont
@@ -95,7 +95,7 @@ export async function generateTemplateImage({
 
       // Calculate the dynamic card height based on message length
       // Minimum height ensures there's always enough space for short messages
-      const minContentHeight = 200 // Minimum content height for very short messages
+      const minContentHeight = 80 // Disesuaikan dari 200
       const contentHeight = Math.max(minContentHeight, messageLines.length * messageLineHeight + padding * 2)
 
       // Calculate total card height
@@ -103,16 +103,16 @@ export async function generateTemplateImage({
       const cardTop = (CANVAS_HEIGHT - cardHeight) / 2
 
       // Draw the card (white background with black border)
-      ctx.fillStyle = "#ffffff"
+      ctx.fillStyle = colors.messageBox
 
       // Sesuaikan shadow agar lebih tebal dan selaras dengan proyek
       ctx.shadowColor = "rgba(0, 0, 0, 0.9)"
-      ctx.shadowBlur = 2
-      ctx.shadowOffsetX = 6
-      ctx.shadowOffsetY = 6
+      ctx.shadowBlur = 1 // Dikurangi dari 2
+      ctx.shadowOffsetX = 2 // Dikurangi dari 6
+      ctx.shadowOffsetY = 2 // Dikurangi dari 6
 
       // Draw rounded rectangle for card
-      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, true, false)
+      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, true, false) // Radius dikurangi dari 16
 
       // Reset shadow untuk border
       ctx.shadowColor = "transparent"
@@ -121,12 +121,12 @@ export async function generateTemplateImage({
 
       // Draw border
       ctx.strokeStyle = colors.border
-      ctx.lineWidth = 4 // Tebalkan border menjadi 4px
-      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, false, true)
+      ctx.lineWidth = 2 // Dikurangi dari 4
+      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, false, true)
 
       // Naikkan posisi avatar agar sejajar dengan teks
       const avatarX = cardLeft + padding + avatarSize / 2
-      const avatarY = cardTop + padding + avatarSize / 2 - 5 // Kurangi 5px untuk menaikkan avatar
+      const avatarY = cardTop + padding + avatarSize / 2 - 2 // Disesuaikan
 
       ctx.save()
       ctx.beginPath()
@@ -135,7 +135,7 @@ export async function generateTemplateImage({
 
       // Avatar border - TEBALKAN
       ctx.strokeStyle = "#000000"
-      ctx.lineWidth = 5 // Tebalkan border avatar menjadi 5px
+      ctx.lineWidth = 2 // Dikurangi dari 5
       ctx.stroke()
 
       ctx.clip()
@@ -192,7 +192,7 @@ export async function generateTemplateImage({
 
         // Draw "Pesan Anonim" text - NOT BOLD as requested
         ctx.fillStyle = "#000000"
-        ctx.font = `32px ${PRIMARY_FONT}`
+        ctx.font = `13px ${PRIMARY_FONT}` // Dikurangi dari 32px
         ctx.textAlign = "left"
         ctx.textBaseline = "top"
         ctx.fillText("Pesan Anonim", headerX, headerY)
@@ -200,30 +200,30 @@ export async function generateTemplateImage({
         // Hapus titik pemisah dan tanggal
 
         // Sesuaikan posisi "Untuk: @username" agar sejajar dengan avatar
-        const usernameY = headerY + 45 // Jarak yang konsisten dari teks di atasnya
+        const usernameY = headerY + 18 // Disesuaikan dari 45
 
         ctx.fillStyle = "#000000"
-        ctx.font = `28px ${PRIMARY_FONT}`
+        ctx.font = `11px ${PRIMARY_FONT}` // Dikurangi dari 28px
         ctx.fillText("Untuk:", headerX, usernameY)
 
         // Tambahkan spasi setelah "Untuk:"
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 28px ${PRIMARY_FONT}`
+        ctx.font = `bold 11px ${PRIMARY_FONT}` // Dikurangi dari 28px
         const usernameText = `@${username}`
-        ctx.fillText(usernameText, headerX + 90, usernameY) // Tambahkan jarak yang cukup
+        ctx.fillText(usernameText, headerX + 36, usernameY) // Disesuaikan dari 90
 
         // Tambahkan nama pengguna jika tersedia
         if (displayName) {
           const usernameWidth = ctx.measureText(usernameText).width
           ctx.fillStyle = "#000000"
-          ctx.font = `28px ${PRIMARY_FONT}` // Font biasa (tidak tebal)
-          ctx.fillText(`(${displayName})`, headerX + 100 + usernameWidth, usernameY)
+          ctx.font = `11px ${PRIMARY_FONT}` // Font biasa (tidak tebal)
+          ctx.fillText(`(${displayName})`, headerX + 40 + usernameWidth, usernameY) // Disesuaikan dari 100
         }
 
         // Draw message content with LARGER text for better readability
         // Kurangi jarak vertikal antara header dan konten pesan
         const messageX = cardLeft + padding
-        const messageY = cardTop + headerHeight + padding - 5 // Kurangi 5px untuk mendekatkan dengan header
+        const messageY = cardTop + headerHeight + padding - 2 // Disesuaikan dari -5
 
         ctx.fillStyle = "#000000"
         ctx.font = messageFont
@@ -235,8 +235,8 @@ export async function generateTemplateImage({
         })
 
         // Draw reply button at the bottom right
-        const buttonWidth = 120
-        const buttonHeight = 50
+        const buttonWidth = 48 // Dikurangi dari 120
+        const buttonHeight = 20 // Dikurangi dari 50
         const buttonX = cardLeft + cardWidth - padding - buttonWidth
         const buttonY = cardTop + cardHeight - padding - buttonHeight
 
@@ -246,31 +246,31 @@ export async function generateTemplateImage({
         // Button shadow
         ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
         ctx.shadowBlur = 1
-        ctx.shadowOffsetX = 3
-        ctx.shadowOffsetY = 3
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, true, false)
+        ctx.shadowOffsetX = 1 // Dikurangi dari 3
+        ctx.shadowOffsetY = 1 // Dikurangi dari 3
+        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 4, true, false) // Radius dikurangi dari 8
 
         // Button border
         ctx.shadowColor = "transparent"
         ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = 0
         ctx.strokeStyle = "#000000"
-        ctx.lineWidth = 3 // Tebalkan border tombol
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, false, true)
+        ctx.lineWidth = 1 // Dikurangi dari 3
+        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 4, false, true)
 
         // Button text
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 28px ${PRIMARY_FONT}`
+        ctx.font = `bold 11px ${PRIMARY_FONT}` // Dikurangi dari 28px
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText("Balas", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
 
         // Draw SecretMe branding at the bottom
         ctx.fillStyle = "#6b7280"
-        ctx.font = `bold 28px ${PRIMARY_FONT}`
+        ctx.font = `bold 11px ${PRIMARY_FONT}` // Dikurangi dari 28px
         ctx.textAlign = "center"
         ctx.textBaseline = "bottom"
-        ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 30)
+        ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 12) // Disesuaikan dari 30
 
         // Convert canvas to data URL with maximum quality
         const dataUrl = canvas.toDataURL("image/png", EXPORT_QUALITY)
@@ -278,6 +278,256 @@ export async function generateTemplateImage({
       }
     } catch (error) {
       console.error("Error generating template image:", error)
+      reject(error)
+    }
+  })
+}
+
+/**
+ * Generates a shareable profile image for promoting user profiles
+ */
+export async function generateProfileTemplateImage({
+  username,
+  displayName = "",
+  bio = "",
+  avatarUrl = null,
+  profileUrl = "",
+  isPremium = false,
+}: {
+  username: string
+  displayName?: string
+  bio?: string
+  avatarUrl?: string | null
+  profileUrl: string
+  isPremium?: boolean
+}): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Create canvas with smaller dimensions
+      const canvas = document.createElement("canvas")
+      canvas.width = CANVAS_WIDTH
+      canvas.height = CANVAS_HEIGHT
+
+      const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: false })
+      if (!ctx) {
+        throw new Error("Could not get canvas context")
+      }
+
+      // Enable image smoothing for better quality
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = "high"
+
+      // Draw background with project's background color
+      ctx.fillStyle = themeColors.background
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+      // Calculate card width (fixed) - Sesuaikan dengan ukuran canvas baru
+      const cardWidth = CANVAS_WIDTH * 0.7
+      const cardLeft = (CANVAS_WIDTH - cardWidth) / 2
+
+      // Set up constants for layout - Sesuaikan dengan ukuran canvas baru
+      const padding = 16
+      const avatarSize = 60 // Lebih besar untuk profil
+      const headerHeight = padding * 2 + 30
+      const footerHeight = padding * 2 + 40 // Lebih tinggi untuk tombol CTA
+      const bioLineHeight = 20
+      const bioFont = `16px ${PRIMARY_FONT}`
+
+      // Calculate how many lines the bio will take
+      ctx.font = bioFont
+      const bioWidth = cardWidth - padding * 2
+      const bioLines = bio ? calculateTextLines(ctx, bio, bioWidth, 3) : [] // Max 3 lines
+
+      // Calculate the dynamic card height based on bio length
+      const minContentHeight = 100
+      const contentHeight = Math.max(minContentHeight, bioLines.length * bioLineHeight + padding * 2)
+
+      // Calculate total card height
+      const cardHeight = headerHeight + contentHeight + footerHeight
+      const cardTop = (CANVAS_HEIGHT - cardHeight) / 2
+
+      // Draw the card (white background with black border)
+      ctx.fillStyle = themeColors.messageBox
+
+      // Sesuaikan shadow agar lebih tebal dan selaras dengan proyek
+      ctx.shadowColor = "rgba(0, 0, 0, 0.9)"
+      ctx.shadowBlur = 1
+      ctx.shadowOffsetX = 2
+      ctx.shadowOffsetY = 2
+
+      // Draw rounded rectangle for card
+      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, true, false)
+
+      // Reset shadow untuk border
+      ctx.shadowColor = "transparent"
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+
+      // Draw border
+      ctx.strokeStyle = themeColors.border
+      ctx.lineWidth = 2
+      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, false, true)
+
+      // Posisi avatar di tengah atas
+      const avatarX = cardLeft + cardWidth / 2
+      const avatarY = cardTop + padding + avatarSize / 2
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(avatarX, avatarY, avatarSize / 2, 0, Math.PI * 2)
+      ctx.closePath()
+
+      // Avatar border
+      ctx.strokeStyle = "#000000"
+      ctx.lineWidth = 2
+      ctx.stroke()
+
+      ctx.clip()
+
+      // Fill avatar background with project's main color
+      ctx.fillStyle = themeColors.avatarBg
+      ctx.fillRect(avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
+
+      if (avatarUrl) {
+        // Load and draw avatar image if provided
+        const avatarImg = new Image()
+        avatarImg.crossOrigin = "anonymous"
+        avatarImg.onload = () => {
+          ctx.drawImage(avatarImg, avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
+          ctx.restore()
+          continueDrawing()
+        }
+        avatarImg.onerror = () => {
+          // Draw fallback if image fails to load
+          drawAvatarFallback()
+          continueDrawing()
+        }
+        avatarImg.src = avatarUrl
+      } else {
+        // Draw fallback avatar
+        drawAvatarFallback()
+        continueDrawing()
+      }
+
+      function drawAvatarFallback() {
+        // Gambar background avatar dengan warna tema
+        ctx.fillStyle = themeColors.avatarBg
+        ctx.fillRect(avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
+
+        // Gambar inisial atau ikon user
+        ctx.fillStyle = "#ffffff"
+        ctx.font = `bold ${avatarSize * 0.4}px ${PRIMARY_FONT}`
+        ctx.textAlign = "center"
+        ctx.textBaseline = "middle"
+        ctx.fillText(displayName ? displayName.charAt(0).toUpperCase() : "?", avatarX, avatarY)
+
+        // Restore context setelah clipping
+        ctx.restore()
+      }
+
+      function continueDrawing() {
+        // Posisi username dan displayName di tengah di bawah avatar
+        const usernameY = avatarY + avatarSize / 2 + padding
+
+        // Draw username
+        ctx.fillStyle = "#000000"
+        ctx.font = `bold 18px ${PRIMARY_FONT}`
+        ctx.textAlign = "center"
+        ctx.textBaseline = "top"
+        const usernameText = `@${username}`
+        ctx.fillText(usernameText, cardLeft + cardWidth / 2, usernameY)
+
+        // Draw display name if available
+        if (displayName) {
+          ctx.fillStyle = "#000000"
+          ctx.font = `14px ${PRIMARY_FONT}`
+          ctx.fillText(displayName, cardLeft + cardWidth / 2, usernameY + 22)
+        }
+
+        // Draw premium badge if user is premium
+        if (isPremium) {
+          const badgeWidth = 70
+          const badgeHeight = 20
+          const badgeX = cardLeft + cardWidth / 2 - badgeWidth / 2
+          const badgeY = usernameY + (displayName ? 44 : 26)
+
+          // Badge background
+          ctx.fillStyle = "#fbbf24" // Amber color for premium
+          roundRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 10, true, false)
+
+          // Badge text
+          ctx.fillStyle = "#000000"
+          ctx.font = `bold 11px ${PRIMARY_FONT}`
+          ctx.textAlign = "center"
+          ctx.textBaseline = "middle"
+          ctx.fillText("PREMIUM", badgeX + badgeWidth / 2, badgeY + badgeHeight / 2)
+        }
+
+        // Draw bio if available
+        if (bio && bioLines.length > 0) {
+          const bioY = usernameY + (displayName ? 50 : 30) + (isPremium ? 26 : 0)
+
+          ctx.fillStyle = "#000000"
+          ctx.font = bioFont
+          ctx.textAlign = "center"
+
+          // Draw each line of bio
+          bioLines.forEach((line, index) => {
+            ctx.fillText(line, cardLeft + cardWidth / 2, bioY + index * bioLineHeight)
+          })
+        }
+
+        // Draw CTA button at the bottom
+        const buttonWidth = 200
+        const buttonHeight = 36
+        const buttonX = cardLeft + cardWidth / 2 - buttonWidth / 2
+        const buttonY = cardTop + cardHeight - padding - buttonHeight - 10
+
+        // Button background
+        ctx.fillStyle = "#fd9745" // Main color
+
+        // Button shadow
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
+        ctx.shadowBlur = 1
+        ctx.shadowOffsetX = 1
+        ctx.shadowOffsetY = 1
+        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18, true, false)
+
+        // Button border
+        ctx.shadowColor = "transparent"
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
+        ctx.strokeStyle = "#000000"
+        ctx.lineWidth = 1
+        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18, false, true)
+
+        // Button text
+        ctx.fillStyle = "#ffffff"
+        ctx.font = `bold 14px ${PRIMARY_FONT}`
+        ctx.textAlign = "center"
+        ctx.textBaseline = "middle"
+        ctx.fillText("Kirim Pesan Anonim", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
+
+        // Draw profile URL
+        ctx.fillStyle = "#6b7280"
+        ctx.font = `12px ${PRIMARY_FONT}`
+        ctx.textAlign = "center"
+        ctx.textBaseline = "middle"
+        ctx.fillText(profileUrl, cardLeft + cardWidth / 2, buttonY + buttonHeight + 16)
+
+        // Draw SecretMe branding at the bottom
+        ctx.fillStyle = "#6b7280"
+        ctx.font = `bold 11px ${PRIMARY_FONT}`
+        ctx.textAlign = "center"
+        ctx.textBaseline = "bottom"
+        ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 12)
+
+        // Convert canvas to data URL with maximum quality
+        const dataUrl = canvas.toDataURL("image/png", EXPORT_QUALITY)
+        resolve(dataUrl)
+      }
+    } catch (error) {
+      console.error("Error generating profile template image:", error)
       reject(error)
     }
   })

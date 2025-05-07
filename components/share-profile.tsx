@@ -3,9 +3,19 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Copy, Share2, Instagram, Facebook, Linkedin, InstagramIcon as BrandTiktok, User } from "lucide-react"
+import {
+  Copy,
+  Share2,
+  Instagram,
+  Facebook,
+  Linkedin,
+  InstagramIcon as BrandTiktok,
+  User,
+  ImageIcon,
+} from "lucide-react"
 import { useState } from "react"
 import Image from "next/image"
+import { ShareProfileImageDialog } from "./share-profile-image-dialog"
 
 interface ShareProfileProps {
   userId: string
@@ -33,6 +43,7 @@ export function ShareProfile({
   bio,
 }: ShareProfileProps) {
   const [copied, setCopied] = useState(false)
+  const [shareImageDialogOpen, setShareImageDialogOpen] = useState(false)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
   const profileUrl = `${appUrl}/${isPremium && username ? username : numericId}`
 
@@ -52,6 +63,10 @@ export function ShareProfile({
     } else {
       copyToClipboard()
     }
+  }
+
+  function openShareImageDialog() {
+    setShareImageDialogOpen(true)
   }
 
   const hasSocialLinks = isPremium && (instagramUrl || facebookUrl || linkedinUrl || tiktokUrl)
@@ -97,6 +112,15 @@ export function ShareProfile({
           </Button>
           <Button variant="default" size="icon" onClick={shareProfile} title="Bagikan" className="flex-shrink-0">
             <Share2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={openShareImageDialog}
+            title="Bagikan sebagai gambar"
+            className="flex-shrink-0"
+          >
+            <ImageIcon className="h-4 w-4" />
           </Button>
         </div>
         {copied && <p className="text-xs text-green-600 mt-2">Link berhasil disalin!</p>}
@@ -145,6 +169,17 @@ export function ShareProfile({
             </p>
           </div>
         )}
+
+        {/* Share Profile Image Dialog */}
+        <ShareProfileImageDialog
+          open={shareImageDialogOpen}
+          onOpenChange={setShareImageDialogOpen}
+          username={username || `${numericId}`}
+          displayName={isPremium ? bio : null}
+          bio={isPremium ? bio : null}
+          avatarUrl={isPremium ? avatarUrl : null}
+          isPremium={isPremium}
+        />
       </CardContent>
     </Card>
   )

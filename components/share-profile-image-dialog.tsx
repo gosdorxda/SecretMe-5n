@@ -10,36 +10,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { generateTemplateImage, shareTemplateImage } from "@/lib/template-image-generator"
+import { generateProfileTemplateImage, shareTemplateImage } from "@/lib/template-image-generator"
 import { Download, Share } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-interface ShareImageDialogProps {
+interface ShareProfileImageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   username: string
-  message: string
-  date: string
-  avatarUrl?: string | null
   displayName?: string | null
+  bio?: string | null
+  avatarUrl?: string | null
+  isPremium?: boolean
 }
 
-export function ShareImageDialog({
+export function ShareProfileImageDialog({
   open,
   onOpenChange,
   username,
-  message,
-  date,
-  avatarUrl,
   displayName,
-}: ShareImageDialogProps) {
+  bio,
+  avatarUrl,
+  isPremium = false,
+}: ShareProfileImageDialogProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const { toast } = useToast()
 
-  // Teks tetap untuk berbagi
-  const shareText = "Aku baru saja menerima pesan anonim dari seseorang 🤔"
+  // Teks untuk berbagi
+  const shareTitle = `Kirim pesan anonim ke ${displayName || username}`
+  const shareText = `Kirim pesan anonim ke saya melalui SecretMe 🤫`
 
   // Generate preview when dialog opens
   useEffect(() => {
@@ -53,12 +54,17 @@ export function ShareImageDialog({
 
     setIsGenerating(true)
     try {
-      const dataUrl = await generateTemplateImage({
+      // Dapatkan URL profil
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+      const profileUrl = `${appUrl}/${isPremium && username ? username : username}`
+
+      const dataUrl = await generateProfileTemplateImage({
         username,
-        message,
-        date,
-        avatarUrl,
         displayName: displayName || "",
+        bio: bio || "",
+        avatarUrl,
+        profileUrl,
+        isPremium,
       })
       setImagePreview(dataUrl)
     } catch (error) {
@@ -78,7 +84,7 @@ export function ShareImageDialog({
 
     setIsSharing(true)
     try {
-      await shareTemplateImage(imagePreview, shareText, shareText)
+      await shareTemplateImage(imagePreview, shareTitle, shareText)
       onOpenChange(false)
     } catch (error) {
       console.error("Error sharing image:", error)
@@ -97,7 +103,7 @@ export function ShareImageDialog({
 
     const link = document.createElement("a")
     link.href = imagePreview
-    link.download = `pesan-untuk-${username.replace(/\s+/g, "-")}.png`
+    link.download = `profil-${username.replace(/\s+/g, "-")}.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -107,8 +113,8 @@ export function ShareImageDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Bagikan Sebagai Gambar</DialogTitle>
-          <DialogDescription>Lihat preview dan bagikan pesan sebagai gambar</DialogDescription>
+          <DialogTitle>Bagikan Profil Sebagai Gambar</DialogTitle>
+          <DialogDescription>Lihat preview dan bagikan profil Anda sebagai gambar</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 py-4">

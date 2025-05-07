@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ShareImageDialog } from "@/components/share-image-dialog"
 import { ImageIcon } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface TemplateShareButtonProps {
   username: string
@@ -28,15 +29,18 @@ export function TemplateShareButton({
 
   return (
     <>
-      <Button
-        variant={variant}
-        size={size}
-        onClick={() => setDialogOpen(true)}
-        className={className}
-        title="Bagikan sebagai gambar"
-      >
-        <ImageIcon className="h-4 w-4" />
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant={variant} size={size} onClick={() => setDialogOpen(true)} className={className}>
+              <ImageIcon className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Bagikan pesan sebagai gambar</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <ShareImageDialog
         open={dialogOpen}
