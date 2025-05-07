@@ -123,7 +123,7 @@ export function ProfileImageDialog({
               </div>
             </div>
           ) : imageUrl ? (
-            <div className="relative w-full overflow-hidden rounded-md">
+            <div className="relative w-full overflow-hidden border rounded-lg p-2 bg-gray-50 border-black">
               <img
                 src={imageUrl || "/placeholder.svg"}
                 alt={`Profil ${displayName || username}`}
