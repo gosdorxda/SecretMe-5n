@@ -10,37 +10,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { generateProfileTemplateImage, shareTemplateImage } from "@/lib/template-image-generator"
+import { generateProfileImage, shareTemplateImage } from "@/lib/template-image-generator"
 import { Download, Share } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-interface ShareProfileImageDialogProps {
+interface ProfileImageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   username: string
-  displayName?: string | null
-  bio?: string | null
+  displayName?: string
+  bio?: string
   avatarUrl?: string | null
   isPremium?: boolean
 }
 
-export function ShareProfileImageDialog({
+export function ProfileImageDialog({
   open,
   onOpenChange,
   username,
   displayName,
   bio,
   avatarUrl,
-  isPremium = false,
-}: ShareProfileImageDialogProps) {
+  isPremium,
+}: ProfileImageDialogProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const { toast } = useToast()
 
   // Teks untuk berbagi
-  const shareTitle = `Kirim pesan anonim ke ${displayName || username}`
-  const shareText = `Kirim pesan anonim ke saya melalui SecretMe 🤫`
+  const shareTitle = `Profil @${username} di SecretMe`
+  const shareText = `Kirim pesan anonim ke @${username} di SecretMe`
+
+  // Generate profile URL
+  const profileUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/${username}` : `https://secretme.app/${username}`
 
   // Generate preview when dialog opens
   useEffect(() => {
@@ -54,17 +58,13 @@ export function ShareProfileImageDialog({
 
     setIsGenerating(true)
     try {
-      // Dapatkan URL profil
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-      const profileUrl = `${appUrl}/${isPremium && username ? username : username}`
-
-      const dataUrl = await generateProfileTemplateImage({
+      const dataUrl = await generateProfileImage({
         username,
         displayName: displayName || "",
         bio: bio || "",
         avatarUrl,
+        isPremium: isPremium || false,
         profileUrl,
-        isPremium,
       })
       setImagePreview(dataUrl)
     } catch (error) {
@@ -114,7 +114,7 @@ export function ShareProfileImageDialog({
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bagikan Profil Sebagai Gambar</DialogTitle>
-          <DialogDescription>Lihat preview dan bagikan profil Anda sebagai gambar</DialogDescription>
+          <DialogDescription>Lihat preview dan bagikan profil sebagai gambar</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 py-4">

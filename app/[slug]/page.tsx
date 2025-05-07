@@ -9,6 +9,7 @@ import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
 import { ProfileSchema } from "@/components/profile-schema"
 import { CustomSocialIcons } from "@/components/custom-social-icons"
+import { ProfileImageButton } from "@/components/profile-image-button"
 
 // Tambahkan metadata statis untuk SEO dasar
 export const metadata = {
@@ -135,6 +136,15 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                   <User className="h-16 w-16 text-gray-300" />
                 </div>
               )}
+
+              {/* Tambahkan tombol share image di sini */}
+              <ProfileImageButton
+                username={user.username || user.numeric_id.toString()}
+                displayName={user.name}
+                bio={user.bio || ""}
+                avatarUrl={user.avatar_url}
+                isPremium={user.is_premium}
+              />
             </div>
           </div>
 

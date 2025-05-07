@@ -284,26 +284,26 @@ export async function generateTemplateImage({
 }
 
 /**
- * Generates a shareable profile image for promoting user profiles
+ * Generates a shareable profile image with user profile information
  */
-export async function generateProfileTemplateImage({
+export async function generateProfileImage({
   username,
   displayName = "",
   bio = "",
   avatarUrl = null,
-  profileUrl = "",
   isPremium = false,
+  profileUrl = "",
 }: {
   username: string
   displayName?: string
   bio?: string
   avatarUrl?: string | null
-  profileUrl: string
   isPremium?: boolean
+  profileUrl?: string
 }): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
-      // Create canvas with smaller dimensions
+      // Create canvas with dimensions
       const canvas = document.createElement("canvas")
       canvas.width = CANVAS_WIDTH
       canvas.height = CANVAS_HEIGHT
@@ -321,16 +321,16 @@ export async function generateProfileTemplateImage({
       ctx.fillStyle = themeColors.background
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 
-      // Calculate card width (fixed) - Sesuaikan dengan ukuran canvas baru
-      const cardWidth = CANVAS_WIDTH * 0.7
+      // Calculate card width (fixed)
+      const cardWidth = CANVAS_WIDTH * 0.85
       const cardLeft = (CANVAS_WIDTH - cardWidth) / 2
 
-      // Set up constants for layout - Sesuaikan dengan ukuran canvas baru
-      const padding = 16
-      const avatarSize = 60 // Lebih besar untuk profil
-      const headerHeight = padding * 2 + 30
-      const footerHeight = padding * 2 + 40 // Lebih tinggi untuk tombol CTA
-      const bioLineHeight = 20
+      // Set up constants for layout
+      const padding = 20
+      const avatarSize = 80 // Lebih besar untuk profil
+      const headerHeight = 40
+      const footerHeight = 50
+      const bioLineHeight = 24
       const bioFont = `16px ${PRIMARY_FONT}`
 
       // Calculate how many lines the bio will take
@@ -338,40 +338,54 @@ export async function generateProfileTemplateImage({
       const bioWidth = cardWidth - padding * 2
       const bioLines = bio ? calculateTextLines(ctx, bio, bioWidth, 3) : [] // Max 3 lines
 
-      // Calculate the dynamic card height based on bio length
-      const minContentHeight = 100
+      // Calculate the dynamic card height
+      const minContentHeight = 120
       const contentHeight = Math.max(minContentHeight, bioLines.length * bioLineHeight + padding * 2)
 
       // Calculate total card height
-      const cardHeight = headerHeight + contentHeight + footerHeight
+      const cardHeight = headerHeight + contentHeight + footerHeight + avatarSize
       const cardTop = (CANVAS_HEIGHT - cardHeight) / 2
 
       // Draw the card (white background with black border)
-      ctx.fillStyle = themeColors.messageBox
+      ctx.fillStyle = "#ffffff"
 
-      // Sesuaikan shadow agar lebih tebal dan selaras dengan proyek
-      ctx.shadowColor = "rgba(0, 0, 0, 0.9)"
-      ctx.shadowBlur = 1
-      ctx.shadowOffsetX = 2
-      ctx.shadowOffsetY = 2
+      // Card shadow
+      ctx.shadowColor = "rgba(0, 0, 0, 0.2)"
+      ctx.shadowBlur = 10
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 4
+      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 12, true, false)
 
-      // Draw rounded rectangle for card
-      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, true, false)
-
-      // Reset shadow untuk border
+      // Reset shadow for border
       ctx.shadowColor = "transparent"
       ctx.shadowOffsetX = 0
       ctx.shadowOffsetY = 0
 
       // Draw border
-      ctx.strokeStyle = themeColors.border
+      ctx.strokeStyle = "#000000"
       ctx.lineWidth = 2
-      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, false, true)
+      roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 12, false, true)
 
-      // Posisi avatar di tengah atas
+      // Draw header with gradient
+      const gradient = ctx.createLinearGradient(cardLeft, cardTop, cardLeft + cardWidth, cardTop)
+      gradient.addColorStop(0, "#fd9745") // Main color
+      gradient.addColorStop(1, "#ffb677") // Lighter shade
+
+      ctx.fillStyle = gradient
+      ctx.fillRect(cardLeft, cardTop, cardWidth, headerHeight)
+
+      // Draw SecretMe logo in header
+      ctx.fillStyle = "#ffffff"
+      ctx.font = `bold 18px ${PRIMARY_FONT}`
+      ctx.textAlign = "left"
+      ctx.textBaseline = "middle"
+      ctx.fillText("SecretMe", cardLeft + padding, cardTop + headerHeight / 2)
+
+      // Position avatar in the center top
       const avatarX = cardLeft + cardWidth / 2
-      const avatarY = cardTop + padding + avatarSize / 2
+      const avatarY = cardTop + headerHeight + avatarSize / 2 + 10
 
+      // Draw avatar circle
       ctx.save()
       ctx.beginPath()
       ctx.arc(avatarX, avatarY, avatarSize / 2, 0, Math.PI * 2)
@@ -379,7 +393,7 @@ export async function generateProfileTemplateImage({
 
       // Avatar border
       ctx.strokeStyle = "#000000"
-      ctx.lineWidth = 2
+      ctx.lineWidth = 3
       ctx.stroke()
 
       ctx.clip()
@@ -410,28 +424,28 @@ export async function generateProfileTemplateImage({
       }
 
       function drawAvatarFallback() {
-        // Gambar background avatar dengan warna tema
+        // Draw avatar background
         ctx.fillStyle = themeColors.avatarBg
         ctx.fillRect(avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
 
-        // Gambar inisial atau ikon user
+        // Draw initial or question mark
         ctx.fillStyle = "#ffffff"
         ctx.font = `bold ${avatarSize * 0.4}px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText(displayName ? displayName.charAt(0).toUpperCase() : "?", avatarX, avatarY)
 
-        // Restore context setelah clipping
+        // Restore context after clipping
         ctx.restore()
       }
 
       function continueDrawing() {
-        // Posisi username dan displayName di tengah di bawah avatar
-        const usernameY = avatarY + avatarSize / 2 + padding
+        // Position for username and displayName
+        const usernameY = avatarY + avatarSize / 2 + 20
 
         // Draw username
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 18px ${PRIMARY_FONT}`
+        ctx.font = `bold 22px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
         const usernameText = `@${username}`
@@ -440,24 +454,24 @@ export async function generateProfileTemplateImage({
         // Draw display name if available
         if (displayName) {
           ctx.fillStyle = "#000000"
-          ctx.font = `14px ${PRIMARY_FONT}`
-          ctx.fillText(displayName, cardLeft + cardWidth / 2, usernameY + 22)
+          ctx.font = `18px ${PRIMARY_FONT}`
+          ctx.fillText(displayName, cardLeft + cardWidth / 2, usernameY + 30)
         }
 
         // Draw premium badge if user is premium
         if (isPremium) {
-          const badgeWidth = 70
-          const badgeHeight = 20
+          const badgeWidth = 80
+          const badgeHeight = 24
           const badgeX = cardLeft + cardWidth / 2 - badgeWidth / 2
-          const badgeY = usernameY + (displayName ? 44 : 26)
+          const badgeY = usernameY + (displayName ? 60 : 35)
 
           // Badge background
           ctx.fillStyle = "#fbbf24" // Amber color for premium
-          roundRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 10, true, false)
+          roundRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 12, true, false)
 
           // Badge text
           ctx.fillStyle = "#000000"
-          ctx.font = `bold 11px ${PRIMARY_FONT}`
+          ctx.font = `bold 12px ${PRIMARY_FONT}`
           ctx.textAlign = "center"
           ctx.textBaseline = "middle"
           ctx.fillText("PREMIUM", badgeX + badgeWidth / 2, badgeY + badgeHeight / 2)
@@ -465,9 +479,9 @@ export async function generateProfileTemplateImage({
 
         // Draw bio if available
         if (bio && bioLines.length > 0) {
-          const bioY = usernameY + (displayName ? 50 : 30) + (isPremium ? 26 : 0)
+          const bioY = usernameY + (displayName ? 65 : 40) + (isPremium ? 30 : 0)
 
-          ctx.fillStyle = "#000000"
+          ctx.fillStyle = "#4b5563" // Gray for bio text
           ctx.font = bioFont
           ctx.textAlign = "center"
 
@@ -477,57 +491,61 @@ export async function generateProfileTemplateImage({
           })
         }
 
-        // Draw CTA button at the bottom
-        const buttonWidth = 200
+        // Draw CTA button
+        const buttonY = cardTop + cardHeight - footerHeight / 2
+        const buttonWidth = 220
         const buttonHeight = 36
         const buttonX = cardLeft + cardWidth / 2 - buttonWidth / 2
-        const buttonY = cardTop + cardHeight - padding - buttonHeight - 10
 
         // Button background
         ctx.fillStyle = "#fd9745" // Main color
 
         // Button shadow
-        ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
-        ctx.shadowBlur = 1
-        ctx.shadowOffsetX = 1
-        ctx.shadowOffsetY = 1
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18, true, false)
+        ctx.shadowColor = "rgba(0, 0, 0, 0.2)"
+        ctx.shadowBlur = 4
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 2
+        roundRect(ctx, buttonX, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 18, true, false)
 
-        // Button border
+        // Reset shadow
         ctx.shadowColor = "transparent"
         ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = 0
+
+        // Button border
         ctx.strokeStyle = "#000000"
         ctx.lineWidth = 1
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18, false, true)
+        roundRect(ctx, buttonX, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 18, false, true)
 
         // Button text
         ctx.fillStyle = "#ffffff"
         ctx.font = `bold 14px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
-        ctx.fillText("Kirim Pesan Anonim", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
+        ctx.fillText("Kirim Pesan Anonim", buttonX + buttonWidth / 2, buttonY)
 
-        // Draw profile URL
-        ctx.fillStyle = "#6b7280"
-        ctx.font = `12px ${PRIMARY_FONT}`
-        ctx.textAlign = "center"
-        ctx.textBaseline = "middle"
-        ctx.fillText(profileUrl, cardLeft + cardWidth / 2, buttonY + buttonHeight + 16)
-
-        // Draw SecretMe branding at the bottom
-        ctx.fillStyle = "#6b7280"
-        ctx.font = `bold 11px ${PRIMARY_FONT}`
-        ctx.textAlign = "center"
-        ctx.textBaseline = "bottom"
-        ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 12)
+        // Draw profile URL if available
+        if (profileUrl) {
+          ctx.fillStyle = "#6b7280"
+          ctx.font = `12px ${PRIMARY_FONT}`
+          ctx.textAlign = "center"
+          ctx.textBaseline = "bottom"
+          ctx.fillText(profileUrl, CANVAS_WIDTH / 2, CANVAS_HEIGHT - 12)
+        } else {
+          // Draw SecretMe branding at the bottom
+          ctx.fillStyle = "#6b7280"
+          ctx.font = `bold 11px ${PRIMARY_FONT}`
+          ctx.textAlign = "center"
+          ctx.textBaseline = "bottom"
+          ctx.fillText("Dibuat dengan SecretMe - Kirim pesan anonim ke temanmu", CANVAS_WIDTH / 2, CANVAS_HEIGHT - 12)
+        }
 
         // Convert canvas to data URL with maximum quality
         const dataUrl = canvas.toDataURL("image/png", EXPORT_QUALITY)
         resolve(dataUrl)
       }
     } catch (error) {
-      console.error("Error generating profile template image:", error)
+      console.error("Error generating profile image:", error)
       reject(error)
     }
   })
