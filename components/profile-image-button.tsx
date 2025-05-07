@@ -21,9 +21,9 @@ export function ProfileImageButton({ username, displayName, bio, avatarUrl, isPr
       <Button
         variant="outline"
         size="icon"
-        className="rounded-full h-8 w-8 absolute bottom-0 right-0 bg-white border-2 border-black shadow-md z-10"
+        className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-white shadow-md z-10"
         onClick={() => setDialogOpen(true)}
-        title="Bagikan profil sebagai gambar"
+        aria-label="Bagikan profil sebagai gambar"
       >
         <ImageIcon className="h-4 w-4" />
       </Button>
