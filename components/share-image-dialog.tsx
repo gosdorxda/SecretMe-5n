@@ -108,17 +108,17 @@ export function ShareImageDialog({ open, onOpenChange, username, message, date, 
             <h3 className="text-sm font-medium">Preview</h3>
             <div className="border rounded-lg p-2 bg-gray-50 flex justify-center">
               {isGenerating ? (
-                <div className="h-[250px] flex items-center justify-center">
+                <div className="h-[350px] flex items-center justify-center">
                   <div className="h-8 w-8 border-4 border-t-transparent border-primary rounded-full animate-spin"></div>
                 </div>
               ) : imagePreview ? (
                 <img
                   src={imagePreview || "/placeholder.svg"}
                   alt="Preview"
-                  className="max-w-full max-h-[300px] object-contain rounded shadow-sm"
+                  className="max-w-full max-h-[400px] object-contain rounded shadow-sm"
                 />
               ) : (
-                <div className="h-[250px] flex items-center justify-center text-gray-400">Preview tidak tersedia</div>
+                <div className="h-[350px] flex items-center justify-center text-gray-400">Preview tidak tersedia</div>
               )}
             </div>
           </div>

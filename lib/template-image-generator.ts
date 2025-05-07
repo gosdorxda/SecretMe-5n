@@ -102,6 +102,8 @@ export async function generateTemplateImage({
 
       // Draw the card (white background with black border)
       ctx.fillStyle = "#ffffff"
+
+      // Tidak perlu shadow blur, hanya offset seperti di UI proyek
       ctx.shadowColor = "rgba(0, 0, 0, 0.8)"
       ctx.shadowBlur = 0
       ctx.shadowOffsetX = 4
@@ -110,10 +112,14 @@ export async function generateTemplateImage({
       // Draw rounded rectangle for card
       roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, true, false)
 
-      // Draw border
+      // Reset shadow untuk border
       ctx.shadowColor = "transparent"
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+
+      // Draw border
       ctx.strokeStyle = colors.border
-      ctx.lineWidth = 6
+      ctx.lineWidth = 2 // Sesuaikan ketebalan border dengan UI
       roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, false, true)
 
       // Draw avatar circle
@@ -127,7 +133,7 @@ export async function generateTemplateImage({
 
       // Avatar border
       ctx.strokeStyle = "#000000"
-      ctx.lineWidth = 4
+      ctx.lineWidth = 2
       ctx.stroke()
 
       ctx.clip()
@@ -158,19 +164,28 @@ export async function generateTemplateImage({
       }
 
       function drawAvatarFallback() {
-        // Draw avatar text (first letter of username)
+        // Gambar background avatar dengan warna tema
+        ctx.fillStyle = colors.avatarBg
+        ctx.fillRect(avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
+
+        // Gambar tanda tanya yang lebih jelas
         ctx.fillStyle = "#ffffff"
-        ctx.font = `bold ${avatarSize * 0.5}px ${PRIMARY_FONT}`
+        ctx.font = `bold ${avatarSize * 0.6}px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
-        ctx.fillText(username.charAt(0).toUpperCase(), avatarX, avatarY)
+        ctx.fillText("?", avatarX, avatarY)
+
+        // Restore context setelah clipping
         ctx.restore()
       }
 
       function continueDrawing() {
-        // Draw header content
+        // Sesuaikan posisi header content untuk alignment yang lebih baik
         const headerX = avatarX + avatarSize / 2 + padding
-        const headerY = cardTop + padding
+        const headerY = cardTop + padding + 10 // Tambahkan sedikit padding atas untuk alignment yang lebih baik
+
+        // Buat avatar dan teks sejajar secara vertikal
+        // Gunakan baseline yang konsisten untuk semua teks
 
         // Draw "Pesan Anonim" text - NOT BOLD as requested
         ctx.fillStyle = "#000000"
@@ -179,22 +194,24 @@ export async function generateTemplateImage({
         ctx.textBaseline = "top"
         ctx.fillText("Pesan Anonim", headerX, headerY)
 
-        // Draw dot separator
+        // Draw dot separator - sejajarkan dengan teks "Pesan Anonim"
         ctx.fillText("•", headerX + 200, headerY)
 
-        // Draw date
+        // Draw date - sejajarkan dengan teks lainnya
         ctx.fillStyle = "#6b7280"
         ctx.font = `28px ${PRIMARY_FONT}`
-        ctx.fillText(date, headerX + 230, headerY)
+        ctx.fillText(date, headerX + 230, headerY + 2) // Sedikit penyesuaian untuk ukuran font yang berbeda
 
-        // Draw "Untuk: @username" text
+        // Sesuaikan posisi "Untuk: @username" agar sejajar dengan avatar
+        const usernameY = headerY + 45 // Jarak yang konsisten dari teks di atasnya
+
         ctx.fillStyle = "#000000"
         ctx.font = `28px ${PRIMARY_FONT}`
-        ctx.fillText("Untuk:", headerX, headerY + 45)
+        ctx.fillText("Untuk:", headerX, usernameY)
 
         ctx.fillStyle = "#000000"
         ctx.font = `bold 28px ${PRIMARY_FONT}`
-        ctx.fillText(`@${username}`, headerX + 90, headerY + 45)
+        ctx.fillText(`@${username}`, headerX + 90, usernameY)
 
         // Draw message content with LARGER text for better readability
         const messageX = cardLeft + padding
@@ -217,7 +234,9 @@ export async function generateTemplateImage({
 
         // Button background
         ctx.fillStyle = "#ffffff"
-        ctx.shadowColor = "rgba(0, 0, 0, 0.8)"
+
+        // Button shadow
+        ctx.shadowColor = "rgba(0, 0, 0, 0.2)"
         ctx.shadowBlur = 0
         ctx.shadowOffsetX = 2
         ctx.shadowOffsetY = 2
@@ -225,8 +244,10 @@ export async function generateTemplateImage({
 
         // Button border
         ctx.shadowColor = "transparent"
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 0
         ctx.strokeStyle = "#000000"
-        ctx.lineWidth = 4
+        ctx.lineWidth = 2
         roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, false, true)
 
         // Button text
