@@ -194,6 +194,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             isPublicView={true}
             username={user.username}
             numericId={user.numeric_id}
+            displayName={user.name} // Tambahkan displayName ke MessageList
           />
         </div>
       </div>

@@ -38,6 +38,7 @@ interface MessageListProps {
   isPublicView?: boolean
   username?: string | null
   numericId?: number
+  displayName?: string | null
 }
 
 export function MessageList({
@@ -51,6 +52,7 @@ export function MessageList({
   isPublicView = false,
   username,
   numericId,
+  displayName,
 }: MessageListProps) {
   const [editingReply, setEditingReply] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -312,6 +314,7 @@ export function MessageList({
           message={messageToShare.content}
           date={formatDistanceToNow(new Date(messageToShare.created_at), { addSuffix: true, locale: id })}
           avatarUrl={null} // Bisa ditambahkan avatar URL jika tersedia
+          displayName={displayName} // Tambahkan displayName ke dialog
         />
       )}
     </>

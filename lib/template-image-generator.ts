@@ -45,11 +45,13 @@ export async function generateTemplateImage({
   message,
   date,
   avatarUrl = null,
+  displayName = "",
 }: {
   username: string
   message: string
   date: string
   avatarUrl?: string | null
+  displayName?: string
 }): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
@@ -81,7 +83,7 @@ export async function generateTemplateImage({
       // Set up constants for layout
       const padding = 40
       const avatarSize = 80
-      const headerHeight = padding * 2 + avatarSize
+      const headerHeight = padding * 2 + avatarSize - 15 // Kurangi headerHeight untuk mendekatkan konten pesan
       const footerHeight = padding * 2 + 50 // Space for button + padding
       const messageLineHeight = 56
       const messageFont = `44px ${PRIMARY_FONT}`
@@ -103,11 +105,11 @@ export async function generateTemplateImage({
       // Draw the card (white background with black border)
       ctx.fillStyle = "#ffffff"
 
-      // Tidak perlu shadow blur, hanya offset seperti di UI proyek
-      ctx.shadowColor = "rgba(0, 0, 0, 0.8)"
-      ctx.shadowBlur = 0
-      ctx.shadowOffsetX = 4
-      ctx.shadowOffsetY = 4
+      // Sesuaikan shadow agar lebih tebal dan selaras dengan proyek
+      ctx.shadowColor = "rgba(0, 0, 0, 0.9)"
+      ctx.shadowBlur = 2
+      ctx.shadowOffsetX = 6
+      ctx.shadowOffsetY = 6
 
       // Draw rounded rectangle for card
       roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, true, false)
@@ -119,21 +121,21 @@ export async function generateTemplateImage({
 
       // Draw border
       ctx.strokeStyle = colors.border
-      ctx.lineWidth = 2 // Sesuaikan ketebalan border dengan UI
+      ctx.lineWidth = 4 // Tebalkan border menjadi 4px
       roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 16, false, true)
 
-      // Draw avatar circle
+      // Naikkan posisi avatar agar sejajar dengan teks
       const avatarX = cardLeft + padding + avatarSize / 2
-      const avatarY = cardTop + padding + avatarSize / 2
+      const avatarY = cardTop + padding + avatarSize / 2 - 5 // Kurangi 5px untuk menaikkan avatar
 
       ctx.save()
       ctx.beginPath()
       ctx.arc(avatarX, avatarY, avatarSize / 2, 0, Math.PI * 2)
       ctx.closePath()
 
-      // Avatar border
+      // Avatar border - TEBALKAN
       ctx.strokeStyle = "#000000"
-      ctx.lineWidth = 2
+      ctx.lineWidth = 5 // Tebalkan border avatar menjadi 5px
       ctx.stroke()
 
       ctx.clip()
@@ -181,8 +183,9 @@ export async function generateTemplateImage({
 
       function continueDrawing() {
         // Sesuaikan posisi header content untuk alignment yang lebih baik
-        const headerX = avatarX + avatarSize / 2 + padding
-        const headerY = cardTop + padding + 10 // Tambahkan sedikit padding atas untuk alignment yang lebih baik
+        // Tambahkan jarak antara avatar dan teks
+        const headerX = avatarX + avatarSize / 2 + padding * 0.75 // Tambah jarak menjadi 75% dari padding
+        const headerY = cardTop + padding // Posisi baris pertama
 
         // Buat avatar dan teks sejajar secara vertikal
         // Gunakan baseline yang konsisten untuk semua teks
@@ -194,13 +197,18 @@ export async function generateTemplateImage({
         ctx.textBaseline = "top"
         ctx.fillText("Pesan Anonim", headerX, headerY)
 
-        // Draw dot separator - sejajarkan dengan teks "Pesan Anonim"
-        ctx.fillText("•", headerX + 200, headerY)
+        // Hitung lebar teks "Pesan Anonim" untuk menentukan posisi titik
+        const pesanAnonimWidth = ctx.measureText("Pesan Anonim").width
+        const dotX = headerX + pesanAnonimWidth + 15 // Tambahkan jarak 30px setelah teks
+
+        // Draw dot separator dengan warna abu-abu
+        ctx.fillStyle = "#6b7280" // Ubah warna titik menjadi abu-abu
+        ctx.fillText("•", dotX, headerY)
 
         // Draw date - sejajarkan dengan teks lainnya
         ctx.fillStyle = "#6b7280"
         ctx.font = `28px ${PRIMARY_FONT}`
-        ctx.fillText(date, headerX + 230, headerY + 2) // Sedikit penyesuaian untuk ukuran font yang berbeda
+        ctx.fillText(date, dotX + 30, headerY + 2) // Tambahkan jarak 30px setelah titik
 
         // Sesuaikan posisi "Untuk: @username" agar sejajar dengan avatar
         const usernameY = headerY + 45 // Jarak yang konsisten dari teks di atasnya
@@ -209,13 +217,24 @@ export async function generateTemplateImage({
         ctx.font = `28px ${PRIMARY_FONT}`
         ctx.fillText("Untuk:", headerX, usernameY)
 
+        // Tambahkan spasi setelah "Untuk:"
         ctx.fillStyle = "#000000"
         ctx.font = `bold 28px ${PRIMARY_FONT}`
-        ctx.fillText(`@${username}`, headerX + 90, usernameY)
+        const usernameText = `@${username}`
+        ctx.fillText(usernameText, headerX + 90, usernameY) // Tambahkan jarak yang cukup
+
+        // Tambahkan nama pengguna jika tersedia
+        if (displayName) {
+          const usernameWidth = ctx.measureText(usernameText).width
+          ctx.fillStyle = "#000000"
+          ctx.font = `28px ${PRIMARY_FONT}` // Font biasa (tidak tebal)
+          ctx.fillText(`(${displayName})`, headerX + 100 + usernameWidth, usernameY)
+        }
 
         // Draw message content with LARGER text for better readability
+        // Kurangi jarak vertikal antara header dan konten pesan
         const messageX = cardLeft + padding
-        const messageY = cardTop + headerHeight + padding
+        const messageY = cardTop + headerHeight + padding - 5 // Kurangi 5px untuk mendekatkan dengan header
 
         ctx.fillStyle = "#000000"
         ctx.font = messageFont
@@ -236,10 +255,10 @@ export async function generateTemplateImage({
         ctx.fillStyle = "#ffffff"
 
         // Button shadow
-        ctx.shadowColor = "rgba(0, 0, 0, 0.2)"
-        ctx.shadowBlur = 0
-        ctx.shadowOffsetX = 2
-        ctx.shadowOffsetY = 2
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
+        ctx.shadowBlur = 1
+        ctx.shadowOffsetX = 3
+        ctx.shadowOffsetY = 3
         roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, true, false)
 
         // Button border
@@ -247,7 +266,7 @@ export async function generateTemplateImage({
         ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = 0
         ctx.strokeStyle = "#000000"
-        ctx.lineWidth = 2
+        ctx.lineWidth = 3 // Tebalkan border tombol
         roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, false, true)
 
         // Button text

@@ -21,9 +21,18 @@ interface ShareImageDialogProps {
   message: string
   date: string
   avatarUrl?: string | null
+  displayName?: string | null
 }
 
-export function ShareImageDialog({ open, onOpenChange, username, message, date, avatarUrl }: ShareImageDialogProps) {
+export function ShareImageDialog({
+  open,
+  onOpenChange,
+  username,
+  message,
+  date,
+  avatarUrl,
+  displayName,
+}: ShareImageDialogProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -46,6 +55,7 @@ export function ShareImageDialog({ open, onOpenChange, username, message, date, 
         message,
         date,
         avatarUrl,
+        displayName: displayName || "",
       })
       setImagePreview(dataUrl)
     } catch (error) {
