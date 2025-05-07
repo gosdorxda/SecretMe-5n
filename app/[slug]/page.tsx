@@ -137,7 +137,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                 </div>
               )}
 
-              {/* Tambahkan tombol share image di sini */}
+              {/* Tombol share image */}
               <ProfileImageButton
                 username={user.username || user.numeric_id.toString()}
                 displayName={user.name}
