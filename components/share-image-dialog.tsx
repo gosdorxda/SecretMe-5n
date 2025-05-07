@@ -115,7 +115,7 @@ export function ShareImageDialog({
           {/* Image preview */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Preview</h3>
-            <div className="border rounded-lg p-2 bg-gray-50 flex justify-center">
+            <div className="border rounded-lg p-2 bg-gray-50 flex justify-center border-black">
               {isGenerating ? (
                 <div className="h-[350px] flex items-center justify-center">
                   <div className="h-8 w-8 border-4 border-t-transparent border-primary rounded-full animate-spin"></div>

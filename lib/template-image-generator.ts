@@ -283,7 +283,7 @@ export async function generateTemplateImage({
   })
 }
 
-// Ubah fungsi generateProfileImage dengan yang lebih sederhana dan mirip dengan template pesan
+// Ubah fungsi generateProfileImage dengan yang lebih menarik dan eye-catching
 
 /**
  * Generates a shareable profile image with user profile information
@@ -319,9 +319,24 @@ export async function generateProfileImage({
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = "high"
 
-      // Draw background with project's background color
+      // Draw background with subtle pattern for visual interest
       ctx.fillStyle = themeColors.background
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+      // Add subtle decorative elements to background
+      ctx.save()
+      ctx.globalAlpha = 0.05
+      for (let i = 0; i < 5; i++) {
+        const size = 100 + Math.random() * 150
+        const x = Math.random() * CANVAS_WIDTH
+        const y = Math.random() * CANVAS_HEIGHT
+
+        ctx.beginPath()
+        ctx.arc(x, y, size, 0, Math.PI * 2)
+        ctx.fillStyle = "#fd9745"
+        ctx.fill()
+      }
+      ctx.restore()
 
       // Calculate card width (fixed) - Sama dengan template pesan
       const cardWidth = CANVAS_WIDTH * 0.7
@@ -329,7 +344,7 @@ export async function generateProfileImage({
 
       // Set up constants for layout
       const padding = 16
-      const avatarSize = 60 // Ukuran avatar lebih besar
+      const avatarSize = 80 // Ukuran avatar lebih besar
       const headerHeight = 20
       const footerHeight = padding * 2 + 20
       const contentHeight = 180 // Tinggi konten tetap
@@ -358,9 +373,26 @@ export async function generateProfileImage({
       ctx.lineWidth = 2
       roundRect(ctx, cardLeft, cardTop, cardWidth, cardHeight, 8, false, true)
 
-      // Position avatar in center
+      // Position avatar in center with glow effect
       const avatarX = cardLeft + cardWidth / 2
-      const avatarY = cardTop + headerHeight + padding + avatarSize / 2
+      const avatarY = cardTop + headerHeight + padding + avatarSize / 2 + 5
+
+      // Draw avatar glow
+      const glowGradient = ctx.createRadialGradient(
+        avatarX,
+        avatarY,
+        avatarSize / 2 - 5,
+        avatarX,
+        avatarY,
+        avatarSize / 2 + 10,
+      )
+      glowGradient.addColorStop(0, "rgba(253, 151, 69, 0.5)")
+      glowGradient.addColorStop(1, "rgba(253, 151, 69, 0)")
+
+      ctx.fillStyle = glowGradient
+      ctx.beginPath()
+      ctx.arc(avatarX, avatarY, avatarSize / 2 + 10, 0, Math.PI * 2)
+      ctx.fill()
 
       // Draw avatar circle
       ctx.save()
@@ -414,10 +446,11 @@ export async function generateProfileImage({
       }
 
       function continueDrawing() {
-        // Draw display name
-        const nameY = avatarY + avatarSize / 2 + 25
+        // Draw display name (tanpa bayangan)
+        const nameY = avatarY + avatarSize / 2 + 15
+
         ctx.fillStyle = "#000000"
-        ctx.font = `bold 18px ${PRIMARY_FONT}`
+        ctx.font = `bold 20px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "top"
         ctx.fillText(displayName || "Nama Pengguna", cardLeft + cardWidth / 2, nameY)
@@ -425,41 +458,62 @@ export async function generateProfileImage({
         // Draw username
         const usernameY = nameY + 25
         ctx.fillStyle = "#6b7280"
-        ctx.font = `14px ${PRIMARY_FONT}`
+        ctx.font = `15px ${PRIMARY_FONT}`
         ctx.fillText(`@${username}`, cardLeft + cardWidth / 2, usernameY)
 
-        // Draw CTA button
-        const buttonY = usernameY + 40
-        const buttonWidth = 200
-        const buttonHeight = 36
+        // Draw CTA button dengan border selaras proyek
+        const buttonY = usernameY + 30
+        const buttonWidth = 220
+        const buttonHeight = 40
         const buttonX = cardLeft + cardWidth / 2 - buttonWidth / 2
 
-        // Button background
-        ctx.fillStyle = "#fd9745" // Main color
+        // Button gradient
+        const buttonGradient = ctx.createLinearGradient(buttonX, buttonY, buttonX, buttonY + buttonHeight)
+        buttonGradient.addColorStop(0, "#fd9745")
+        buttonGradient.addColorStop(1, "#f87f1d")
 
         // Button shadow
-        ctx.shadowColor = "rgba(0, 0, 0, 0.5)"
-        ctx.shadowBlur = 1
-        ctx.shadowOffsetX = 1
-        ctx.shadowOffsetY = 1
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18, true, false)
+        ctx.shadowColor = "rgba(253, 151, 69, 0.5)"
+        ctx.shadowBlur = 10
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 3
+
+        ctx.fillStyle = buttonGradient
+        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, true, false)
 
         // Reset shadow
         ctx.shadowColor = "transparent"
+        ctx.shadowBlur = 0
         ctx.shadowOffsetX = 0
         ctx.shadowOffsetY = 0
 
-        // Button border
+        // Button border yang selaras dengan proyek
         ctx.strokeStyle = "#000000"
-        ctx.lineWidth = 1
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 18, false, true)
+        ctx.lineWidth = 2
+        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, false, true)
 
-        // Button text
+        // Button text (tanpa bayangan)
         ctx.fillStyle = "#ffffff"
-        ctx.font = `bold 14px ${PRIMARY_FONT}`
+        ctx.font = `bold 16px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
         ctx.fillText("Kirimi Saya Pesan Anonim", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
+
+        // Draw decorative elements around the button
+        ctx.strokeStyle = "rgba(253, 151, 69, 0.3)"
+        ctx.lineWidth = 1
+
+        // Left decorative element
+        ctx.beginPath()
+        ctx.moveTo(buttonX - 15, buttonY + buttonHeight / 2)
+        ctx.lineTo(buttonX - 5, buttonY + buttonHeight / 2)
+        ctx.stroke()
+
+        // Right decorative element
+        ctx.beginPath()
+        ctx.moveTo(buttonX + buttonWidth + 15, buttonY + buttonHeight / 2)
+        ctx.lineTo(buttonX + buttonWidth + 5, buttonY + buttonHeight / 2)
+        ctx.stroke()
 
         // Draw SecretMe branding at the bottom
         ctx.fillStyle = "#6b7280"

@@ -108,7 +108,7 @@ export function ProfileImageDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bagikan Profil Sebagai Gambar</DialogTitle>
           <DialogDescription>Buat dan bagikan gambar profil Anda dengan mudah</DialogDescription>
