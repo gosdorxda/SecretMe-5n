@@ -21,12 +21,11 @@ export function ProfileImageButton({ username, displayName, bio, avatarUrl, isPr
       <Button
         variant="outline"
         size="sm"
-        className="flex items-center gap-1"
         onClick={() => setDialogOpen(true)}
         aria-label="Bagikan profil sebagai gambar"
       >
-        <ImageIcon className="h-4 w-4" />
-        <span className="text-xs">Bagikan</span>
+        <ImageIcon className="h-4 w-4 mr-1" />
+        Bagikan
       </Button>
 
       <ProfileImageDialog
