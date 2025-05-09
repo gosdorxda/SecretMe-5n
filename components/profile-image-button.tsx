@@ -20,12 +20,13 @@ export function ProfileImageButton({ username, displayName, bio, avatarUrl, isPr
     <>
       <Button
         variant="outline"
-        className="flex items-center gap-2 rounded-[var(--border-radius)] bg-gradient-to-br from-purple-500 to-pink-500 text-white border-2 border-border shadow-neo-sm hover:shadow-none transition-all duration-200 px-3 py-1 h-9"
+        size="sm"
+        className="flex items-center gap-1 rounded-md bg-white text-gray-700 border border-gray-200 shadow-sm hover:bg-gray-50 transition-all duration-200 px-2 py-1 h-8"
         onClick={() => setDialogOpen(true)}
         aria-label="Bagikan profil sebagai gambar"
       >
-        <ImageIcon className="h-4 w-4" />
-        <span className="text-sm">Bagikan Profil</span>
+        <ImageIcon className="h-3.5 w-3.5" />
+        <span className="text-xs">Bagikan</span>
       </Button>
 
       <ProfileImageDialog
