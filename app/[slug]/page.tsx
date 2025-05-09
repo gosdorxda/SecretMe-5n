@@ -138,13 +138,6 @@ export default async function ProfilePage({ params }: { params: { slug: string }
               )}
 
               {/* Tombol share image */}
-              <ProfileImageButton
-                username={user.username || user.numeric_id.toString()}
-                displayName={user.name}
-                bio={user.bio || ""}
-                avatarUrl={user.avatar_url}
-                isPremium={user.is_premium}
-              />
             </div>
           </div>
 
@@ -171,12 +164,23 @@ export default async function ProfilePage({ params }: { params: { slug: string }
 
           {/* Social media links - Menggunakan komponen CustomSocialIcons */}
           {user.is_premium && (
-            <CustomSocialIcons
-              instagramUrl={user.instagram_url}
-              facebookUrl={user.facebook_url}
-              linkedinUrl={user.linkedin_url}
-              tiktokUrl={user.tiktok_url}
-            />
+            <div className="flex flex-col items-center gap-3 mt-3">
+              <CustomSocialIcons
+                instagramUrl={user.instagram_url}
+                facebookUrl={user.facebook_url}
+                linkedinUrl={user.linkedin_url}
+                tiktokUrl={user.tiktok_url}
+              />
+
+              {/* Tombol share profile sebagai gambar */}
+              <ProfileImageButton
+                username={user.username || user.numeric_id.toString()}
+                displayName={user.name}
+                bio={user.bio || ""}
+                avatarUrl={user.avatar_url}
+                isPremium={user.is_premium}
+              />
+            </div>
           )}
         </div>
 
