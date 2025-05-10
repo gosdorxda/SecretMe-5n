@@ -10,7 +10,6 @@ import { ProfileSchema } from "@/components/profile-schema"
 import { CustomSocialIcons } from "@/components/custom-social-icons"
 import { ProfileImageButton } from "@/components/profile-image-button"
 import { TruncatedBio } from "@/components/truncated-bio"
-import { ProfileStatistics } from "@/components/profile-statistics"
 import { PremiumFeatureTeaser } from "@/components/premium-feature-teaser"
 
 // Tambahkan metadata statis untuk SEO dasar
@@ -111,7 +110,6 @@ export default async function ProfilePage({ params }: { params: { slug: string }
   // Determine if we should show statistics
   // For owner or if the profile is public
   const isOwner = userId === user.id
-  const showStatistics = isOwner || true // Always show for now, can be restricted later
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
@@ -197,11 +195,10 @@ export default async function ProfilePage({ params }: { params: { slug: string }
         </div>
 
         {/* Premium Feature Teaser - hanya untuk pengguna gratis */}
-        {!user.is_premium && <PremiumFeatureTeaser />}
-
-        {/* Profile Statistics - New Component */}
-        {showStatistics && (
-          <ProfileStatistics viewCount={viewCount} messageCount={messageCount} isPremium={user.is_premium} />
+        {!user.is_premium && (
+          <div className="mb-6">
+            <PremiumFeatureTeaser />
+          </div>
         )}
 
         {/* Send Message Form */}
