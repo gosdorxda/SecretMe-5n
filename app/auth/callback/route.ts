@@ -20,9 +20,13 @@ export async function GET(request: Request) {
     console.log("🔍 AUTH CALLBACK: Custom redirect target:", redirectTo)
   }
 
-  // PERBAIKAN: Gunakan origin dari request URL untuk konsistensi
-  const appUrl = process.env.NODE_ENV === "production" ? process.env.NEXT_PUBLIC_APP_URL : requestUrl.origin
-  console.log("🔍 AUTH CALLBACK: Using app URL:", appUrl)
+  // PERBAIKAN: Gunakan FORCE_PRODUCTION_URLS untuk memaksa URL produksi
+  const forceProductionUrls = process.env.FORCE_PRODUCTION_URLS === "true"
+  const isProduction = process.env.NODE_ENV === "production" || forceProductionUrls
+
+  // PERBAIKAN: Selalu gunakan NEXT_PUBLIC_APP_URL jika tersedia
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin
+  console.log("🔍 AUTH CALLBACK: Using app URL:", appUrl, "isProduction:", isProduction)
 
   if (!code) {
     console.error("❌ AUTH CALLBACK: No code parameter in URL")
@@ -55,9 +59,11 @@ export async function GET(request: Request) {
     const response = NextResponse.redirect(new URL(redirectTo, appUrl))
 
     // PERBAIKAN: Konfigurasi cookie yang lebih baik
-    const isProduction = process.env.NODE_ENV === "production"
     const secure = isProduction || requestUrl.protocol === "https:"
-    const domain = isProduction ? new URL(appUrl).hostname : ""
+
+    // PERBAIKAN: Gunakan COOKIE_DOMAIN jika tersedia
+    const domain = process.env.COOKIE_DOMAIN || (isProduction ? new URL(appUrl).hostname : "")
+    console.log("🔍 AUTH CALLBACK: Setting cookies with domain:", domain, "secure:", secure)
 
     // Tambahkan cookie untuk access token
     response.cookies.set({
@@ -102,6 +108,8 @@ export async function GET(request: Request) {
       console.warn("⚠️ AUTH CALLBACK: No session after verification, but continuing with manual cookie")
       console.log("🔍 AUTH CALLBACK: Access token length:", sessionData.session.access_token.length)
       console.log("🔍 AUTH CALLBACK: Refresh token length:", sessionData.session.refresh_token.length)
+      console.log("🔍 AUTH CALLBACK: Cookie domain:", domain)
+      console.log("🔍 AUTH CALLBACK: Cookie secure:", secure)
     } else {
       console.log("✅ AUTH CALLBACK: Session verified successfully")
     }

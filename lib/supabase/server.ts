@@ -3,20 +3,30 @@ import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 
 export const createClient = () => {
-  const cookieStore = cookies()
+  // Deteksi environment dengan FORCE_PRODUCTION_URLS
+  const forceProductionUrls = process.env.FORCE_PRODUCTION_URLS === "true"
+  const isProduction = process.env.NODE_ENV === "production" || forceProductionUrls
+
+  // Gunakan COOKIE_DOMAIN jika tersedia
+  const domain =
+    process.env.COOKIE_DOMAIN ||
+    (isProduction && process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname : "")
+
+  console.log("🔍 SERVER: Creating Supabase client with domain:", domain, "isProduction:", isProduction)
 
   return createServerComponentClient<Database>({
-    cookies: () => cookieStore,
+    cookies,
     options: {
       auth: {
         persistSession: true,
         detectSessionInUrl: false,
         cookieOptions: {
           name: "sb-auth-token",
+          lifetime: 60 * 60 * 8,
+          domain: domain || "",
           path: "/",
           sameSite: "lax",
-          domain: "", // Kosongkan untuk menggunakan domain saat ini
-          secure: process.env.NODE_ENV === "production",
+          secure: isProduction,
         },
       },
     },
