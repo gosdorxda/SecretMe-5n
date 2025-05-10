@@ -56,9 +56,9 @@ export async function middleware(req: NextRequest) {
   // PERBAIKAN: Log cookies yang ada
   console.log(
     "🔍 MIDDLEWARE: Cookies present:",
-    Array.from(req.cookies.keys()).join(", "),
+    Object.keys(req.cookies.getAll()).join(", "),
     "sb-auth-token exists:",
-    req.cookies.has("sb-auth-token"),
+    req.cookies.get("sb-auth-token") !== undefined,
   )
 
   // Cek cache untuk rute ini
