@@ -20,13 +20,8 @@ export async function GET(request: Request) {
     console.log("🔍 AUTH CALLBACK: Custom redirect target:", redirectTo)
   }
 
-  // PERBAIKAN: Gunakan FORCE_PRODUCTION_URLS untuk memaksa URL produksi
-  const forceProductionUrls = process.env.FORCE_PRODUCTION_URLS === "true"
-  const isProduction = process.env.NODE_ENV === "production" || forceProductionUrls
-
-  // PERBAIKAN: Selalu gunakan NEXT_PUBLIC_APP_URL jika tersedia
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin
-  console.log("🔍 AUTH CALLBACK: Using app URL:", appUrl, "isProduction:", isProduction)
+  console.log("🔍 AUTH CALLBACK: Using app URL:", appUrl)
 
   if (!code) {
     console.error("❌ AUTH CALLBACK: No code parameter in URL")
@@ -55,44 +50,21 @@ export async function GET(request: Request) {
 
     console.log("✅ AUTH CALLBACK: Session exchange successful, user ID:", sessionData.session.user.id)
 
-    // PERBAIKAN: Tambahkan cookie secara manual dengan konfigurasi yang benar
+    // Tambahkan cookie secara manual untuk memastikan
+    // Gunakan origin dari request URL untuk redirect, bukan hardcoded localhost
     const response = NextResponse.redirect(new URL(redirectTo, appUrl))
 
-    // PERBAIKAN: Konfigurasi cookie yang lebih baik
-    const secure = isProduction || requestUrl.protocol === "https:"
-
-    // PERBAIKAN: Gunakan COOKIE_DOMAIN jika tersedia
-    const domain = process.env.COOKIE_DOMAIN || (isProduction ? new URL(appUrl).hostname : "")
-    console.log("🔍 AUTH CALLBACK: Setting cookies with domain:", domain, "secure:", secure)
-
-    // Tambahkan cookie untuk access token
-    response.cookies.set({
-      name: "sb-auth-token",
-      value: sessionData.session.access_token,
-      path: "/",
-      maxAge: 60 * 60 * 8, // 8 jam
-      secure: secure,
-      sameSite: "lax",
-      domain: domain || undefined,
-    })
-
-    // Tambahkan cookie untuk refresh token
-    response.cookies.set({
-      name: "sb-refresh-token",
-      value: sessionData.session.refresh_token,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 hari
-      secure: secure,
-      sameSite: "lax",
-      domain: domain || undefined,
-    })
+    // Tambahkan cookie secara eksplisit dengan opsi yang benar
+    const secure = process.env.NODE_ENV === "production"
+    const cookieStr = `sb-auth-token=${sessionData.session.access_token}; Path=/; Max-Age=${60 * 60 * 8}; ${secure ? "Secure; " : ""}SameSite=Lax`
+    response.headers.append("Set-Cookie", cookieStr)
 
     // Tambahkan header untuk mencegah caching
-    response.headers.set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
-    response.headers.set("Pragma", "no-cache")
-    response.headers.set("Expires", "0")
+    response.headers.append("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+    response.headers.append("Pragma", "no-cache")
+    response.headers.append("Expires", "0")
 
-    // PERBAIKAN: Verifikasi session dengan getSession dan log lebih detail
+    // Verifikasi session dengan getSession
     console.log("🔍 AUTH CALLBACK: Verifying session...")
     const {
       data: { session },
@@ -106,10 +78,6 @@ export async function GET(request: Request) {
 
     if (!session) {
       console.warn("⚠️ AUTH CALLBACK: No session after verification, but continuing with manual cookie")
-      console.log("🔍 AUTH CALLBACK: Access token length:", sessionData.session.access_token.length)
-      console.log("🔍 AUTH CALLBACK: Refresh token length:", sessionData.session.refresh_token.length)
-      console.log("🔍 AUTH CALLBACK: Cookie domain:", domain)
-      console.log("🔍 AUTH CALLBACK: Cookie secure:", secure)
     } else {
       console.log("✅ AUTH CALLBACK: Session verified successfully")
     }

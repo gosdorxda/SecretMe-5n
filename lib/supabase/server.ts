@@ -2,31 +2,23 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 
+// Server-side Supabase client
 export const createClient = () => {
-  // Deteksi environment dengan FORCE_PRODUCTION_URLS
-  const forceProductionUrls = process.env.FORCE_PRODUCTION_URLS === "true"
-  const isProduction = process.env.NODE_ENV === "production" || forceProductionUrls
-
-  // Gunakan COOKIE_DOMAIN jika tersedia
-  const domain =
-    process.env.COOKIE_DOMAIN ||
-    (isProduction && process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname : "")
-
-  console.log("🔍 SERVER: Creating Supabase client with domain:", domain, "isProduction:", isProduction)
-
+  const cookieStore = cookies()
   return createServerComponentClient<Database>({
-    cookies,
+    cookies: () => cookieStore,
     options: {
       auth: {
+        flowType: "pkce",
         persistSession: true,
-        detectSessionInUrl: false,
+        autoRefreshToken: true,
         cookieOptions: {
           name: "sb-auth-token",
           lifetime: 60 * 60 * 8,
-          domain: domain || "",
+          domain: "",
           path: "/",
           sameSite: "lax",
-          secure: isProduction,
+          secure: process.env.NODE_ENV === "production",
         },
       },
     },

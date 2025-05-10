@@ -53,14 +53,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // PERBAIKAN: Log cookies yang ada
-  console.log(
-    "🔍 MIDDLEWARE: Cookies present:",
-    Object.keys(req.cookies.getAll()).join(", "),
-    "sb-auth-token exists:",
-    req.cookies.get("sb-auth-token") !== undefined,
-  )
-
   // Cek cache untuk rute ini
   const cacheKey = req.nextUrl.pathname + req.cookies.toString()
   const cachedResponse = middlewareCache.get(cacheKey)
@@ -85,25 +77,7 @@ export async function middleware(req: NextRequest) {
 
   const startTime = performance.now()
   const res = NextResponse.next()
-
-  // PERBAIKAN: Konfigurasi Supabase client dengan opsi yang lebih baik
-  const supabase = createMiddlewareClient<Database>({
-    req,
-    res,
-    options: {
-      auth: {
-        persistSession: true,
-        detectSessionInUrl: true,
-        cookieOptions: {
-          name: "sb-auth-token",
-          path: "/",
-          sameSite: "lax",
-          domain: "", // Kosongkan untuk menggunakan domain saat ini
-          secure: process.env.NODE_ENV === "production",
-        },
-      },
-    },
-  })
+  const supabase = createMiddlewareClient<Database>({ req, res })
 
   try {
     // Refresh session if expired
@@ -111,11 +85,6 @@ export async function middleware(req: NextRequest) {
     const { data, error } = await supabase.auth.getSession()
     const endTime = performance.now()
     const duration = endTime - startTime
-
-    // PERBAIKAN: Log lebih detail tentang sesi
-    if (data.session) {
-      console.log("🔍 MIDDLEWARE: Session found, user ID:", data.session.user.id)
-    }
 
     if (error) {
       console.error("❌ MIDDLEWARE: Error getting session:", error)

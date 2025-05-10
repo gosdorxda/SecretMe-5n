@@ -4,7 +4,7 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { createClient, resetClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import type { Session, User } from "@supabase/supabase-js"
 import {
   cacheAuthSession,
@@ -51,9 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       clearAuthCache() // Clear auth cache on sign out
 
-      // PERBAIKAN: Reset client setelah sign out
-      resetClient()
-
       if (pathname?.startsWith("/dashboard")) {
         router.push("/login")
       }
@@ -82,23 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       lastAuthCheckRef.current = now
-
-      // PERBAIKAN: Coba refresh token terlebih dahulu
-      console.log("🔄 Attempting to refresh auth session")
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-
-      if (refreshData?.session) {
-        console.log("✅ Session refreshed successfully")
-        setSession(refreshData.session)
-        setUser(refreshData.session.user)
-        cacheAuthSession(refreshData.session)
-        setLoading(false)
-        refreshingRef.current = false
-        return
-      } else if (refreshError) {
-        console.log("⚠️ Session refresh failed:", refreshError.message)
-        // Continue to try getSession
-      }
 
       // Try to get session from cache first
       const cachedSession = getCachedAuthSession()
@@ -222,12 +202,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           cacheAuthSession(newSession)
         }
 
-        // PERBAIKAN: Tambahkan penanganan untuk SIGNED_IN
-        if (event === "SIGNED_IN") {
-          console.log("🔍 User signed in, verifying session...")
-          refreshSession()
-        }
-
         // If token was refreshed, update the session
         if (event === "TOKEN_REFRESHED") {
           console.log("🔄 Token refreshed successfully")
@@ -238,7 +212,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === "SIGNED_OUT") {
           console.log("👋 User signed out")
           clearAuthCache()
-          resetClient() // PERBAIKAN: Reset client setelah sign out
         }
       })
 

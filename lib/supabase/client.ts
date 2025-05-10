@@ -77,17 +77,6 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
 export const createClient = () => {
   if (!supabaseClient) {
-    // PERBAIKAN: Deteksi environment dengan FORCE_PRODUCTION_URLS
-    const forceProductionUrls = process.env.FORCE_PRODUCTION_URLS === "true"
-    const isProduction = process.env.NODE_ENV === "production" || forceProductionUrls
-
-    // PERBAIKAN: Gunakan COOKIE_DOMAIN jika tersedia
-    const domain =
-      process.env.COOKIE_DOMAIN ||
-      (isProduction && process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname : "")
-
-    console.log("🔍 CLIENT: Creating Supabase client with domain:", domain, "isProduction:", isProduction)
-
     supabaseClient = createClientComponentClient<Database>({
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -101,15 +90,13 @@ export const createClient = () => {
           cookieOptions: {
             name: "sb-auth-token",
             lifetime: 60 * 60 * 8,
-            domain: domain || "", // PERBAIKAN: Gunakan domain yang dikonfigurasi
+            domain: "",
             path: "/",
-            sameSite: "lax",
-            secure: isProduction,
+            sameSite: "lax", // Ubah ke "none" jika menggunakan domain yang berbeda
+            secure: true, // Harus true untuk produksi dan jika sameSite adalah "none"
           },
           // Add error handling for token refresh
           onAuthStateChange: (event, session) => {
-            console.log("🔍 CLIENT: Auth state changed:", event, !!session)
-
             if (event === "TOKEN_REFRESHED_FAILED") {
               // Handle failed token refresh by clearing local storage
               localStorage.removeItem("supabase.auth.token")
