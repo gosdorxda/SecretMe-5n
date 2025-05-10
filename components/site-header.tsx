@@ -35,7 +35,7 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="w-full py-4 bg-transparent">
+    <header className="w-full py-4 bg-[var(--bg)]">
       <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-[var(--border-radius)] bg-[var(--main)] border-2 border-[var(--border)] shadow-neo-sm">
