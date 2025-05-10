@@ -36,7 +36,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -51,6 +51,9 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -84,7 +87,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -101,7 +104,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 224.3 76.5% 48%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -117,6 +120,7 @@
   }
 
   body {
+    @apply bg-background text-foreground;
     background-color: var(--bg);
     color: var(--text);
     font-size: 1rem; /* 16px */
@@ -125,6 +129,7 @@
   }
 
   * {
+    @apply border-border;
     border-color: var(--border);
   }
 
@@ -140,6 +145,7 @@
 
 @layer components {
   .neo-btn {
+    @apply bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white transition-all duration-200;
     background-color: var(--main);
     color: var(--mtext);
     border: 2px solid var(--border);
@@ -170,6 +176,7 @@
   }
 
   .neo-card {
+    @apply bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200;
     background-color: var(--bw);
     border: 2px solid var(--border);
     border-radius: var(--border-radius);
@@ -986,4 +993,119 @@ footer nav a:focus {
 /* Tambahkan kelas berikut ke file globals.css jika belum ada */
 .rounded-neo {
   border-radius: var(--border-radius);
+}
+
+@layer utilities {
+  .animate-ping-once {
+    animation: ping 1s cubic-bezier(0, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes ping {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    70%,
+    100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+}
+
+/* Animasi konfirmasi pengiriman pesan */
+@keyframes success-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-animation {
+  animation: success-fade-in 0.5s ease forwards;
+}
+
+@keyframes success-checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-checkmark {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: success-checkmark 0.8s ease-in-out forwards;
+  animation-delay: 0.2s;
+}
+
+@keyframes success-circle {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes success-message {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-message {
+  animation: success-message 0.5s ease-in-out forwards;
+  animation-delay: 0.5s;
+  opacity: 0;
+}
+
+@keyframes envelope-bounce {
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+.envelope-bounce {
+  animation: envelope-bounce 2s infinite;
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-slow {
+  animation: spin-slow 2s linear infinite;
 }

@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Send } from "lucide-react"
+import { Send, Sparkles } from "lucide-react"
+import { SuccessAnimation } from "@/components/success-animation"
 
 interface User {
   id: string
@@ -22,11 +23,23 @@ interface SendMessageFormProps {
   user: User
 }
 
+// Template pesan yang dapat dipilih pengunjung
+const messageTemplates = [
+  "Hai, saya suka konten yang kamu bagikan!",
+  "Boleh kenalan lebih dekat?",
+  "Kamu inspirasi banget!",
+  "Semangat terus ya!",
+  "Saya punya pertanyaan nih...",
+  "Keren banget profilmu!",
+]
+
 export function SendMessageForm({ user }: SendMessageFormProps) {
   const [message, setMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [characterCount, setCharacterCount] = useState(0)
   const [rateLimitError, setRateLimitError] = useState<string | null>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
   const maxLength = 500
   const supabase = createClient()
   const { toast } = useToast()
@@ -37,6 +50,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       setMessage(value)
       setCharacterCount(value.length)
     }
+  }
+
+  const selectTemplate = (template: string) => {
+    setMessage(template)
+    setCharacterCount(template.length)
+    setShowTemplates(false)
   }
 
   const checkRateLimit = async (): Promise<boolean> => {
@@ -161,13 +180,8 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         console.error("Error reporting rate limit:", error)
       }
 
-      toast({
-        title: "Pesan terkirim!",
-        description: "Pesan anonim Anda telah berhasil terkirim.",
-      })
-
-      setMessage("")
-      setCharacterCount(0)
+      // Tampilkan animasi sukses
+      setShowSuccess(true)
     } catch (error: any) {
       console.error(error)
       toast({
@@ -175,9 +189,25 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         description: error.message || "Terjadi kesalahan saat mengirim pesan",
         variant: "destructive",
       })
-    } finally {
       setIsSending(false)
     }
+  }
+
+  const handleAnimationComplete = () => {
+    setShowSuccess(false)
+    setIsSending(false)
+    setMessage("")
+    setCharacterCount(0)
+  }
+
+  if (showSuccess) {
+    return (
+      <Card className="neo-card">
+        <CardContent className="p-6">
+          <SuccessAnimation onComplete={handleAnimationComplete} />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -189,13 +219,44 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Textarea
-              placeholder="Tulis pesan anonim Anda di sini..."
-              value={message}
-              onChange={handleMessageChange}
-              className="min-h-[120px] resize-none"
-              maxLength={maxLength}
-            />
+            <div className="relative">
+              <Textarea
+                placeholder="Tulis pesan anonim Anda di sini..."
+                value={message}
+                onChange={handleMessageChange}
+                className="min-h-[120px] resize-none"
+                maxLength={maxLength}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
+                onClick={() => setShowTemplates(!showTemplates)}
+                title="Gunakan template pesan"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {showTemplates && (
+              <div className="bg-white rounded-md shadow-md p-2 border border-gray-200 mt-1 max-h-[200px] overflow-y-auto">
+                <div className="text-sm font-medium mb-2 text-gray-500">Pilih Template Pesan:</div>
+                <div className="space-y-1">
+                  {messageTemplates.map((template, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors"
+                      onClick={() => selectTemplate(template)}
+                    >
+                      {template}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end">
               <span
                 className={`text-xs ${characterCount > maxLength * 0.8 ? "text-orange-500" : "text-muted-foreground"}`}
