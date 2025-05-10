@@ -4,12 +4,12 @@ import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
 import { User, Crown } from "lucide-react"
 import Image from "next/image"
-import { Badge } from "@/components/ui/badge"
 import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
 import { ProfileSchema } from "@/components/profile-schema"
 import { CustomSocialIcons } from "@/components/custom-social-icons"
 import { ProfileImageButton } from "@/components/profile-image-button"
+import { TruncatedBio } from "@/components/truncated-bio"
 
 // Tambahkan metadata statis untuk SEO dasar
 export const metadata = {
@@ -117,11 +117,6 @@ export default async function ProfilePage({ params }: { params: { slug: string }
         <div className="flex flex-col items-center text-center mb-8">
           {/* Avatar with animation */}
           <div className="relative mb-4">
-            {user.is_premium && (
-              <Badge variant="premium" className="absolute -top-2 -right-2 z-10 flex items-center gap-1">
-                <Crown className="h-3 w-3" /> Premium
-              </Badge>
-            )}
             <div className="relative h-24 w-24 md:h-32 md:w-32 overflow-hidden rounded-full border-2 border-black bg-white">
               {user.is_premium && user.avatar_url ? (
                 <Image
@@ -136,9 +131,16 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                   <User className="h-16 w-16 text-gray-300" />
                 </div>
               )}
-
-              {/* Tombol share image */}
             </div>
+
+            {/* Badge premium yang menempel pada border */}
+            {user.is_premium && (
+              <div className="absolute top-0 right-0 z-20" style={{ transform: "translate(25%, -25%)" }}>
+                <div className="bg-yellow-400 rounded-full p-1 flex items-center justify-center w-7 h-7 border border-black shadow-sm">
+                  <Crown className="h-4 w-4 text-black" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Name and Username */}
@@ -155,11 +157,11 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             )}
           </div>
 
-          {/* Bio */}
+          {/* Bio dengan fitur tampilkan lebih */}
           {user.is_premium && user.bio && (
-            <p className="text-base leading-relaxed opacity-75 max-w-md mt-2" style={{ color: "var(--text)" }}>
-              {user.bio}
-            </p>
+            <div className="mt-2 flex justify-center">
+              <TruncatedBio bio={user.bio} maxLength={100} />
+            </div>
           )}
 
           {/* Social media links - Menggunakan komponen CustomSocialIcons */}
