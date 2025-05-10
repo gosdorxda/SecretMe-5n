@@ -157,33 +157,34 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             )}
           </div>
 
-          {/* Bio dengan fitur tampilkan lebih */}
+          {/* Bio dengan fitur tampilkan lebih - hanya untuk premium */}
           {user.is_premium && user.bio && (
             <div className="mt-4 mb-4 flex justify-center">
               <TruncatedBio bio={user.bio} maxLength={100} />
             </div>
           )}
 
-          {/* Social media links - Menggunakan komponen CustomSocialIcons */}
-          {user.is_premium && (
-            <div className="flex flex-col items-center gap-3 mt-3">
+          {/* Container for social media links and share button */}
+          <div className="flex flex-col items-center gap-3">
+            {/* Social media links - hanya untuk premium */}
+            {user.is_premium && (
               <CustomSocialIcons
                 instagramUrl={user.instagram_url}
                 facebookUrl={user.facebook_url}
                 linkedinUrl={user.linkedin_url}
                 tiktokUrl={user.tiktok_url}
               />
+            )}
 
-              {/* Tombol share profile sebagai gambar */}
-              <ProfileImageButton
-                username={user.username || user.numeric_id.toString()}
-                displayName={user.name}
-                bio={user.bio || ""}
-                avatarUrl={user.avatar_url}
-                isPremium={user.is_premium}
-              />
-            </div>
-          )}
+            {/* Tombol share profile sebagai gambar - untuk semua pengguna */}
+            <ProfileImageButton
+              username={user.username || user.numeric_id.toString()}
+              displayName={user.name}
+              bio={user.bio || ""}
+              avatarUrl={user.avatar_url}
+              isPremium={user.is_premium}
+            />
+          </div>
         </div>
 
         {/* Send Message Form */}
