@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { User, MessageSquare, Instagram, Facebook, Linkedin, ExternalLink } from "lucide-react"
+import { MessageSquare, Instagram, Facebook, Linkedin, ExternalLink } from "lucide-react"
 import Image from "next/image"
 
 interface ProfilePreviewProps {
@@ -65,8 +65,8 @@ export function ProfilePreview({ user }: ProfilePreviewProps) {
                       height={96}
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gray-50">
-                      <User className="h-12 w-12 text-gray-300" />
+                    <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-600 text-4xl font-bold">
+                      {user.name.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
