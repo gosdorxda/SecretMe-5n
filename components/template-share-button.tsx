@@ -11,20 +11,10 @@ interface TemplateShareButtonProps {
   message: string
   date: string
   avatarUrl?: string | null
-  variant?: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive"
-  size?: "default" | "sm" | "lg" | "icon"
   className?: string
 }
 
-export function TemplateShareButton({
-  username,
-  message,
-  date,
-  avatarUrl,
-  variant = "outline",
-  size = "sm",
-  className,
-}: TemplateShareButtonProps) {
+export function TemplateShareButton({ username, message, date, avatarUrl, className }: TemplateShareButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
   return (
@@ -32,8 +22,14 @@ export function TemplateShareButton({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant={variant} size={size} onClick={() => setDialogOpen(true)} className={className}>
-              <ImageIcon className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              className="h-7 px-2 text-xs text-gray-600 hover:bg-transparent"
+            >
+              <ImageIcon className="h-3.5 w-3.5 mr-1" />
+              Bagikan
             </Button>
           </TooltipTrigger>
           <TooltipContent>

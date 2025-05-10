@@ -171,11 +171,12 @@ export function MessageList({
                     {enableSharing && (
                       <Button
                         variant="ghost"
-                        size="xs"
-                        className="h-7 px-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-gray-600 hover:bg-transparent"
                         onClick={() => openShareDialog(message)}
                       >
-                        <Share className="h-3.5 w-3.5" />
+                        <Share className="h-3.5 w-3.5 mr-1" />
+                        Bagikan
                       </Button>
                     )}
 
