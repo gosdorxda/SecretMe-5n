@@ -11,6 +11,7 @@ import { CustomSocialIcons } from "@/components/custom-social-icons"
 import { ProfileImageButton } from "@/components/profile-image-button"
 import { TruncatedBio } from "@/components/truncated-bio"
 import { ProfileStatistics } from "@/components/profile-statistics"
+import { PremiumFeatureTeaser } from "@/components/premium-feature-teaser"
 
 // Tambahkan metadata statis untuk SEO dasar
 export const metadata = {
@@ -194,6 +195,9 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             />
           </div>
         </div>
+
+        {/* Premium Feature Teaser - hanya untuk pengguna gratis */}
+        {!user.is_premium && <PremiumFeatureTeaser />}
 
         {/* Profile Statistics - New Component */}
         {showStatistics && (
