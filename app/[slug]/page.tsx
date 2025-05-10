@@ -131,6 +131,8 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                   className="h-full w-full object-cover"
                   width={128}
                   height={128}
+                  priority={user.is_premium} // Preload avatar for premium users
+                  loading={user.is_premium ? "eager" : "lazy"} // Eager loading for premium users
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gray-50">

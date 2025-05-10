@@ -5,7 +5,7 @@ import id from "date-fns/locale/id"
 import type { Database } from "@/lib/supabase/database.types"
 import { MessageReplyForm } from "./message-reply-form"
 import { MessageSquare, Trash2, Share } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -20,10 +20,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
-import { Pagination } from "./pagination"
 import { PublicRepliesList } from "./public-replies-list"
 import { ShareImageDialog } from "./share-image-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -40,6 +40,11 @@ interface MessageListProps {
   numericId?: number
   displayName?: string | null
 }
+
+// Jumlah pesan yang dimuat awalnya
+const INITIAL_MESSAGES_COUNT = 5
+// Jumlah pesan yang dimuat setiap kali
+const MESSAGES_PER_BATCH = 5
 
 export function MessageList({
   messages,
@@ -63,15 +68,71 @@ export function MessageList({
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [messageToShare, setMessageToShare] = useState<Message | null>(null)
 
+  // Lazy loading states
+  const [visibleMessages, setVisibleMessages] = useState<Message[]>([])
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+
   const messagesPerPage = 10
   const supabase = createClient()
   const { toast } = useToast()
 
-  // Calculate pagination values
-  const totalPages = Math.ceil(messages.length / messagesPerPage)
-  const startIndex = (currentPage - 1) * messagesPerPage
-  const endIndex = startIndex + messagesPerPage
-  const currentMessages = messages.slice(startIndex, endIndex)
+  // Define an array of color variants to cycle through
+  const colorVariants = ["blue", "green", "purple", "pink", "amber", "teal", "indigo", "rose"]
+
+  // Initialize with first batch of messages
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      const initialMessages = messages.slice(0, INITIAL_MESSAGES_COUNT)
+      setVisibleMessages(initialMessages)
+      setHasMoreMessages(messages.length > INITIAL_MESSAGES_COUNT)
+    } else {
+      setVisibleMessages([])
+      setHasMoreMessages(false)
+    }
+  }, [messages])
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (entry.isIntersecting && hasMoreMessages && !isLoadingMore) {
+          loadMoreMessages()
+        }
+      },
+      { threshold: 0.1 },
+    )
+
+    const currentRef = loadMoreRef.current
+    if (currentRef) {
+      observer.observe(currentRef)
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef)
+      }
+    }
+  }, [hasMoreMessages, isLoadingMore, visibleMessages])
+
+  // Function to load more messages
+  const loadMoreMessages = useCallback(() => {
+    if (!hasMoreMessages || isLoadingMore) return
+
+    setIsLoadingMore(true)
+
+    // Simulate loading delay for better UX
+    setTimeout(() => {
+      const nextBatchIndex = visibleMessages.length
+      const nextBatch = messages.slice(nextBatchIndex, nextBatchIndex + MESSAGES_PER_BATCH)
+
+      setVisibleMessages((prev) => [...prev, ...nextBatch])
+      setHasMoreMessages(nextBatchIndex + nextBatch.length < messages.length)
+      setIsLoadingMore(false)
+    }, 500)
+  }, [hasMoreMessages, isLoadingMore, messages, visibleMessages])
 
   // Handle page change
   const handlePageChange = (page: number) => {
@@ -132,13 +193,31 @@ export function MessageList({
     setDeleteConfirmOpen(true)
   }
 
-  // Define an array of color variants to cycle through
-  const colorVariants = ["blue", "green", "purple", "pink", "amber", "teal", "indigo", "rose"]
+  // Message skeleton loader component
+  const MessageSkeleton = () => (
+    <div className="relative">
+      <Card className="border-2 border-[var(--border)] shadow-[var(--shadow)]">
+        <CardContent className="p-4">
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-6 rounded-full" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          </div>
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardContent>
+      </Card>
+    </div>
+  )
 
   return (
     <>
       <div className="space-y-4">
-        {currentMessages.map((message, index) => (
+        {visibleMessages.map((message, index) => (
           <div key={message.id} className="relative" id={`message-${message.id}`}>
             <Card className="border-2 border-[var(--border)] shadow-[var(--shadow)]">
               <CardContent className="p-4" colorVariant={colorVariants[index % colorVariants.length]}>
@@ -278,12 +357,24 @@ export function MessageList({
             </Card>
           </div>
         ))}
-      </div>
 
-      {/* Add pagination if there are more than one page */}
-      {totalPages > 1 && (
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-      )}
+        {/* Loading indicator for more messages */}
+        {isLoadingMore && (
+          <div className="space-y-4">
+            <MessageSkeleton />
+            <MessageSkeleton />
+          </div>
+        )}
+
+        {/* Load more trigger element */}
+        {hasMoreMessages && (
+          <div ref={loadMoreRef} className="py-4 text-center">
+            <Button variant="outline" size="sm" onClick={loadMoreMessages} disabled={isLoadingMore} className="mx-auto">
+              {isLoadingMore ? "Memuat pesan..." : "Muat lebih banyak pesan"}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
