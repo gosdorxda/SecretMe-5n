@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
-import { User, Crown } from "lucide-react"
+import { Crown } from "lucide-react"
 import Image from "next/image"
 import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
@@ -134,8 +134,8 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                   loading={user.is_premium ? "eager" : "lazy"} // Eager loading for premium users
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gray-50">
-                  <User className="h-16 w-16 text-gray-300" />
+                <div className="flex h-full w-full items-center justify-center bg-gray-100 text-4xl font-bold text-gray-600">
+                  {user.name ? user.name.charAt(0).toUpperCase() : "?"}
                 </div>
               )}
             </div>
