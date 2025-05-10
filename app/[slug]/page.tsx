@@ -10,6 +10,7 @@ import { ProfileSchema } from "@/components/profile-schema"
 import { CustomSocialIcons } from "@/components/custom-social-icons"
 import { ProfileImageButton } from "@/components/profile-image-button"
 import { TruncatedBio } from "@/components/truncated-bio"
+import { ProfileStatistics } from "@/components/profile-statistics"
 
 // Tambahkan metadata statis untuk SEO dasar
 export const metadata = {
@@ -69,6 +70,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
   }
 
   // Tambah jumlah tayangan
+  let viewCount = 0
   try {
     // Cek apakah sudah ada data tayangan
     const { data: viewData, error: viewError } = await supabase
@@ -85,12 +87,11 @@ export default async function ProfilePage({ params }: { params: { slug: string }
         user_id: user.id,
         count: 1,
       })
+      viewCount = 1
     } else {
       // Jika sudah ada data tayangan, tambah 1
-      await supabase
-        .from("profile_views")
-        .update({ count: viewData.count + 1 })
-        .eq("user_id", user.id)
+      viewCount = viewData.count + 1
+      await supabase.from("profile_views").update({ count: viewCount }).eq("user_id", user.id)
     }
   } catch (error) {
     console.error("Error updating view count:", error)
@@ -105,6 +106,11 @@ export default async function ProfilePage({ params }: { params: { slug: string }
 
   // Count total messages
   const messageCount = messages?.length || 0
+
+  // Determine if we should show statistics
+  // For owner or if the profile is public
+  const isOwner = userId === user.id
+  const showStatistics = isOwner || true // Always show for now, can be restricted later
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
@@ -186,6 +192,11 @@ export default async function ProfilePage({ params }: { params: { slug: string }
             />
           </div>
         </div>
+
+        {/* Profile Statistics - New Component */}
+        {showStatistics && (
+          <ProfileStatistics viewCount={viewCount} messageCount={messageCount} isPremium={user.is_premium} />
+        )}
 
         {/* Send Message Form */}
         <div className="px-0 sm:px-0">
