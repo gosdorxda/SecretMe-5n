@@ -9,81 +9,57 @@ export function PremiumFeatureTeaser() {
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <div className="w-full mb-6 mt-2">
-      <div
-        className="flex items-center justify-between p-2 border-2 border-dashed border-amber-400 rounded-lg bg-amber-50 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-2">
-          <Crown className="h-4 w-4 text-amber-500" />
-          <span className="text-sm font-medium text-amber-700">Lihat fitur Premium</span>
-        </div>
+    <div className="w-full mb-4 mt-2">
+      <div className="flex flex-col">
         <button
-          className="text-amber-700"
-          aria-label={isExpanded ? "Sembunyikan fitur premium" : "Tampilkan fitur premium"}
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center justify-between w-full text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none"
         >
-          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {isExpanded && (
-        <div className="mt-2 p-3 border border-gray-200 rounded-lg bg-white/80 shadow-sm animate-in fade-in slide-in-from-top-5 duration-300">
-          <h4 className="font-semibold text-sm mb-3">Upgrade ke Premium dan dapatkan:</h4>
-
-          <div className="space-y-2.5 mb-4">
-            <div className="flex items-start gap-2">
-              <div className="bg-amber-100 p-1 rounded-full mt-0.5">
-                <ImageIcon className="h-3.5 w-3.5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Foto Profil Kustom</p>
-                <p className="text-xs text-gray-500">Upload foto profil pilihan Anda</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="bg-amber-100 p-1 rounded-full mt-0.5">
-                <Edit3 className="h-3.5 w-3.5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Bio Profil</p>
-                <p className="text-xs text-gray-500">Tambahkan deskripsi tentang diri Anda</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="bg-amber-100 p-1 rounded-full mt-0.5">
-                <Share2 className="h-3.5 w-3.5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Username Kustom</p>
-                <p className="text-xs text-gray-500">Ganti ID numerik dengan username pilihan</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="bg-amber-100 p-1 rounded-full mt-0.5">
-                <BarChart3 className="h-3.5 w-3.5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Statistik Lanjutan</p>
-                <p className="text-xs text-gray-500">Analisis detail kunjungan & pesan</p>
-              </div>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <Crown className="h-4 w-4 text-amber-500" />
+            <span>Lihat fitur premium</span>
           </div>
+          <div className="text-gray-500">
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+        </button>
 
-          <Button
-            asChild
-            size="sm"
-            className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white border-none"
-          >
-            <Link href="/premium">
-              <Crown className="h-4 w-4 mr-2" />
-              Upgrade Sekarang
-            </Link>
-          </Button>
-        </div>
-      )}
+        {isExpanded && (
+          <div className="mt-2 pl-6 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <ImageIcon className="h-3.5 w-3.5 text-amber-500" />
+              <span>Foto profil kustom</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Edit3 className="h-3.5 w-3.5 text-amber-500" />
+              <span>Bio profil</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Share2 className="h-3.5 w-3.5 text-amber-500" />
+              <span>Username kustom</span>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <BarChart3 className="h-3.5 w-3.5 text-amber-500" />
+              <span>Statistik lanjutan</span>
+            </div>
+
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+            >
+              <Link href="/premium">
+                <Crown className="h-3.5 w-3.5 mr-1.5" />
+                Upgrade ke Premium
+              </Link>
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
