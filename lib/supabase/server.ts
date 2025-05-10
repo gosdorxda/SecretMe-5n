@@ -2,22 +2,20 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 
-// Server-side Supabase client
 export const createClient = () => {
   const cookieStore = cookies()
+
   return createServerComponentClient<Database>({
     cookies: () => cookieStore,
     options: {
       auth: {
-        flowType: "pkce",
         persistSession: true,
-        autoRefreshToken: true,
+        detectSessionInUrl: false,
         cookieOptions: {
           name: "sb-auth-token",
-          lifetime: 60 * 60 * 8,
-          domain: "",
           path: "/",
           sameSite: "lax",
+          domain: "", // Kosongkan untuk menggunakan domain saat ini
           secure: process.env.NODE_ENV === "production",
         },
       },

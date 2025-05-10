@@ -20,7 +20,8 @@ export async function GET(request: Request) {
     console.log("🔍 AUTH CALLBACK: Custom redirect target:", redirectTo)
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin
+  // PERBAIKAN: Gunakan origin dari request URL untuk konsistensi
+  const appUrl = process.env.NODE_ENV === "production" ? process.env.NEXT_PUBLIC_APP_URL : requestUrl.origin
   console.log("🔍 AUTH CALLBACK: Using app URL:", appUrl)
 
   if (!code) {
@@ -50,21 +51,42 @@ export async function GET(request: Request) {
 
     console.log("✅ AUTH CALLBACK: Session exchange successful, user ID:", sessionData.session.user.id)
 
-    // Tambahkan cookie secara manual untuk memastikan
-    // Gunakan origin dari request URL untuk redirect, bukan hardcoded localhost
+    // PERBAIKAN: Tambahkan cookie secara manual dengan konfigurasi yang benar
     const response = NextResponse.redirect(new URL(redirectTo, appUrl))
 
-    // Tambahkan cookie secara eksplisit dengan opsi yang benar
-    const secure = process.env.NODE_ENV === "production"
-    const cookieStr = `sb-auth-token=${sessionData.session.access_token}; Path=/; Max-Age=${60 * 60 * 8}; ${secure ? "Secure; " : ""}SameSite=Lax`
-    response.headers.append("Set-Cookie", cookieStr)
+    // PERBAIKAN: Konfigurasi cookie yang lebih baik
+    const isProduction = process.env.NODE_ENV === "production"
+    const secure = isProduction || requestUrl.protocol === "https:"
+    const domain = isProduction ? new URL(appUrl).hostname : ""
+
+    // Tambahkan cookie untuk access token
+    response.cookies.set({
+      name: "sb-auth-token",
+      value: sessionData.session.access_token,
+      path: "/",
+      maxAge: 60 * 60 * 8, // 8 jam
+      secure: secure,
+      sameSite: "lax",
+      domain: domain || undefined,
+    })
+
+    // Tambahkan cookie untuk refresh token
+    response.cookies.set({
+      name: "sb-refresh-token",
+      value: sessionData.session.refresh_token,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      secure: secure,
+      sameSite: "lax",
+      domain: domain || undefined,
+    })
 
     // Tambahkan header untuk mencegah caching
-    response.headers.append("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
-    response.headers.append("Pragma", "no-cache")
-    response.headers.append("Expires", "0")
+    response.headers.set("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
 
-    // Verifikasi session dengan getSession
+    // PERBAIKAN: Verifikasi session dengan getSession dan log lebih detail
     console.log("🔍 AUTH CALLBACK: Verifying session...")
     const {
       data: { session },
@@ -78,6 +100,8 @@ export async function GET(request: Request) {
 
     if (!session) {
       console.warn("⚠️ AUTH CALLBACK: No session after verification, but continuing with manual cookie")
+      console.log("🔍 AUTH CALLBACK: Access token length:", sessionData.session.access_token.length)
+      console.log("🔍 AUTH CALLBACK: Refresh token length:", sessionData.session.refresh_token.length)
     } else {
       console.log("✅ AUTH CALLBACK: Session verified successfully")
     }

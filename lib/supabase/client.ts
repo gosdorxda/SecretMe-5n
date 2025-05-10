@@ -77,6 +77,10 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
 export const createClient = () => {
   if (!supabaseClient) {
+    // PERBAIKAN: Deteksi environment
+    const isProduction = process.env.NODE_ENV === "production"
+    const domain = isProduction ? new URL(process.env.NEXT_PUBLIC_APP_URL || "").hostname : ""
+
     supabaseClient = createClientComponentClient<Database>({
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
       supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -90,10 +94,10 @@ export const createClient = () => {
           cookieOptions: {
             name: "sb-auth-token",
             lifetime: 60 * 60 * 8,
-            domain: "",
+            domain: "", // PERBAIKAN: Kosongkan untuk menggunakan domain saat ini
             path: "/",
             sameSite: "lax", // Ubah ke "none" jika menggunakan domain yang berbeda
-            secure: true, // Harus true untuk produksi dan jika sameSite adalah "none"
+            secure: isProduction, // Harus true untuk produksi dan jika sameSite adalah "none"
           },
           // Add error handling for token refresh
           onAuthStateChange: (event, session) => {
