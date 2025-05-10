@@ -20,7 +20,7 @@ export function TruncatedBio({ bio, maxLength = 150 }: TruncatedBioProps) {
   const displayedBio = isExpanded ? bio : bio.slice(0, maxLength) + (isTooLong ? "..." : "")
 
   return (
-    <div className="w-full max-w-md mx-auto text-center">
+    <div className="w-full max-w-md mx-auto text-center py-2">
       <p className="text-base leading-relaxed opacity-75" style={{ color: "var(--text)" }}>
         {displayedBio}
       </p>
@@ -30,7 +30,7 @@ export function TruncatedBio({ bio, maxLength = 150 }: TruncatedBioProps) {
           variant="ghost"
           size="sm"
           onClick={toggleExpanded}
-          className="mt-1 h-6 text-xs text-gray-500 px-2 flex items-center gap-1 mx-auto hover:bg-transparent"
+          className="mt-2 h-6 text-xs text-gray-500 px-2 flex items-center gap-1 mx-auto hover:bg-transparent"
         >
           {isExpanded ? (
             <>

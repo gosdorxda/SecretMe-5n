@@ -159,7 +159,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
 
           {/* Bio dengan fitur tampilkan lebih */}
           {user.is_premium && user.bio && (
-            <div className="mt-2 flex justify-center">
+            <div className="mt-4 mb-4 flex justify-center">
               <TruncatedBio bio={user.bio} maxLength={100} />
             </div>
           )}
