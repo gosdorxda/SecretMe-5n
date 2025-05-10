@@ -468,7 +468,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                           href={user.instagram_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white border-2 border-[var(--border)] transition-all"
+                          className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-gradient-to-br from-pink-500 to-purple-600 text-white border-2 border-border shadow-neo-sm hover:shadow-none transition-all duration-200"
+                          title="Instagram"
                         >
                           <Instagram className="h-4 w-4" />
                         </a>
@@ -478,7 +479,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                           href={user.facebook_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white border-2 border-[var(--border)] transition-all"
+                          className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-blue-600 text-white border-2 border-border shadow-neo-sm hover:shadow-none transition-all duration-200"
+                          title="Facebook"
                         >
                           <Facebook className="h-4 w-4" />
                         </a>
@@ -488,7 +490,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                           href={user.linkedin_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-700 text-white border-2 border-[var(--border)] transition-all"
+                          className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-blue-700 text-white border-2 border-border shadow-neo-sm hover:shadow-none transition-all duration-200"
+                          title="LinkedIn"
                         >
                           <Linkedin className="h-4 w-4" />
                         </a>
@@ -498,7 +501,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                           href={user.tiktok_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center w-9 h-9 rounded-full bg-black text-white border-2 border-[var(--border)] transition-all"
+                          className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-black text-white border-2 border-border shadow-neo-sm hover:shadow-none transition-all duration-200"
+                          title="TikTok"
                         >
                           <span className="font-bold text-sm">T</span>
                         </a>
@@ -506,13 +510,13 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border-2 border-[var(--border)] opacity-50">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-gray-100 border-2 border-border opacity-50">
                         <Instagram className="h-4 w-4 text-gray-400" />
                       </div>
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border-2 border-[var(--border)] opacity-50">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-gray-100 border-2 border-border opacity-50">
                         <Facebook className="h-4 w-4 text-gray-400" />
                       </div>
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border-2 border-[var(--border)] opacity-50">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-[var(--border-radius)] bg-gray-100 border-2 border-border opacity-50">
                         <Linkedin className="h-4 w-4 text-gray-400" />
                       </div>
                       {!user.is_premium && (
@@ -1080,25 +1084,25 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                           <span className="text-xs text-gray-500">Status sosial media:</span>
                           <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
                             {user.instagram_url && (
-                              <div className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded-full text-xs flex items-center gap-1">
+                              <div className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded-[var(--border-radius)] text-xs flex items-center gap-1">
                                 <Instagram className="h-3 w-3" />
                                 <span>Instagram</span>
                               </div>
                             )}
                             {user.facebook_url && (
-                              <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                              <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-[var(--border-radius)] text-xs flex items-center gap-1">
                                 <Facebook className="h-3 w-3" />
                                 <span>Facebook</span>
                               </div>
                             )}
                             {user.linkedin_url && (
-                              <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1">
+                              <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-[var(--border-radius)] text-xs flex items-center gap-1">
                                 <Linkedin className="h-3 w-3" />
                                 <span>LinkedIn</span>
                               </div>
                             )}
                             {user.tiktok_url && (
-                              <div className="px-2 py-0.5 bg-black bg-opacity-10 text-black rounded-full text-xs flex items-center gap-1">
+                              <div className="px-2 py-0.5 bg-black bg-opacity-10 text-black rounded-[var(--border-radius)] text-xs flex items-center gap-1">
                                 <BrandTiktok className="h-3 w-3" />
                                 <span>TikTok</span>
                               </div>
