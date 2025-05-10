@@ -425,7 +425,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                     {user.avatar_url ? (
                       <AvatarImage src={user.avatar_url || "/placeholder.svg"} alt={user.name} />
                     ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-[var(--main)] to-amber-400 text-white text-2xl">
+                      <AvatarFallback className="bg-gray-100 text-gray-600 text-4xl font-bold">
                         {user.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     )}
