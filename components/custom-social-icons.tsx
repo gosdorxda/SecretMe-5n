@@ -11,7 +11,7 @@ export function CustomSocialIcons({ instagramUrl, facebookUrl, linkedinUrl, tikt
   if (!hasSocialLinks) return null
 
   return (
-    <div className="flex gap-2 mt-3 justify-center">
+    <div className="flex gap-2 justify-center">
       {instagramUrl && (
         <a
           href={instagramUrl}
