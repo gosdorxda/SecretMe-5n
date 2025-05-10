@@ -32,11 +32,16 @@ export function ProfileImageDialog({
 
   // Teks untuk berbagi
   const shareTitle = `Profil @${username} di SecretMe`
-  const shareText = `Kirim pesan anonim ke @${username} di SecretMe`
-
-  // Generate profile URL
   const profileUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${username}` : `https://secretme.app/${username}`
+
+  // Change this:
+  // const shareText = `Kirim pesan anonim ke @${username} di SecretMe`
+
+  // To this:
+  const shareText = `Kirimi saya pesan anonim di ${profileUrl}`
+
+  // Generate profile URL
 
   // Generate preview when dialog opens
   useEffect(() => {
