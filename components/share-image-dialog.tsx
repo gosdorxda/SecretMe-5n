@@ -1,17 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Download, Share2 } from "lucide-react"
 import { generateTemplateImage, shareTemplateImage } from "@/lib/template-image-generator"
-import { Download, Share } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface ShareImageDialogProps {
@@ -79,11 +72,14 @@ export function ShareImageDialog({
     setIsSharing(true)
     try {
       await shareTemplateImage(imagePreview, shareText, shareText)
-      onOpenChange(false)
-    } catch (error) {
-      console.error("Error sharing image:", error)
       toast({
-        title: "Gagal membagikan gambar",
+        title: "Berhasil",
+        description: "Gambar pesan berhasil dibagikan",
+      })
+    } catch (error) {
+      console.error("Error sharing:", error)
+      toast({
+        title: "Gagal membagikan",
         description: "Terjadi kesalahan saat membagikan gambar",
         variant: "destructive",
       })
@@ -101,6 +97,11 @@ export function ShareImageDialog({
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+
+    toast({
+      title: "Berhasil",
+      description: "Gambar pesan berhasil diunduh",
+    })
   }
 
   return (
@@ -108,61 +109,43 @@ export function ShareImageDialog({
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bagikan Sebagai Gambar</DialogTitle>
-          <DialogDescription>Lihat preview dan bagikan pesan sebagai gambar</DialogDescription>
+          <DialogDescription>Buat dan bagikan gambar pesan Anda dengan mudah</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          {/* Image preview */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Preview</h3>
-            <div className="border rounded-lg p-2 bg-gray-50 flex justify-center border-black">
-              {isGenerating ? (
-                <div className="h-[350px] flex items-center justify-center">
-                  <div className="h-8 w-8 border-4 border-t-transparent border-primary rounded-full animate-spin"></div>
-                </div>
-              ) : imagePreview ? (
-                <img
-                  src={imagePreview || "/placeholder.svg"}
-                  alt="Preview"
-                  className="max-w-full max-h-[400px] object-contain rounded shadow-sm"
-                />
-              ) : (
-                <div className="h-[350px] flex items-center justify-center text-gray-400">Preview tidak tersedia</div>
-              )}
+        <div className="flex flex-col items-center space-y-4">
+          {isGenerating ? (
+            <div className="w-full h-[400px] bg-gray-100 rounded-md flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-8 w-8 border-4 border-t-transparent border-primary rounded-full animate-spin"></div>
+                <p className="text-gray-500">Membuat gambar...</p>
+              </div>
             </div>
+          ) : imagePreview ? (
+            <div className="relative w-full overflow-hidden border rounded-lg p-2 bg-gray-50 border-black">
+              <img src={imagePreview || "/placeholder.svg"} alt={`Pesan untuk ${username}`} className="w-full h-auto" />
+            </div>
+          ) : (
+            <div className="w-full h-[400px] bg-gray-100 rounded-md flex items-center justify-center">
+              <p className="text-gray-500">Tidak dapat membuat gambar</p>
+            </div>
+          )}
+
+          <div className="flex space-x-2 w-full justify-center">
+            <Button
+              onClick={handleDownload}
+              disabled={isGenerating || !imagePreview}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Unduh
+            </Button>
+            <Button onClick={handleShare} disabled={isGenerating || !imagePreview} className="flex items-center gap-2">
+              <Share2 className="h-4 w-4" />
+              Bagikan
+            </Button>
           </div>
         </div>
-
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDownload}
-            disabled={!imagePreview || isGenerating}
-            className="w-full sm:w-auto"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Unduh Gambar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleShare}
-            disabled={!imagePreview || isGenerating || isSharing}
-            className="w-full sm:w-auto"
-          >
-            {isSharing ? (
-              <>
-                <div className="mr-2 h-4 w-4 border-2 border-t-transparent border-current rounded-full animate-spin" />
-                Membagikan...
-              </>
-            ) : (
-              <>
-                <Share className="mr-2 h-4 w-4" />
-                Bagikan
-              </>
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
