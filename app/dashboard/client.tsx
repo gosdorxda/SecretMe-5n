@@ -64,6 +64,9 @@ import { WhatsAppForm } from "@/components/whatsapp-form"
 // Tambahkan import TelegramForm
 import { TelegramForm } from "@/components/telegram-form"
 
+// Import MessageList
+import { MessageList } from "@/components/message-list"
+
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -716,6 +719,20 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                     Bagikan Profil Anda
                   </Button>
                 </div>
+              )}
+
+              {/* Tambahkan kembali komponen MessageList yang hilang */}
+              {filteredMessages.length > 0 && (
+                <MessageList
+                  messages={filteredMessages}
+                  hideReadStatus={true}
+                  isPremium={user.is_premium}
+                  onReplySuccess={handleReplySuccess}
+                  onDeleteSuccess={handleDeleteSuccess}
+                  enablePublicReplies={true}
+                  username={user.username}
+                  numericId={user.numeric_id}
+                />
               )}
             </CardContent>
           </Card>
