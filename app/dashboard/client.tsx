@@ -64,6 +64,9 @@ import { WhatsAppForm } from "@/components/whatsapp-form"
 // Tambahkan import TelegramForm
 import { TelegramForm } from "@/components/telegram-form"
 
+// Tambahkan import ProfileImageButton di bagian atas file, di bawah import TelegramForm:
+import { ProfileImageButton } from "@/components/profile-image-button"
+
 // Import MessageList
 import { MessageList } from "@/components/message-list"
 
@@ -490,7 +493,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                   </div>
                 </div>
 
-                <div className="flex gap-2 mx-4 mb-4">
+                <div className="flex gap-2 mx-4 mb-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -520,6 +523,22 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                   >
                     <Share2 className="h-3.5 w-3.5 mr-1.5" />
                     Bagikan
+                  </Button>
+                </div>
+
+                <div className="mx-4 mb-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full text-xs h-9 bg-gray-50 border border-gray-200"
+                  >
+                    <ProfileImageButton
+                      username={user.is_premium && user.username ? user.username : user.numeric_id}
+                      displayName={user.name}
+                      bio={user.bio}
+                      avatarUrl={user.avatar_url}
+                      isPremium={user.is_premium}
+                    />
                   </Button>
                 </div>
               </div>
