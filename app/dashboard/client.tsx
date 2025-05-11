@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/lib/supabase/database.types"
 import { FileText, Link2, User, ImageIcon, Trash2 } from "lucide-react"
 import { DashboardHeader } from "./components/dashboard-header"
+import { PremiumBanner } from "./components/premium-banner"
 import { ProfileQuickView } from "./components/profile-quick-view"
 import { StatisticsCards } from "./components/statistics-cards"
 import { DashboardTabs } from "./components/dashboard-tabs"
@@ -224,6 +225,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   return (
     <div className="w-full max-w-[56rem] mx-auto px-4 sm:px-6">
       <DashboardHeader user={user} />
+      <PremiumBanner user={user} />
       <ProfileQuickView user={user} />
       <StatisticsCards messages={messages} viewCount={viewCount} />
       <DashboardTabs user={user} messages={messages} viewCount={viewCount} />
