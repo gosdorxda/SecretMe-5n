@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { AlertTriangle, Crown, LogOut, Settings, Trash2 } from "lucide-react"
+import { AlertTriangle, Bell, Crown, LogOut, Settings, Trash2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { Database } from "@/lib/supabase/database.types"
+import Link from "next/link"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 
@@ -134,6 +135,23 @@ export function SettingsTab({ user }: SettingsTabProps) {
                 </div>
               </div>
             </div>
+
+            {user.is_premium && (
+              <div className="rounded-lg border border-gray-200 p-4">
+                <h3 className="font-medium mb-3 text-sm sm:text-base flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-blue-500" />
+                  Notifikasi
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  Atur preferensi notifikasi untuk pesan baru dan aktivitas lainnya.
+                </p>
+                <Link href="/dashboard/notification-settings">
+                  <Button variant="outline" className="w-full sm:w-auto neo-btn-outline">
+                    Pengaturan Notifikasi
+                  </Button>
+                </Link>
+              </div>
+            )}
 
             <div className="rounded-lg border border-gray-200 p-4">
               <h3 className="font-medium mb-3 text-sm sm:text-base">Keluar Akun</h3>

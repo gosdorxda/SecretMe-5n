@@ -81,6 +81,9 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         stopPolling()
         setConnectionStatus("connected")
 
+        // Update notification settings with the new Telegram ID
+        await updateNotificationSettings(data.telegramId, data.telegramNotifications)
+
         toast({
           title: "Koneksi Berhasil",
           description: "Akun Telegram Anda berhasil terhubung dengan SecretMe",
@@ -117,12 +120,44 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     }
   }, [pollingInterval])
 
+  // Fungsi untuk memperbarui pengaturan notifikasi
+  const updateNotificationSettings = async (telegramId: string, enabled: boolean) => {
+    try {
+      // Update user_notification_settings table
+      const response = await fetch("/api/notifications/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          enabled: enabled,
+          channel_type: "telegram",
+          notify_new_messages: true,
+          notify_replies: true,
+          notify_system_updates: false,
+          telegram_id: telegramId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || `Error ${response.status}`)
+      }
+    } catch (error) {
+      console.error("Error updating notification settings:", error)
+    }
+  }
+
   const handleToggleNotifications = async (checked: boolean) => {
     setTelegramNotifications(checked)
 
     // Jika sudah ada Telegram ID yang terverifikasi, langsung update preferensi
     if (telegramId) {
       try {
+        setIsSubmitting(true)
+
+        // Update telegram_notifications in users table (for backward compatibility)
         const response = await fetch("/api/telegram/save", {
           method: "POST",
           headers: {
@@ -140,6 +175,9 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           throw new Error(data?.error || `Error ${response.status}`)
         }
 
+        // Update notification settings in the new table
+        await updateNotificationSettings(telegramId, checked)
+
         toast({
           title: "Berhasil",
           description: `Notifikasi Telegram ${checked ? "diaktifkan" : "dinonaktifkan"}`,
@@ -152,6 +190,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         })
         // Revert state if failed
         setTelegramNotifications(!checked)
+      } finally {
+        setIsSubmitting(false)
       }
     }
   }
@@ -230,6 +270,9 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
       setTelegramId(null)
       setTelegramNotifications(false)
       setConnectionStatus("idle")
+
+      // Update notification settings
+      await updateNotificationSettings("", false)
 
       toast({
         title: "Berhasil",
