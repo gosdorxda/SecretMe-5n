@@ -68,13 +68,11 @@ export async function POST(request: NextRequest) {
       await supabase.from("blocked_ips").delete().eq("id", blockedIp.id)
     }
 
-    // Dapatkan user yang terautentikasi dengan cara yang aman
-    let userId = null
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-
-    if (!userError && userData.user) {
-      userId = userData.user.id
-    }
+    // Dapatkan session user jika ada
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const userId = session?.user?.id
 
     // Periksa rate limit berdasarkan IP dan penerima
     const { data: rateLimitData, error: rateLimitError } = await supabase
