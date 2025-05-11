@@ -246,6 +246,19 @@ export function MessageList({
                   </div>
 
                   <div className="flex items-center gap-2">
+                  {/* Delete button */}
+                    {isPremium && !isPublicView && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => confirmDelete(message.id)}
+                        disabled={isDeleting === message.id}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    
                     {/* Share button */}
                     {enableSharing && (
                       <Button
@@ -256,19 +269,6 @@ export function MessageList({
                       >
                         <Share className="h-3.5 w-3.5 mr-1" />
                         Bagikan
-                      </Button>
-                    )}
-
-                    {/* Delete button */}
-                    {isPremium && !isPublicView && (
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => confirmDelete(message.id)}
-                        disabled={isDeleting === message.id}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
