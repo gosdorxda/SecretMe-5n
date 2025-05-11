@@ -49,26 +49,6 @@ export async function POST(request: Request) {
       phone: userData.phone_number,
     })
 
-    // Get notification preferences
-    const { data: preferences, error: preferencesError } = await supabase
-      .from("notification_preferences")
-      .select("*")
-      .eq("user_id", userId)
-      .single()
-
-    // Default preferences if not set
-    const newMessagesEnabled = preferences ? preferences.new_messages : true
-    console.log("New messages notifications enabled:", newMessagesEnabled)
-
-    // If notifications are disabled, return early
-    if (!newMessagesEnabled) {
-      console.log("New message notifications are disabled for this user")
-      return NextResponse.json({
-        success: true,
-        message: "New message notifications are disabled for this user",
-      })
-    }
-
     // Get message data
     const { data: message, error: messageError } = await supabase
       .from("messages")
