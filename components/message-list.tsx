@@ -246,25 +246,25 @@ export function MessageList({
                   </div>
 
                   <div className="flex items-center gap-2">
-                  {/* Delete button */}
+                    {/* Delete button */}
                     {isPremium && !isPublicView && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="xs"
-                        className="h-7 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-red-500 hover:text-red-700"
                         onClick={() => confirmDelete(message.id)}
                         disabled={isDeleting === message.id}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    
+
                     {/* Share button */}
                     {enableSharing && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs text-gray-600 hover:bg-transparent"
+                        className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-xs text-gray-600 hover:bg-transparent"
                         onClick={() => openShareDialog(message)}
                       >
                         <Share className="h-3.5 w-3.5 mr-1" />

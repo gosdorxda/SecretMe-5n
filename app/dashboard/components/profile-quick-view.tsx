@@ -256,17 +256,23 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                 </Button>
               </div>
 
-              <div className="mx-4 mb-4 mt-3">
+              <div className="mx-4 mb-4">
                 <ProfileImageButton
                   username={user.is_premium && user.username ? user.username : user.numeric_id}
                   displayName={user.name}
                   bio={user.bio}
                   avatarUrl={user.avatar_url}
                   isPremium={user.is_premium}
-                  buttonText="Bagikan Kartu Profil"
-                  buttonClassName="w-full text-xs h-9 neo-btn-outline"
-                  buttonVariant="outline"
-                />
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs h-9 border border-gray-200 hover:bg-gray-50"
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    Bagikan Kartu Profil
+                  </Button>
+                </ProfileImageButton>
               </div>
             </div>
           </div>
