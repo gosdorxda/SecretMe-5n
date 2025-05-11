@@ -43,11 +43,11 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
             {/* Profile Info */}
             <div className="p-6 flex-1 border-b md:border-b-0 md:border-r border-gray-200">
               <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20 border-2 border-[var(--border)]">
+                <Avatar className="h-24 w-24 border-2 border-[var(--border)]">
                   {user.avatar_url ? (
                     <AvatarImage src={user.avatar_url || "/placeholder.svg"} alt={user.name} />
                   ) : (
-                    <AvatarFallback className="bg-gray-100 text-gray-600 text-4xl font-bold">
+                    <AvatarFallback className="bg-gray-100 text-gray-600 text-5xl font-bold">
                       {user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   )}
@@ -256,7 +256,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                 </Button>
               </div>
 
-              <div className="mx-4 mb-4">
+              <div className="mx-4 mb-4 mt-3">
                 <ProfileImageButton
                   username={user.is_premium && user.username ? user.username : user.numeric_id}
                   displayName={user.name}
@@ -264,11 +264,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   avatarUrl={user.avatar_url}
                   isPremium={user.is_premium}
                 >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs h-9 border border-gray-200 hover:bg-gray-50"
-                  >
+                  <Button variant="outline" size="sm" className="w-full text-xs h-9 neo-btn-outline">
                     <FileText className="h-3.5 w-3.5 mr-1.5" />
                     Bagikan Kartu Profil
                   </Button>

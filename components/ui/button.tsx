@@ -15,7 +15,7 @@ const buttonVariants = cva(
         outline: "neo-btn-outline",
         secondary:
           "bg-secondary text-secondary-foreground border-2 border-black shadow-neo hover:shadow-none font-bold",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "bg-transparent hover:bg-accent hover:text-accent-foreground border border-gray-200",
         link: "text-primary underline-offset-4 hover:underline",
         success: "bg-green-600 text-white border-2 border-black shadow-neo hover:shadow-none font-bold",
         warning: "bg-yellow-500 text-black border-2 border-black shadow-neo hover:shadow-none font-bold",
