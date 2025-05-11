@@ -30,7 +30,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const supabase = createRouteHandlerClient({ cookies })
 
-  // Cek session
+  // Cek session dan verifikasi user dengan cara yang lebih aman
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // Verifikasi user dengan getUser()
+  // Verifikasi user dengan getUser() yang lebih aman
   const {
     data: { user },
     error: userError,

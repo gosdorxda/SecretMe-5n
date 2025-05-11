@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies })
 
-  // Cek session
+  // Cek session dan verifikasi user dengan cara yang lebih aman
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // Verifikasi user dengan getUser()
+  // Verifikasi user dengan getUser() yang lebih aman
   const {
     data: { user },
     error: userError,

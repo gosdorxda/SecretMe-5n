@@ -18,6 +18,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verifikasi user dengan getUser() yang lebih aman
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.log("[SERVER] Unauthorized: Invalid user", userError)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     // Parse request body
     const body = await request.json()
     console.log("[SERVER] Request body:", body)

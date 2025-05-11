@@ -15,15 +15,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verifikasi user dengan getUser() yang lebih aman
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
     // Get user data
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError2 } = await supabase
       .from("users")
       .select("name, telegram_id")
       .eq("id", session.user.id)
       .single()
 
-    if (userError || !userData) {
-      throw new Error(userError?.message || "User not found")
+    if (userError2 || !userData) {
+      throw new Error(userError2?.message || "User not found")
     }
 
     if (!userData.telegram_id) {

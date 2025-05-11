@@ -22,6 +22,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verifikasi user dengan getUser() yang lebih aman
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
     // Update user with Telegram ID and notification preferences
     const { error } = await supabase
       .from("users")
@@ -30,7 +40,7 @@ export async function POST(request: Request) {
         telegram_notifications: enableNotifications,
         notification_channel: enableNotifications ? "telegram" : "email",
       })
-      .eq("id", session.user.id)
+      .eq("id", user.id)
 
     if (error) {
       throw new Error(error.message)
