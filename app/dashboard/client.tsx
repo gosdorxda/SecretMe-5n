@@ -807,7 +807,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                   enablePublicReplies={true}
                   username={user.username}
                   numericId={user.numeric_id}
-                  enableSharing={true}
+                  enableSharing={true} // Aktifkan untuk semua pengguna
                   displayName={user.name}
                 />
               )}
