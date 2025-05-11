@@ -41,14 +41,6 @@ export async function POST(request: Request) {
       })
     }
 
-    console.log("User notification settings:", {
-      channel: userData.notification_channel,
-      telegramEnabled: userData.telegram_notifications,
-      telegramId: userData.telegram_id,
-      whatsappEnabled: userData.whatsapp_notifications,
-      phone: userData.phone_number,
-    })
-
     // Get notification preferences
     const { data: preferences, error: preferencesError } = await supabase
       .from("notification_preferences")
@@ -57,8 +49,15 @@ export async function POST(request: Request) {
       .single()
 
     // Default preferences if not set
-    const newMessagesEnabled = preferences ? preferences.new_messages : true
-    console.log("New messages notifications enabled:", newMessagesEnabled)
+    const newMessagesEnabled = preferences ? preferences.new_messages : false
+    const notificationChannel = preferences ? preferences.notification_channel : null
+
+    console.log("Notification preferences:", {
+      newMessagesEnabled,
+      notificationChannel,
+      whatsappEnabled: userData.whatsapp_notifications,
+      telegramEnabled: userData.telegram_notifications,
+    })
 
     // If notifications are disabled, return early
     if (!newMessagesEnabled) {
@@ -66,6 +65,15 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         message: "New message notifications are disabled for this user",
+      })
+    }
+
+    // If no notification channel is selected, return early
+    if (!notificationChannel) {
+      console.log("No notification channel selected for this user")
+      return NextResponse.json({
+        success: true,
+        message: "No notification channel selected for this user",
       })
     }
 
@@ -88,7 +96,7 @@ export async function POST(request: Request) {
         user_id: userId,
         message_id: messageId,
         notification_type: type,
-        channel: "pending",
+        channel: notificationChannel,
         status: "pending",
         created_at: new Date().toISOString(),
       })
@@ -100,28 +108,12 @@ export async function POST(request: Request) {
       throw new Error(logError.message)
     }
 
-    // Determine notification channel
-    const useWhatsApp =
-      userData.notification_channel === "whatsapp" && userData.whatsapp_notifications && userData.phone_number
-    const useTelegram =
-      userData.notification_channel === "telegram" && userData.telegram_notifications && userData.telegram_id
-
-    console.log("Selected notification channel:", { useWhatsApp, useTelegram })
-
     // Generate profile URL
     const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${userData.username || userData.numeric_id}`
     console.log("Profile URL for notification:", profileUrl)
 
-    // Update notification channel
-    await supabase
-      .from("notification_logs")
-      .update({
-        channel: useWhatsApp ? "whatsapp" : useTelegram ? "telegram" : "email",
-      })
-      .eq("id", notificationLog.id)
-
     // Send notification based on channel
-    if (useWhatsApp) {
+    if (notificationChannel === "whatsapp" && userData.phone_number) {
       // Send WhatsApp notification
       try {
         console.log("Sending WhatsApp notification to:", userData.phone_number)
@@ -142,7 +134,7 @@ export async function POST(request: Request) {
           .update({ status: "failed", error_message: error.message })
           .eq("id", notificationLog.id)
       }
-    } else if (useTelegram) {
+    } else if (notificationChannel === "telegram" && userData.telegram_id) {
       // Send Telegram notification
       try {
         console.log("Sending Telegram notification to:", userData.telegram_id)
@@ -163,12 +155,22 @@ export async function POST(request: Request) {
           .update({ status: "failed", error_message: error.message })
           .eq("id", notificationLog.id)
       }
-    } else {
-      // Fallback to email notification (existing logic)
+    } else if (notificationChannel === "email") {
+      // Fallback to email notification
       console.log(`Email notification sent to ${userData.email} about message ${messageId}`)
 
       // Update status to sent
       await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
+    } else {
+      // Invalid channel configuration
+      console.log(`Invalid notification channel configuration for user ${userId}`)
+      await supabase
+        .from("notification_logs")
+        .update({
+          status: "failed",
+          error_message: "Invalid notification channel configuration",
+        })
+        .eq("id", notificationLog.id)
     }
 
     return NextResponse.json({ success: true })
