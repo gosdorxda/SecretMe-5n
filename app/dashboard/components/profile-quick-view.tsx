@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Crown, Copy, FileText, Share2 } from "lucide-react"
-import { ProfileImageButton } from "@/components/profile-image-button"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -257,18 +256,20 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
               </div>
 
               <div className="mx-4 mb-4 mt-3">
-                <ProfileImageButton
-                  username={user.is_premium && user.username ? user.username : user.numeric_id}
-                  displayName={user.name}
-                  bio={user.bio}
-                  avatarUrl={user.avatar_url}
-                  isPremium={user.is_premium}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs h-9 neo-btn-outline"
+                  onClick={() => {
+                    const profileImageButton = document.querySelector("[data-profile-image-button]")
+                    if (profileImageButton) {
+                      ;(profileImageButton as HTMLElement).click()
+                    }
+                  }}
                 >
-                  <Button variant="outline" size="sm" className="w-full text-xs h-9 neo-btn-outline">
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
-                    Bagikan Kartu Profil
-                  </Button>
-                </ProfileImageButton>
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Bagikan Kartu Profil
+                </Button>
               </div>
             </div>
           </div>

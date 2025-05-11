@@ -1,43 +1,52 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ImageIcon } from "lucide-react"
-import { ProfileImageDialog } from "./profile-image-dialog"
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { ShareImageDialog } from "@/components/share-image-dialog"
 
 interface ProfileImageButtonProps {
   username: string
-  displayName?: string
-  bio?: string
+  displayName: string
+  bio?: string | null
   avatarUrl?: string | null
   isPremium?: boolean
+  children?: React.ReactNode
 }
 
-export function ProfileImageButton({ username, displayName, bio, avatarUrl, isPremium }: ProfileImageButtonProps) {
-  const [dialogOpen, setDialogOpen] = useState(false)
+export function ProfileImageButton({
+  username,
+  displayName,
+  bio,
+  avatarUrl,
+  isPremium,
+  children,
+}: ProfileImageButtonProps) {
+  const [open, setOpen] = useState(false)
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2 text-xs text-gray-600 hover:bg-transparent"
-        onClick={() => setDialogOpen(true)}
-        aria-label="Bagikan profil sebagai gambar"
-      >
-        <ImageIcon className="h-3.5 w-3.5 mr-1" />
-        Bagikan
-      </Button>
-
-      <ProfileImageDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        username={username}
-        displayName={displayName}
-        bio={bio}
-        avatarUrl={avatarUrl}
-        isPremium={isPremium}
-      />
-    </>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <div data-profile-image-button>
+          {children || (
+            <Button variant="outline" size="sm" className="text-xs">
+              Bagikan Gambar Profil
+            </Button>
+          )}
+        </div>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <ShareImageDialog
+          username={username}
+          displayName={displayName}
+          bio={bio}
+          avatarUrl={avatarUrl}
+          isPremium={isPremium}
+          onClose={() => setOpen(false)}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }
