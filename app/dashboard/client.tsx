@@ -807,6 +807,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                   enablePublicReplies={true}
                   username={user.username}
                   numericId={user.numeric_id}
+                  enableSharing={true}
+                  displayName={user.name}
                 />
               )}
             </CardContent>
