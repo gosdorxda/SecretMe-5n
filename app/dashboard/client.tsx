@@ -225,8 +225,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   return (
     <div className="w-full max-w-[56rem] mx-auto px-4 sm:px-6">
       <DashboardHeader user={user} />
-      <PremiumBanner user={user} />
       <ProfileQuickView user={user} />
+      <PremiumBanner user={user} />
       <StatisticsCards messages={messages} viewCount={viewCount} />
       <DashboardTabs user={user} messages={messages} viewCount={viewCount} />
     </div>
