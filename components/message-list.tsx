@@ -6,7 +6,6 @@ import type { Database } from "@/lib/supabase/database.types"
 import { MessageReplyForm } from "./message-reply-form"
 import { MessageSquare, Trash2, Share } from "lucide-react"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -248,28 +247,24 @@ export function MessageList({
                   <div className="flex items-center gap-2">
                     {/* Delete button */}
                     {isPremium && !isPublicView && (
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-red-500 hover:text-red-700"
+                      <button
+                        className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-red-500 hover:text-red-700 shadow-none"
                         onClick={() => confirmDelete(message.id)}
                         disabled={isDeleting === message.id}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </button>
                     )}
 
                     {/* Share button */}
                     {enableSharing && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-xs text-gray-600 hover:bg-transparent"
+                      <button
+                        className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-xs text-gray-600 hover:bg-transparent shadow-none"
                         onClick={() => openShareDialog(message)}
                       >
                         <Share className="h-3.5 w-3.5 mr-1" />
                         Bagikan
-                      </Button>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -369,9 +364,13 @@ export function MessageList({
         {/* Load more trigger element */}
         {hasMoreMessages && (
           <div ref={loadMoreRef} className="py-4 text-center">
-            <Button variant="outline" size="sm" onClick={loadMoreMessages} disabled={isLoadingMore} className="mx-auto">
+            <button
+              className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-9 px-4 text-sm mx-auto"
+              onClick={loadMoreMessages}
+              disabled={isLoadingMore}
+            >
               {isLoadingMore ? "Memuat pesan..." : "Muat lebih banyak pesan"}
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -386,10 +385,12 @@ export function MessageList({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="mt-0 neo-btn-outline">Batal</AlertDialogCancel>
+            <AlertDialogCancel className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-9 px-4 text-sm">
+              Batal
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => messageToDelete && handleDeleteMessage(messageToDelete)}
-              className="bg-red-500 text-white neo-btn"
+              className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-[var(--border-radius)] h-9 px-4 text-sm"
             >
               Hapus
             </AlertDialogAction>
