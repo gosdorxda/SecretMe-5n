@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { ShareImageDialog } from "@/components/share-image-dialog"
+import { FileText } from "lucide-react"
 
 interface ProfileImageButtonProps {
   username: string
@@ -14,6 +15,9 @@ interface ProfileImageButtonProps {
   avatarUrl?: string | null
   isPremium?: boolean
   children?: React.ReactNode
+  buttonText?: string
+  buttonClassName?: string
+  buttonVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
 }
 
 export function ProfileImageButton({
@@ -23,19 +27,21 @@ export function ProfileImageButton({
   avatarUrl,
   isPremium,
   children,
+  buttonText = "Bagikan Gambar Profil",
+  buttonClassName = "",
+  buttonVariant = "outline",
 }: ProfileImageButtonProps) {
   const [open, setOpen] = useState(false)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div data-profile-image-button>
-          {children || (
-            <Button variant="outline" size="sm" className="text-xs">
-              Bagikan Gambar Profil
-            </Button>
-          )}
-        </div>
+        {children || (
+          <Button variant={buttonVariant} size="sm" className={buttonClassName}>
+            <FileText className="h-3.5 w-3.5 mr-1.5" />
+            {buttonText}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <ShareImageDialog
