@@ -82,9 +82,22 @@ export async function middleware(req: NextRequest) {
   try {
     // Refresh session if expired
     console.log("🔍 MIDDLEWARE: Getting session")
-    const { data, error } = await supabase.auth.getSession()
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
     const endTime = performance.now()
     const duration = endTime - startTime
+
+    // Jika ada sesi, verifikasi dengan getUser untuk keamanan
+    let userData = null
+    let error = sessionError
+
+    if (sessionData.session) {
+      const { data: verifiedData, error: userError } = await supabase.auth.getUser()
+      userData = verifiedData
+      if (userError) {
+        error = userError
+        console.error("❌ MIDDLEWARE: Error verifying user:", userError)
+      }
+    }
 
     if (error) {
       console.error("❌ MIDDLEWARE: Error getting session:", error)
@@ -115,23 +128,14 @@ export async function middleware(req: NextRequest) {
       }
     }
 
-    console.log("🔍 MIDDLEWARE: Session exists?", !!data.session)
-
-    // Catat permintaan berhasil
-    storeAuthRequestLog({
-      timestamp: now,
-      path: req.nextUrl.pathname,
-      success: true,
-      duration,
-      cached: false,
-    })
+    console.log("🔍 MIDDLEWARE: Session exists?", !!sessionData.session)
 
     // Protect dashboard route
     if (isProtectedRoute) {
       console.log("🔍 MIDDLEWARE: Checking auth for protected route:", req.nextUrl.pathname)
 
-      if (!data.session) {
-        console.log("❌ MIDDLEWARE: No session, redirecting to login")
+      if (!sessionData.session || !userData?.user) {
+        console.log("❌ MIDDLEWARE: No valid session, redirecting to login")
         const redirectUrl = new URL("/login", req.url)
         redirectUrl.searchParams.set("redirect", req.nextUrl.pathname)
         console.log("🔍 MIDDLEWARE: Redirect URL:", redirectUrl.toString())
@@ -165,6 +169,15 @@ export async function middleware(req: NextRequest) {
       // Menjadi:
       return NextResponse.redirect(new URL("/premium", req.url))
     }
+
+    // Catat permintaan berhasil
+    storeAuthRequestLog({
+      timestamp: now,
+      path: req.nextUrl.pathname,
+      success: !!userData?.user,
+      duration,
+      cached: false,
+    })
 
     return res
   } catch (error) {

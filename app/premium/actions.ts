@@ -5,14 +5,6 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
-// Periksa apakah ada pengambilan harga dari database di server actions
-// Jika ada, ubah untuk menggunakan environment variables
-
-// Tambahkan kode berikut di awal file (jika belum ada):
-// const premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-// const activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
-
-// Dengan kode ini:
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
   const supabase = createClient()
@@ -43,8 +35,6 @@ async function getPremiumSettings() {
   return { premiumPrice, activeGateway }
 }
 
-// Kemudian pastikan semua fungsi menggunakan variabel ini, bukan mengambil dari database
-
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
 export async function createTransaction(paymentMethod: string, gatewayName: string | undefined) {
   try {
@@ -56,73 +46,42 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
     // Use provided gateway or default
     const finalGatewayName = gatewayName || defaultGateway
 
-    // Verifikasi user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) {
+    // Verifikasi user dengan getUser() - metode yang aman
+    const { data: userData, error: authError } = await supabase.auth.getUser()
+    if (authError || !userData.user) {
       return { success: false, error: "Unauthorized" }
     }
 
-    // Kirim request ke API dengan gatewayName
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
-    const response = await fetch(`${appUrl}/api/payment/create-transaction`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        paymentMethod,
-        gatewayName: finalGatewayName, // Tambahkan gatewayName ke body request
-      }),
-    })
+    const user = userData.user
 
-    // Get user session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) {
-      return { success: false, error: "Anda harus login terlebih dahulu" }
-    }
-
-    // Get user data
-    const { data: userData } = await supabase
+    // Get user data from database
+    const { data: userDbData, error: userDbError } = await supabase
       .from("users")
       .select("name, email, is_premium")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single()
 
-    if (!userData) {
+    if (userDbError) {
       return { success: false, error: "Data pengguna tidak ditemukan" }
     }
 
-    if (userData.is_premium) {
+    if (userDbData.is_premium) {
       return { success: false, error: "Anda sudah menjadi pengguna premium" }
     }
 
-    // Get premium price from config or env
-    // const { data: configData } = await supabase
-    //   .from("site_config")
-    //   .select("config")
-    //   .eq("type", "premium_settings")
-    //   .single()
-
-    // const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-
     // Generate order ID
-    const orderId = generateOrderId(session.user.id)
+    const orderId = generateOrderId(user.id)
 
     // Create transaction record
     const { data: transaction, error: transactionError } = await supabase
       .from("premium_transactions")
       .insert({
-        user_id: session.user.id,
+        user_id: user.id,
         plan_id: orderId,
         amount: premiumPrice,
         status: "pending",
-        payment_gateway: finalGatewayName, // Gunakan gatewayName yang dipilih
-        payment_method: paymentMethod, // Simpan metode pembayaran yang dipilih
+        payment_gateway: finalGatewayName,
+        payment_method: paymentMethod,
       })
       .select()
       .single()
@@ -137,9 +96,9 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
 
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
-      userId: session.user.id,
-      userEmail: userData.email || session.user.email || "",
-      userName: userData.name || "User",
+      userId: user.id,
+      userEmail: userDbData.email || user.email || "",
+      userName: userDbData.name || "User",
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",
@@ -147,7 +106,7 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
       failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
       pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
       notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-      paymentMethod: paymentMethod, // Teruskan metode pembayaran ke gateway
+      paymentMethod: paymentMethod,
     })
 
     if (!result.success) {
@@ -192,17 +151,16 @@ export async function getLatestTransaction() {
   try {
     // Verifikasi user
     const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { data: userData, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    if (authError || !userData.user) {
       return { success: false, error: "Unauthorized", isPremium: false, hasTransaction: false }
     }
 
+    const user = userData.user
+
     // Periksa apakah user sudah premium
-    const { data: userData, error: userError } = await supabase
+    const { data: userDbData, error: userError } = await supabase
       .from("users")
       .select("is_premium")
       .eq("id", user.id)
@@ -212,7 +170,7 @@ export async function getLatestTransaction() {
       return { success: false, error: "User not found", isPremium: false, hasTransaction: false }
     }
 
-    if (userData.is_premium) {
+    if (userDbData.is_premium) {
       return { success: true, isPremium: true, hasTransaction: false }
     }
 
@@ -253,14 +211,13 @@ export async function getTransactionHistory() {
   try {
     // Verifikasi user
     const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { data: userData, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    if (authError || !userData.user) {
       return { success: false, error: "Unauthorized", transactions: [] }
     }
+
+    const user = userData.user
 
     // Dapatkan transaksi
     const { data: transactionsData, error: transactionsError } = await supabase
@@ -301,15 +258,14 @@ export async function cancelTransaction(transactionId: string) {
 
     // Verifikasi user
     const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const { data: userData, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    if (authError || !userData.user) {
       console.log(`[${requestId}] ❌ Unauthorized user`)
       return { success: false, error: "Unauthorized" }
     }
+
+    const user = userData.user
 
     // Dapatkan transaksi
     const { data: transactionData, error: transactionError } = await supabase
