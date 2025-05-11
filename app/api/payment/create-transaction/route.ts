@@ -12,15 +12,28 @@ export async function POST(request: NextRequest) {
   try {
     // Verifikasi user
     const supabase = createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
 
-    if (authError || !user) {
+    // Replace this:
+    // const {
+    //   data: { user },
+    //   error: authError,
+    // } = await supabase.auth.getUser()
+
+    // With this more secure approach:
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) {
+      logger.error("No active session found")
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Now verify the user with getUser
+    const { data: userData, error: authError } = await supabase.auth.getUser()
+    if (authError || !userData.user) {
       logger.error("Unauthorized user")
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
+
+    const user = userData.user
 
     // Ambil data dari request
     const body = await request.json()
@@ -30,7 +43,7 @@ export async function POST(request: NextRequest) {
     logger.info(`Request data: gatewayName=${gatewayName}, paymentMethod=${paymentMethod || "default"}`)
 
     // Get user data
-    const { data: userData, error: userError } = await supabase
+    const { data: userData2, error: userError } = await supabase
       .from("users")
       .select("name, email, is_premium")
       .eq("id", user.id)
@@ -41,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
-    if (userData.is_premium) {
+    if (userData2.is_premium) {
       logger.info("User is already premium")
       return NextResponse.json({ success: false, error: "User is already premium" }, { status: 400 })
     }
@@ -90,8 +103,8 @@ export async function POST(request: NextRequest) {
     // Create transaction in payment gateway
     const result = await gateway.createTransaction({
       userId: user.id,
-      userEmail: userData.email || user.email || "",
-      userName: userData.name || "User",
+      userEmail: userData2.email || user.email || "",
+      userName: userData2.name || "User",
       amount: premiumPrice,
       orderId: orderId,
       description: "SecretMe Premium Lifetime",

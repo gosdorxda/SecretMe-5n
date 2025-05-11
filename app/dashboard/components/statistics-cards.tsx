@@ -18,7 +18,7 @@ export function StatisticsCards({ messages, viewCount }: StatisticsCardsProps) {
   const unrepliedMessages = totalMessages - repliedMessages
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="neo-card border-2 border-[var(--border)] py-3 px-4">
           <div className="flex items-center gap-3">
