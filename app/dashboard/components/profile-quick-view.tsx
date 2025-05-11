@@ -214,10 +214,10 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                 <span>Bagikan Profil Anda</span>
               </h3>
 
-              <div className="bg-white p-3 rounded-md border-2 border-[var(--border)] mb-3 mx-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">Link profil:</span>
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs flex-1 truncate">
+              <div className="bg-white p-2 rounded-md border border-[var(--border)] mb-3 mx-4">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-500">Link:</span>
+                  <code className="bg-gray-50 px-2 py-0.5 rounded text-xs flex-1 truncate border border-gray-100">
                     {window.location.origin}/{user.is_premium && user.username ? user.username : user.numeric_id}
                   </code>
                 </div>
@@ -257,15 +257,22 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
               </div>
 
               <div className="mx-4 mb-4">
-                <Button variant="secondary" size="sm" className="w-full text-xs h-9 bg-gray-50 border border-gray-200">
-                  <ProfileImageButton
-                    username={user.is_premium && user.username ? user.username : user.numeric_id}
-                    displayName={user.name}
-                    bio={user.bio}
-                    avatarUrl={user.avatar_url}
-                    isPremium={user.is_premium}
-                  />
-                </Button>
+                <ProfileImageButton
+                  username={user.is_premium && user.username ? user.username : user.numeric_id}
+                  displayName={user.name}
+                  bio={user.bio}
+                  avatarUrl={user.avatar_url}
+                  isPremium={user.is_premium}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs h-9 border border-gray-200 hover:bg-gray-50"
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                    Bagikan Kartu Profil
+                  </Button>
+                </ProfileImageButton>
               </div>
             </div>
           </div>
