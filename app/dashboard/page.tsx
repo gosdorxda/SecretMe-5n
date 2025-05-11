@@ -2,7 +2,9 @@ import { redirect } from "next/navigation"
 import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { DashboardClient } from "./client"
 
-export default async function Dashboard() {
+export const dynamic = "force-dynamic"
+
+export default async function DashboardPage() {
   const supabase = createClient()
 
   // Dapatkan user terverifikasi
