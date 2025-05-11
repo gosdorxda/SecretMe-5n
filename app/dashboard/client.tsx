@@ -10,7 +10,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/lib/supabase/database.types"
-import { MessageList } from "@/components/message-list"
 import {
   Crown,
   Copy,
@@ -87,45 +86,6 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   const { toast } = useToast()
   const [viewCount, setViewCount] = useState(0)
   const [allowPublicReplies, setAllowPublicReplies] = useState(user.allow_public_replies || false)
-  const hasTransaction = searchParams.has("order_id")
-
-  // Tambahkan state isPremiumChecked
-  const [isPremiumChecked, setIsPremiumChecked] = useState(false)
-
-  // Tambahkan fungsi untuk memeriksa status premium
-  const checkPremiumStatus = async () => {
-    try {
-      const { data: userData, error } = await supabase.from("users").select("is_premium").eq("id", user.id).single()
-
-      if (error) {
-        console.error("Error checking premium status:", error)
-        return
-      }
-
-      // Jika status premium berubah, refresh halaman
-      if (userData && userData.is_premium !== user.is_premium) {
-        console.log("Premium status changed, refreshing page...")
-        window.location.reload()
-      }
-
-      setIsPremiumChecked(true)
-    } catch (error) {
-      console.error("Error checking premium status:", error)
-    }
-  }
-
-  // Tambahkan useEffect untuk memeriksa status premium saat ada transaksi
-  useEffect(() => {
-    if (hasTransaction && !isPremiumChecked) {
-      // Periksa status premium setiap 5 detik
-      const intervalId = setInterval(() => {
-        checkPremiumStatus()
-      }, 5000)
-
-      // Bersihkan interval saat komponen unmount
-      return () => clearInterval(intervalId)
-    }
-  }, [hasTransaction, isPremiumChecked])
 
   // Set active tab based on URL parameter
   useEffect(() => {
@@ -137,16 +97,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   // Modifikasi fungsi handleTabChange untuk memperbarui URL tanpa parameter transaksi jika sudah berhasil
   const handleTabChange = (value: string) => {
     setActiveTab(value)
-
-    // Jika user sudah premium dan ada parameter transaksi, hapus parameter tersebut
-    if (user.is_premium && hasTransaction) {
-      router.push(`/dashboard?tab=${value}`, { scroll: false })
-    } else {
-      // Pertahankan parameter transaksi jika masih diperlukan
-      const currentParams = new URLSearchParams(window.location.search)
-      currentParams.set("tab", value)
-      router.push(`/dashboard?${currentParams.toString()}`, { scroll: false })
-    }
+    router.push(`/dashboard?tab=${value}`, { scroll: false })
   }
 
   // Fetch view count data
@@ -347,71 +298,6 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
           </div>
         </div>
       </div>
-
-      {/* Tampilkan status transaksi jika ada */}
-      {hasTransaction && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <h3 className="text-lg font-medium mb-2 flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-amber-500"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            Status Transaksi
-          </h3>
-          <p className="text-sm text-amber-700 mb-3">
-            Transaksi Anda sedang diproses. Silakan cek status pembayaran Anda.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
-            onClick={() => {
-              // Implementasi pengecekan status transaksi
-              const orderId = searchParams.get("order_id")
-              if (orderId) {
-                fetch(`/api/payment/check-status?order_id=${orderId}`)
-                  .then((res) => res.json())
-                  .then((data) => {
-                    if (data.success) {
-                      toast({
-                        title: "Status Pembayaran",
-                        description: data.message || "Status pembayaran berhasil diperbarui",
-                      })
-                      router.refresh()
-                    } else {
-                      toast({
-                        title: "Gagal Memeriksa Status",
-                        description: data.message || "Terjadi kesalahan saat memeriksa status pembayaran",
-                        variant: "destructive",
-                      })
-                    }
-                  })
-                  .catch((error) => {
-                    toast({
-                      title: "Gagal Memeriksa Status",
-                      description: "Terjadi kesalahan saat memeriksa status pembayaran",
-                      variant: "destructive",
-                    })
-                  })
-              }
-            }}
-          >
-            Cek Status Pembayaran
-          </Button>
-        </div>
-      )}
 
       {/* Profile Quick View and Share */}
       <div className="mb-8">
@@ -830,19 +716,6 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
                     Bagikan Profil Anda
                   </Button>
                 </div>
-              )}
-
-              {filteredMessages.length > 0 && (
-                <MessageList
-                  messages={filteredMessages}
-                  hideReadStatus={true}
-                  isPremium={user.is_premium}
-                  onReplySuccess={handleReplySuccess}
-                  onDeleteSuccess={handleDeleteSuccess}
-                  enablePublicReplies={true}
-                  username={user.username}
-                  numericId={user.numeric_id}
-                />
               )}
             </CardContent>
           </Card>
