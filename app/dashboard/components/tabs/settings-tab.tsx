@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { AlertTriangle, Crown, LogOut, Settings, Trash2, Bell } from "lucide-react"
+import { AlertTriangle, Crown, LogOut, Settings } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { TelegramForm } from "@/components/telegram-form"
-import { NotificationToggle } from "@/components/notification-toggle"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -137,27 +136,13 @@ export function SettingsTab({ user }: SettingsTabProps) {
               </div>
             </div>
 
-            {/* Telegram Notification Settings - Letakkan di atas Notification Toggle */}
+            {/* Telegram Notification Settings */}
             <div className="rounded-lg border border-gray-200 p-4">
-              <h3 className="font-medium mb-3 text-sm sm:text-base">Notifikasi Telegram</h3>
+              <h3 className="font-medium mb-3 text-sm sm:text-base">Notifikasi</h3>
               <TelegramForm
                 userId={user.id}
                 initialTelegramId={user.telegram_id}
                 initialTelegramNotifications={user.telegram_notifications || false}
-              />
-            </div>
-
-            {/* Notification Settings */}
-            <div className="rounded-lg border border-gray-200 p-4">
-              <h3 className="font-medium mb-3 text-sm sm:text-base flex items-center gap-2">
-                <Bell className="h-4 w-4 text-blue-500" />
-                Pengaturan Notifikasi
-              </h3>
-              <NotificationToggle
-                userId={user.id}
-                initialEnabled={user.notifications_enabled !== false}
-                hasTelegramId={!!user.telegram_id}
-                telegramNotificationsEnabled={!!user.telegram_notifications}
               />
             </div>
 
@@ -195,8 +180,11 @@ export function SettingsTab({ user }: SettingsTabProps) {
                 disabled={isLoading}
                 className="w-full sm:w-auto"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Hapus Akun
+                {isLoading ? (
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white rounded-full border-t-transparent"></div>
+                ) : (
+                  "Hapus Akun"
+                )}
               </Button>
             </div>
           </div>

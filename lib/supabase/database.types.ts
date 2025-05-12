@@ -28,7 +28,7 @@ export interface Database {
           notification_channel: string | null
           role: string | null
           last_ip: string | null
-          notifications_enabled: boolean // Kolom baru untuk preferensi notifikasi
+          // notifications_enabled telah dihapus dari database
         }
         Insert: {
           id?: string
@@ -54,7 +54,7 @@ export interface Database {
           notification_channel?: string | null
           role?: string | null
           last_ip?: string | null
-          notifications_enabled?: boolean // Kolom baru untuk preferensi notifikasi
+          // notifications_enabled telah dihapus dari database
         }
         Update: {
           id?: string
@@ -80,7 +80,7 @@ export interface Database {
           notification_channel?: string | null
           role?: string | null
           last_ip?: string | null
-          notifications_enabled?: boolean // Kolom baru untuk preferensi notifikasi
+          // notifications_enabled telah dihapus dari database
         }
       }
       messages: {
@@ -205,35 +205,6 @@ export interface Database {
           error_message?: string | null
         }
       }
-      notification_preferences: {
-        Row: {
-          id: string
-          user_id: string
-          new_messages: boolean
-          message_replies: boolean
-          system_updates: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          new_messages?: boolean
-          message_replies?: boolean
-          system_updates?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          new_messages?: boolean
-          message_replies?: boolean
-          system_updates?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
       profile_views: {
         Row: {
           id: string
@@ -264,7 +235,7 @@ export interface Database {
           user_id: string
           created_at: string
           expires_at: string
-          used: boolean
+          is_used: boolean
         }
         Insert: {
           id?: string
@@ -272,7 +243,7 @@ export interface Database {
           user_id: string
           created_at?: string
           expires_at: string
-          used?: boolean
+          is_used?: boolean
         }
         Update: {
           id?: string
@@ -280,7 +251,7 @@ export interface Database {
           user_id?: string
           created_at?: string
           expires_at?: string
-          used?: boolean
+          is_used?: boolean
         }
       }
     }

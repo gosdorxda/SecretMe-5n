@@ -43,29 +43,18 @@ export async function POST(request: Request) {
     console.log("User notification settings:", {
       telegramEnabled: userData.telegram_notifications,
       telegramId: userData.telegram_id,
-      notificationsEnabled: userData.notifications_enabled,
     })
 
-    // Periksa apakah notifikasi diaktifkan DAN telegram diaktifkan
-    // Kita hanya mengirim notifikasi jika kedua pengaturan aktif
-    if (!userData.notifications_enabled || !userData.telegram_notifications) {
-      const reason = !userData.notifications_enabled
-        ? "Notifications are disabled for this user"
-        : "Telegram notifications are disabled for this user"
+    // Periksa apakah notifikasi Telegram diaktifkan dan pengguna memiliki Telegram ID
+    if (!userData.telegram_notifications || !userData.telegram_id) {
+      const reason = !userData.telegram_notifications
+        ? "Telegram notifications are disabled for this user"
+        : "User does not have Telegram ID"
 
       console.log(reason)
       return NextResponse.json({
         success: true,
         message: reason,
-      })
-    }
-
-    // Periksa apakah pengguna memiliki Telegram ID
-    if (!userData.telegram_id) {
-      console.log("User does not have Telegram ID")
-      return NextResponse.json({
-        success: true,
-        message: "User does not have Telegram ID",
       })
     }
 

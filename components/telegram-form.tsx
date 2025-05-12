@@ -114,9 +114,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         await updateTelegramNotifications(true)
         setTelegramNotifications(true)
 
-        // Aktifkan juga notifikasi pesan baru secara otomatis
-        await supabase.from("users").update({ notifications_enabled: true }).eq("id", userId)
-
         toast({
           title: "Berhasil",
           description: "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
@@ -200,8 +197,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         .from("users")
         .update({
           telegram_notifications: enabled,
-          // Jika Telegram dinonaktifkan, nonaktifkan juga notifikasi pesan baru
-          notifications_enabled: enabled ? true : false,
         })
         .eq("id", userId)
 
@@ -280,9 +275,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           <Alert className="bg-green-50 border-green-200">
             <Check className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-800">Terhubung</AlertTitle>
-            <AlertDescription className="text-green-700">
-              Akun Telegram Anda telah terhubung. Anda akan menerima notifikasi melalui Telegram.
-            </AlertDescription>
+            <AlertDescription className="text-green-700">Akun Telegram Anda telah terhubung.</AlertDescription>
           </Alert>
 
           <div className="flex items-center justify-between space-x-2">
