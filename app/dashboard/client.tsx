@@ -11,6 +11,7 @@ import { PremiumBanner } from "./components/premium-banner"
 import { ProfileQuickView } from "./components/profile-quick-view"
 import { StatisticsCards } from "./components/statistics-cards"
 import { DashboardTabs } from "./components/dashboard-tabs"
+import { useAuth } from "@/components/auth-provider"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
@@ -18,10 +19,11 @@ type Message = Database["public"]["Tables"]["messages"]["Row"]
 interface DashboardClientProps {
   user: UserType
   messages: Message[]
+  viewCount: number
 }
 
 // Ubah dari export default menjadi export function untuk mengatasi error
-export function DashboardClient({ user, messages }: DashboardClientProps) {
+export function DashboardClient({ user, messages, viewCount }: DashboardClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const router = useRouter()
@@ -32,8 +34,8 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
   const [filterStatus, setFilterStatus] = useState<"all" | "replied" | "unreplied">("all")
   const supabase = createClient()
   const { toast } = useToast()
-  const [viewCount, setViewCount] = useState(0)
   const [allowPublicReplies, setAllowPublicReplies] = useState(user.allow_public_replies || false)
+  const { signOut } = useAuth() // Gunakan signOut dari AuthProvider
 
   // Set active tab based on URL parameter
   useEffect(() => {
@@ -48,62 +50,21 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
     router.push(`/dashboard?tab=${value}`, { scroll: false })
   }
 
-  // Fetch view count data
-  useEffect(() => {
-    const fetchViewCount = async () => {
-      try {
-        // Ambil data tayangan dari tabel profile_views
-        const { data, error } = await supabase.from("profile_views").select("count").eq("user_id", user.id).single()
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching view count:", error)
-          return
-        }
-
-        // Jika data ditemukan, gunakan nilai count
-        // Jika tidak, gunakan nilai default 0
-        setViewCount(data?.count || 0)
-      } catch (error) {
-        console.error("Error fetching view count:", error)
-      }
-    }
-
-    fetchViewCount()
-  }, [supabase, user.id])
-
-  // Perbaiki fungsi handleLogout untuk menangani error dengan lebih baik
+  // Perbaiki fungsi handleLogout untuk menggunakan signOut dari AuthProvider
   async function handleLogout() {
     setIsLoading(true)
     try {
-      // Cek session terlebih dahulu
-      const { data: sessionData } = await supabase.auth.getSession()
-
-      if (sessionData?.session) {
-        await supabase.auth.signOut()
-        toast({
-          title: "Logout berhasil",
-          description: "Anda telah keluar dari akun",
-        })
-      } else {
-        // Jika tidak ada session, hanya navigasi
-        toast({
-          title: "Logout berhasil",
-          description: "Anda telah keluar dari akun",
-        })
-      }
-
-      // Selalu navigasi ke halaman utama
-      router.push("/")
-      router.refresh()
+      await signOut() // Gunakan signOut dari AuthProvider
+      toast({
+        title: "Logout berhasil",
+        description: "Anda telah keluar dari akun",
+      })
     } catch (error: any) {
       console.error("Logout error:", error)
       toast({
         title: "Logout berhasil",
         description: "Anda telah keluar dari akun, tetapi terjadi error di background",
       })
-      // Tetap navigasi meskipun ada error
-      router.push("/")
-      router.refresh()
     } finally {
       setIsLoading(false)
     }
@@ -119,16 +80,13 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
         throw deleteError
       }
 
-      // Sign out
-      await supabase.auth.signOut()
+      // Sign out menggunakan signOut dari AuthProvider
+      await signOut()
 
       toast({
         title: "Akun berhasil dihapus",
         description: "Semua data Anda telah dihapus dari sistem kami",
       })
-
-      router.push("/")
-      router.refresh()
     } catch (error: any) {
       console.error("Error deleting account:", error)
       toast({
@@ -245,11 +203,19 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
 
   return (
     <div className="w-full max-w-[56rem] mx-auto px-4 sm:px-6">
-      <DashboardHeader user={user} />
+      <DashboardHeader user={user} onLogout={handleLogout} />
       <ProfileQuickView user={user} />
       <PremiumBanner user={user} />
       <StatisticsCards messages={messages} viewCount={viewCount} />
-      <DashboardTabs user={user} messages={messages} viewCount={viewCount} />
+      <DashboardTabs
+        user={user}
+        messages={messages}
+        viewCount={viewCount}
+        onDeleteAccount={handleDeleteAccount}
+        isDeleteDialogOpen={isDeleteDialogOpen}
+        setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+        isLoading={isLoading}
+      />
     </div>
   )
 }
