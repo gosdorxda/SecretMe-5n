@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -176,15 +177,20 @@ export default function RegisterForm() {
   }
 
   return (
-    <div className="w-full flex items-center justify-center min-h-screen py-8 bg-[var(--bg)]">
-      <div className="w-full max-w-md mx-auto px-6">
-        <div className="text-center mb-8">
+    <div className="w-full flex items-center justify-center min-h-screen py-4 bg-[var(--bg)]">
+      <div className="w-full max-w-md mx-auto px-4">
+        <div className="text-center mb-4">
           <h1 className="text-3xl font-bold mb-2">Daftar untuk memulai</h1>
           <p className="text-gray-600">Buat akun untuk mulai menerima pesan anonim</p>
         </div>
 
-        <div className="bg-white p-8 rounded-md border-2 border-black">
+        <div className="bg-white p-4 rounded-md border-2 border-black">
           <form onSubmit={onSubmit} className="space-y-6">
+            <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 text-sm mb-4">
+              <AlertDescription>
+                Karena limit API, pendaftaran via Google dimatikan sementara, silahkan daftar secara manual.
+              </AlertDescription>
+            </Alert>
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2">
                 Nama
@@ -227,7 +233,7 @@ export default function RegisterForm() {
             </div>
 
             <button type="submit" disabled={isLoading} className="w-full neo-btn">
-              {isLoading ? "Memproses..." : "Daftar"}
+              {isLoading ? "Memproses..." : "Pendaftaran"}
             </button>
           </form>
 
@@ -244,8 +250,8 @@ export default function RegisterForm() {
           <button
             type="button"
             onClick={handleGoogleSignup}
-            disabled={isGoogleLoading}
-            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-black text-gray-700 font-medium py-2.5 px-4 rounded-md shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all duration-200 mb-3"
+            disabled={true}
+            className="w-full flex items-center justify-center gap-2 bg-gray-100 border-2 border-gray-300 text-gray-500 font-medium py-2.5 px-4 rounded-md cursor-not-allowed opacity-70"
           >
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
