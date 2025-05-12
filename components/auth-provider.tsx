@@ -30,6 +30,15 @@ const AuthContext = createContext<AuthContextType>({
   refreshSession: async () => {},
 })
 
+// Daftar rute yang memerlukan autentikasi
+const PROTECTED_ROUTES = ["/dashboard", "/premium", "/settings"]
+
+// Fungsi untuk memeriksa apakah rute saat ini memerlukan autentikasi
+function isProtectedRoute(pathname: string | null): boolean {
+  if (!pathname) return false
+  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -39,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const refreshingRef = useRef(false)
   const lastAuthCheckRef = useRef<number>(0)
+  const isCurrentRouteProtected = isProtectedRoute(pathname)
 
   // Throttle auth checks to prevent too many requests
   const THROTTLE_INTERVAL = 10000 // 10 seconds
@@ -97,40 +107,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       lastAuthCheckRef.current = now
 
-      // Prioritaskan getUser untuk verifikasi yang lebih aman
-      const { data: userData, error: userError } = await supabase.auth.getUser()
+      // Periksa apakah ada sesi di localStorage sebelum mencoba getUser
+      // Ini mencegah error "Auth session missing" di halaman publik
+      const hasLocalStorageSession =
+        typeof window !== "undefined" && localStorage.getItem("supabase.auth.token") !== null
 
-      if (userError) {
-        console.error("Error verifying user:", userError)
-
-        // Jika error autentikasi, bersihkan state
-        if (
-          userError.message?.includes("Auth session missing") ||
-          userError.name === "AuthApiError" ||
-          userError.message?.includes("refresh_token")
-        ) {
-          console.log("🔄 Auth error detected, clearing state")
-          setSession(null)
-          setUser(null)
-          clearAuthCache()
-        }
-
+      // Jika ini bukan rute yang dilindungi dan tidak ada sesi di localStorage,
+      // kita tidak perlu memverifikasi sesi
+      if (!isCurrentRouteProtected && !hasLocalStorageSession) {
+        setSession(null)
+        setUser(null)
         setLoading(false)
         refreshingRef.current = false
         return
       }
 
-      // Jika user terverifikasi, dapatkan session lengkap
-      if (userData.user) {
-        const { data: sessionData } = await supabase.auth.getSession()
-        setSession(sessionData?.session || null)
-        setUser(userData.user)
-        cacheAuthSession(sessionData?.session || null)
-      } else {
-        // Tidak ada user yang terautentikasi
+      // Coba dapatkan sesi dari cache terlebih dahulu
+      const cachedSession = getCachedAuthSession()
+
+      // Jika tidak ada sesi di cache dan ini bukan rute yang dilindungi,
+      // kita tidak perlu memverifikasi dengan server
+      if (cachedSession === null && !isCurrentRouteProtected) {
         setSession(null)
         setUser(null)
-        cacheAuthSession(null)
+        setLoading(false)
+        refreshingRef.current = false
+        return
+      }
+
+      // Hanya lakukan getUser jika ada indikasi bahwa pengguna mungkin login
+      // atau jika ini adalah rute yang dilindungi
+      if (hasLocalStorageSession || isCurrentRouteProtected || cachedSession) {
+        const { data: userData, error: userError } = await supabase.auth.getUser()
+
+        if (userError) {
+          // Jangan log error untuk halaman publik jika error adalah "Auth session missing"
+          if (isCurrentRouteProtected || !userError.message?.includes("Auth session missing")) {
+            console.error("Error verifying user:", userError)
+          }
+
+          // Jika error autentikasi, bersihkan state
+          if (
+            userError.message?.includes("Auth session missing") ||
+            userError.name === "AuthApiError" ||
+            userError.message?.includes("refresh_token")
+          ) {
+            setSession(null)
+            setUser(null)
+            clearAuthCache()
+          }
+
+          setLoading(false)
+          refreshingRef.current = false
+          return
+        }
+
+        // Jika user terverifikasi, dapatkan session lengkap
+        if (userData.user) {
+          const { data: sessionData } = await supabase.auth.getSession()
+          setSession(sessionData?.session || null)
+          setUser(userData.user)
+          cacheAuthSession(sessionData?.session || null)
+        } else {
+          // Tidak ada user yang terautentikasi
+          setSession(null)
+          setUser(null)
+          cacheAuthSession(null)
+        }
+      } else {
+        // Tidak ada indikasi login, set state ke null
+        setSession(null)
+        setUser(null)
       }
 
       setLoading(false)
@@ -140,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       refreshingRef.current = false
     }
-  }, [supabase])
+  }, [supabase, isCurrentRouteProtected])
 
   // Fetch session and set up auth listener
   useEffect(() => {
