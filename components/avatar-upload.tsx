@@ -53,36 +53,44 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
         throw new Error("Ukuran file maksimal 2MB")
       }
 
+      // Buat nama file unik berdasarkan userId
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${userId}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `public/${fileName}`
+
+      // Upload file ke Supabase Storage
+      // Gunakan bucket 'avatars' dengan path 'public' untuk menghindari masalah RLS
+      const { error: uploadError, data: uploadData } = await supabase.storage.from("avatars").upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      })
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError)
+        throw new Error(`Gagal mengupload file: ${uploadError.message}`)
+      }
+
+      // Dapatkan URL publik gambar
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+      const publicUrl = data.publicUrl
+
       // Hapus avatar lama jika ada dan berasal dari storage Supabase
-      if (avatar && avatar.includes("supabase.co/storage")) {
+      if (avatar && avatar.includes("supabase.co/storage/v1/object/public/avatars/public/")) {
         try {
           // Ekstrak path file dari URL
-          const urlParts = avatar.split("/")
-          const fileName = urlParts[urlParts.length - 1].split("?")[0]
+          const oldFilePath = avatar.split("avatars/")[1].split("?")[0]
 
           // Hapus file lama dari storage
-          await supabase.storage.from("avatars").remove([fileName])
+          const { error: removeError } = await supabase.storage.from("avatars").remove([oldFilePath])
+
+          if (removeError) {
+            console.error("Error menghapus avatar lama:", removeError)
+          }
         } catch (error) {
           console.error("Error menghapus avatar lama:", error)
           // Lanjutkan proses meskipun gagal menghapus avatar lama
         }
       }
-
-      // Buat nama file unik berdasarkan userId
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${userId}-${Math.random().toString(36).substring(2)}.${fileExt}`
-
-      // Upload file ke Supabase Storage
-      const { error: uploadError, data: uploadData } = await supabase.storage.from("avatars").upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      })
-
-      if (uploadError) throw uploadError
-
-      // Dapatkan URL publik gambar
-      const { data } = supabase.storage.from("avatars").getPublicUrl(fileName)
-      const publicUrl = data.publicUrl
 
       // Update user dengan avatar_url baru
       const { error: updateError } = await supabase
@@ -94,7 +102,8 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
         .eq("id", userId)
 
       if (updateError) {
-        throw updateError
+        console.error("Update error:", updateError)
+        throw new Error(`Gagal memperbarui profil: ${updateError.message}`)
       }
 
       // Update UI
@@ -110,7 +119,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
         fileInputRef.current.value = ""
       }
     } catch (error: any) {
-      console.error(error)
+      console.error("Error full stack:", error)
       toast({
         title: "Gagal mengupload avatar",
         description: error.message || "Terjadi kesalahan saat mengupload avatar",
@@ -185,14 +194,17 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
 
     try {
       // Hapus avatar dari storage jika berasal dari Supabase
-      if (avatar.includes("supabase.co/storage")) {
+      if (avatar.includes("supabase.co/storage/v1/object/public/avatars/public/")) {
         try {
           // Ekstrak path file dari URL
-          const urlParts = avatar.split("/")
-          const fileName = urlParts[urlParts.length - 1].split("?")[0]
+          const filePath = avatar.split("avatars/")[1].split("?")[0]
 
           // Hapus file dari storage
-          await supabase.storage.from("avatars").remove([fileName])
+          const { error: removeError } = await supabase.storage.from("avatars").remove([filePath])
+
+          if (removeError) {
+            console.error("Error menghapus avatar dari storage:", removeError)
+          }
         } catch (error) {
           console.error("Error menghapus avatar dari storage:", error)
           // Lanjutkan proses meskipun gagal menghapus dari storage
