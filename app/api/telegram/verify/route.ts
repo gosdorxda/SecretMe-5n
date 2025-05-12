@@ -26,15 +26,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("User authenticated:", session.user.id)
+    // Verifikasi user dengan getUser() yang lebih aman
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
+    console.log("User authenticated:", user.id)
 
     // Check if the code exists and is valid
     const { data: codeData, error: codeError } = await supabase
       .from("telegram_connection_codes")
       .select("*")
       .eq("code", code)
-      .eq("user_id", session.user.id)
-      .eq("is_used", false) // Menggunakan is_used, bukan used
+      .eq("user_id", user.id) // Menggunakan user.id yang sudah diverifikasi
+      .eq("is_used", false)
       .gt("expires_at", new Date().toISOString())
       .single()
 
@@ -63,7 +74,7 @@ export async function POST(request: Request) {
         telegram_id: telegramId,
         telegram_notifications: true,
       })
-      .eq("id", session.user.id)
+      .eq("id", user.id) // Menggunakan user.id yang sudah diverifikasi
 
     if (updateError) {
       console.error("Error updating user:", updateError)
@@ -76,7 +87,7 @@ export async function POST(request: Request) {
     // Mark the code as used
     const { error: markUsedError } = await supabase
       .from("telegram_connection_codes")
-      .update({ is_used: true }) // Menggunakan is_used, bukan used
+      .update({ is_used: true })
       .eq("id", codeData.id)
 
     if (markUsedError) {

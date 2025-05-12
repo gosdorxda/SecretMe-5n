@@ -25,15 +25,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
     }
 
-    // Get user data
-    const { data: userData, error: userError2 } = await supabase
+    // Get user data - menggunakan user.id yang sudah diverifikasi
+    const { data: userData, error: userDataError } = await supabase
       .from("users")
       .select("name, telegram_id")
-      .eq("id", session.user.id)
+      .eq("id", user.id) // Menggunakan user.id yang sudah diverifikasi
       .single()
 
-    if (userError2 || !userData) {
-      throw new Error(userError2?.message || "User not found")
+    if (userDataError || !userData) {
+      throw new Error(userDataError?.message || "User not found")
     }
 
     if (!userData.telegram_id) {

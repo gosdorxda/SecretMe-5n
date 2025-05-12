@@ -14,15 +14,26 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
+  // Verifikasi pengguna dengan getUser()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error("Error verifying user:", userError)
+    redirect("/login")
+  }
+
   // Ambil data pengguna
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userDataError } = await supabase
     .from("users")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("id", user.id) // Gunakan user.id yang terverifikasi
     .single()
 
-  if (userError || !userData) {
-    console.error("Error fetching user data:", userError)
+  if (userDataError || !userData) {
+    console.error("Error fetching user data:", userDataError)
     redirect("/login")
   }
 

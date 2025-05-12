@@ -13,8 +13,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verifikasi pengguna dengan getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      console.error("Error verifying user:", authError)
+      return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
+    }
+
     // Periksa apakah pengguna adalah admin
-    const { data: userData } = await supabase.from("users").select("email").eq("id", session.user.id).single()
+    const { data: userData } = await supabase.from("users").select("email").eq("id", user.id).single()
 
     // Daftar email admin (dalam implementasi nyata, ini sebaiknya disimpan di database)
     const adminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda

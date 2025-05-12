@@ -14,6 +14,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verifikasi pengguna dengan getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
     // Parse request body
     const body = await request.json()
     const { telegramId } = body

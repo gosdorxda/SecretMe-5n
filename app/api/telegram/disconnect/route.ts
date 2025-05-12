@@ -5,9 +5,8 @@ import { sendDisconnectionMessage } from "@/lib/telegram/service"
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient(cookies())
-
     // Dapatkan session pengguna
+    const supabase = createClient(cookies())
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -16,7 +15,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const userId = session.user.id
+    // Verifikasi pengguna dengan getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
+    const userId = user.id // Gunakan user.id yang terverifikasi
 
     // Dapatkan Telegram ID pengguna sebelum diputuskan
     const { data: userData, error: fetchError } = await supabase

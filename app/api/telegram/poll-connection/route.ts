@@ -14,6 +14,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
+    // Verifikasi pengguna dengan getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
     // Get the code from the request body
     const { code } = await request.json()
 
@@ -22,14 +33,14 @@ export async function POST(request: Request) {
     }
 
     // Check if the user has a telegram_id
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userDataError } = await supabase
       .from("users")
       .select("telegram_id, telegram_notifications")
-      .eq("id", session.user.id)
+      .eq("id", user.id) // Gunakan user.id yang terverifikasi
       .single()
 
-    if (userError) {
-      console.error("Error fetching user data:", userError)
+    if (userDataError) {
+      console.error("Error fetching user data:", userDataError)
       return NextResponse.json({ success: false, error: "Failed to fetch user data" }, { status: 500 })
     }
 
@@ -38,7 +49,7 @@ export async function POST(request: Request) {
       .from("telegram_connection_codes")
       .select("is_used")
       .eq("code", code)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id) // Gunakan user.id yang terverifikasi
       .single()
 
     if (codeError) {

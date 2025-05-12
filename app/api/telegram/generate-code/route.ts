@@ -18,7 +18,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("User authenticated:", session.user.id)
+    // Verifikasi pengguna dengan getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+    }
+
+    console.log("User authenticated:", user.id)
 
     // Generate a 6-digit numeric code
     const code = Math.floor(100000 + Math.random() * 900000).toString()
@@ -32,7 +43,7 @@ export async function POST(request: Request) {
     // Perhatikan: menggunakan is_used, bukan used
     const { error } = await supabase.from("telegram_connection_codes").upsert({
       id: randomUUID(),
-      user_id: session.user.id,
+      user_id: user.id, // Gunakan user.id yang terverifikasi
       code: code,
       expires_at: expiresAt.toISOString(),
       created_at: new Date().toISOString(),
