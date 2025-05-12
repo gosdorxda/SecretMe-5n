@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { createClient } from "@/lib/supabase/client"
 import { toast } from "@/hooks/use-toast"
-import { CheckCircle, Copy, AlertTriangle, Loader2 } from "lucide-react"
+import { AlertCircle, Check, Copy, ExternalLink } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface TelegramFormProps {
   userId: string
@@ -14,380 +17,341 @@ interface TelegramFormProps {
 }
 
 export function TelegramForm({ userId, initialTelegramId, initialTelegramNotifications }: TelegramFormProps) {
+  const [telegramId, setTelegramId] = useState(initialTelegramId || "")
   const [telegramNotifications, setTelegramNotifications] = useState(initialTelegramNotifications)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [connectionCode, setConnectionCode] = useState<string | null>(null)
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isDisconnecting, setIsDisconnecting] = useState(false)
+  const [connectionCode, setConnectionCode] = useState("")
+  const [codeExpiry, setCodeExpiry] = useState<Date | null>(null)
   const [isConnected, setIsConnected] = useState(!!initialTelegramId)
-  const [telegramId, setTelegramId] = useState(initialTelegramId)
-  const [isPolling, setIsPolling] = useState(false)
-  const [pollingInterval, setPollingIntervalState] = useState<NodeJS.Timeout | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected" | "disconnecting">(
-    "idle",
-  )
+  const [isCopied, setIsCopied] = useState(false)
   const supabase = createClient()
 
-  // Fungsi untuk menghasilkan kode koneksi
-  const generateConnectionCode = async () => {
-    setIsSubmitting(true)
-    setConnectionStatus("connecting")
+  // Efek untuk memeriksa status koneksi Telegram saat komponen dimuat
+  useEffect(() => {
+    if (initialTelegramId) {
+      checkTelegramConnection()
+    }
+  }, [initialTelegramId])
+
+  // Fungsi untuk memeriksa koneksi Telegram
+  async function checkTelegramConnection() {
     try {
-      const response = await fetch("/api/telegram/generate-code", {
+      const response = await fetch("/api/telegram/check-connection", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ telegramId: initialTelegramId }),
       })
 
       const data = await response.json()
+      setIsConnected(data.success)
+    } catch (error) {
+      console.error("Error checking Telegram connection:", error)
+      setIsConnected(false)
+    }
+  }
 
-      if (!response.ok || !data.success) {
-        throw new Error(data?.error || `Error ${response.status}`)
-      }
-
-      setConnectionCode(data.connectionCode)
-
-      // Mulai polling untuk memeriksa status koneksi
-      startPolling()
-
-      toast({
-        title: "Kode koneksi berhasil dibuat",
-        description: "Silakan kirim kode ini ke bot Telegram @SecretMeBot",
+  // Fungsi untuk menghasilkan kode koneksi Telegram
+  async function generateConnectionCode() {
+    setIsGeneratingCode(true)
+    try {
+      const response = await fetch("/api/telegram/generate-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
       })
+
+      const data = await response.json()
+      if (data.success) {
+        setConnectionCode(data.code)
+        setCodeExpiry(new Date(data.expiresAt))
+        toast({
+          title: "Kode koneksi berhasil dibuat",
+          description: "Gunakan kode ini untuk menghubungkan akun Telegram Anda",
+        })
+      } else {
+        throw new Error(data.error || "Gagal membuat kode koneksi")
+      }
     } catch (error: any) {
-      console.error("Error generating connection code:", error)
       toast({
         title: "Error",
         description: error.message || "Gagal membuat kode koneksi",
         variant: "destructive",
       })
-      setConnectionStatus("idle")
     } finally {
-      setIsSubmitting(false)
+      setIsGeneratingCode(false)
     }
   }
 
-  // Fungsi untuk memeriksa status koneksi
-  const checkConnectionStatus = async () => {
+  // Fungsi untuk memverifikasi koneksi Telegram
+  async function verifyConnection() {
+    setIsVerifying(true)
     try {
-      const response = await fetch("/api/telegram/check-connection", {
-        method: "GET",
+      const response = await fetch("/api/telegram/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, code: connectionCode }),
       })
 
       const data = await response.json()
-
-      if (response.ok && data.success && data.isConnected) {
-        // Koneksi berhasil
+      if (data.success) {
+        setTelegramId(data.telegramId)
         setIsConnected(true)
-        setTelegramId(data.telegramId || telegramId)
-        setTelegramNotifications(data.telegramNotifications || telegramNotifications)
-        setConnectionCode(null)
-        stopPolling()
-        setConnectionStatus("connected")
+        setConnectionCode("")
+        setCodeExpiry(null)
 
-        toast({
-          title: "Koneksi Berhasil",
-          description: "Akun Telegram Anda berhasil terhubung dengan SecretMe",
-          variant: "default",
-        })
-      }
-    } catch (error) {
-      console.error("Error checking connection status:", error)
-    }
-  }
+        // Aktifkan notifikasi Telegram secara otomatis saat terhubung
+        await updateTelegramNotifications(true)
+        setTelegramNotifications(true)
 
-  // Fungsi untuk memulai polling
-  const startPolling = () => {
-    setIsPolling(true)
-    const interval = setInterval(checkConnectionStatus, 3000) // Periksa setiap 3 detik
-    setPollingIntervalState(interval)
-  }
-
-  // Fungsi untuk menghentikan polling
-  const stopPolling = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval)
-      setPollingIntervalState(null)
-    }
-    setIsPolling(false)
-  }
-
-  // Hentikan polling saat komponen unmount
-  useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval)
-      }
-    }
-  }, [pollingInterval])
-
-  const handleToggleNotifications = async (checked: boolean) => {
-    setTelegramNotifications(checked)
-
-    // Jika sudah ada Telegram ID yang terverifikasi, langsung update preferensi
-    if (telegramId) {
-      try {
-        const response = await fetch("/api/telegram/save", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            telegramId: telegramId,
-            enableNotifications: checked,
-          }),
-        })
-
-        const data = await response.json()
-
-        if (!response.ok || !data.success) {
-          throw new Error(data?.error || `Error ${response.status}`)
-        }
+        // Aktifkan juga notifikasi pesan baru secara otomatis
+        await supabase.from("users").update({ notifications_enabled: true }).eq("id", userId)
 
         toast({
           title: "Berhasil",
-          description: `Notifikasi Telegram ${checked ? "diaktifkan" : "dinonaktifkan"}`,
+          description: "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
         })
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Gagal mengubah pengaturan notifikasi",
-          variant: "destructive",
-        })
-        // Revert state if failed
-        setTelegramNotifications(!checked)
+      } else {
+        throw new Error(data.error || "Verifikasi gagal. Pastikan Anda telah mengirim kode ke bot Telegram.")
       }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memverifikasi koneksi",
+        variant: "destructive",
+      })
+    } finally {
+      setIsVerifying(false)
     }
   }
 
-  // Fungsi untuk mengirim pesan test
-  const handleSendTestMessage = async () => {
-    if (!telegramId) {
+  // Fungsi untuk memutuskan koneksi Telegram
+  async function disconnectTelegram() {
+    setIsDisconnecting(true)
+    try {
+      const response = await fetch("/api/telegram/disconnect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setTelegramId("")
+        setIsConnected(false)
+        setTelegramNotifications(false)
+
+        // Nonaktifkan notifikasi Telegram
+        await updateTelegramNotifications(false)
+
+        toast({
+          title: "Berhasil",
+          description: "Akun Telegram Anda berhasil diputuskan",
+        })
+      } else {
+        throw new Error(data.error || "Gagal memutuskan koneksi")
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Anda belum memiliki Telegram ID yang terverifikasi",
+        description: error.message || "Gagal memutuskan koneksi",
         variant: "destructive",
       })
-      return
+    } finally {
+      setIsDisconnecting(false)
     }
+  }
 
-    setIsSubmitting(true)
+  // Fungsi untuk menyalin kode koneksi
+  function copyConnectionCode() {
+    navigator.clipboard.writeText(connectionCode)
+    setIsCopied(true)
+    setTimeout(() => setIsCopied(false), 2000)
+  }
 
+  // Fungsi untuk mengupdate pengaturan notifikasi Telegram
+  async function updateTelegramNotifications(enabled: boolean) {
+    try {
+      // Update telegram_notifications di tabel users
+      const { error } = await supabase
+        .from("users")
+        .update({
+          telegram_notifications: enabled,
+          // Jika Telegram dinonaktifkan, nonaktifkan juga notifikasi pesan baru
+          notifications_enabled: enabled ? true : false,
+        })
+        .eq("id", userId)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      setTelegramNotifications(enabled)
+
+      // Tampilkan pesan yang sesuai
+      toast({
+        title: "Berhasil",
+        description: enabled ? "Notifikasi Telegram telah diaktifkan" : "Notifikasi Telegram telah dinonaktifkan",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal memperbarui pengaturan notifikasi",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Fungsi untuk mengirim pesan uji
+  async function sendTestMessage() {
     try {
       const response = await fetch("/api/telegram/test", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ userId }),
       })
 
       const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        throw new Error(data?.error || `Error ${response.status}`)
+      if (data.success) {
+        toast({
+          title: "Berhasil",
+          description: "Pesan uji telah dikirim ke Telegram Anda",
+        })
+      } else {
+        throw new Error(data.error || "Gagal mengirim pesan uji")
       }
-
-      toast({
-        title: "Pesan Test Terkirim",
-        description: "Silakan cek Telegram Anda untuk pesan test",
-      })
     } catch (error: any) {
-      console.error("Error sending test message:", error)
       toast({
         title: "Error",
-        description: error.message || "Gagal mengirim pesan test",
+        description: error.message || "Gagal mengirim pesan uji",
         variant: "destructive",
       })
-    } finally {
-      setIsSubmitting(false)
     }
-  }
-
-  // Fungsi untuk memutuskan koneksi Telegram
-  const handleDisconnect = async () => {
-    if (!telegramId) {
-      return
-    }
-
-    if (
-      !confirm("Apakah Anda yakin ingin memutuskan koneksi Telegram? Anda tidak akan lagi menerima notifikasi pesan.")
-    ) {
-      return
-    }
-
-    setIsSubmitting(true)
-    setConnectionStatus("disconnecting")
-
-    try {
-      const response = await fetch("/api/telegram/disconnect", {
-        method: "POST",
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        throw new Error(data?.error || `Error ${response.status}`)
-      }
-
-      // Update state
-      setIsConnected(false)
-      setTelegramId(null)
-      setTelegramNotifications(false)
-      setConnectionStatus("idle")
-
-      toast({
-        title: "Berhasil",
-        description: "Koneksi Telegram berhasil diputus",
-      })
-    } catch (error: any) {
-      console.error("Error disconnecting Telegram:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Gagal memutuskan koneksi Telegram",
-        variant: "destructive",
-      })
-      setConnectionStatus("connected")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // Fungsi untuk menyalin kode ke clipboard
-  const copyCodeToClipboard = () => {
-    if (connectionCode) {
-      navigator.clipboard.writeText(connectionCode)
-      toast({
-        title: "Kode disalin",
-        description: "Kode koneksi telah disalin ke clipboard",
-      })
-    }
-  }
-
-  // Fungsi untuk membatalkan proses koneksi
-  const handleCancelConnection = () => {
-    setConnectionCode(null)
-    stopPolling()
-    setConnectionStatus("idle")
   }
 
   return (
     <div className="space-y-4">
-      {!isConnected ? (
+      {isConnected ? (
+        // Tampilan jika sudah terhubung
         <div className="space-y-4">
-          {!connectionCode ? (
-            <div className="flex flex-col items-center p-6 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="mb-4 text-center">
-                <h4 className="font-medium text-blue-800 mb-2">Hubungkan dengan Telegram</h4>
-                <p className="text-sm text-blue-600 mb-4">Dapatkan notifikasi pesan baru langsung ke Telegram Anda</p>
-              </div>
-              <Button
-                onClick={generateConnectionCode}
-                disabled={isSubmitting || connectionStatus === "connecting"}
-                className="w-full sm:w-auto"
-              >
-                {connectionStatus === "connecting" ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  "Hubungkan ke Telegram"
-                )}
-              </Button>
-              <div className="mt-4 text-xs text-blue-600">
-                <p>Langkah-langkah:</p>
-                <ol className="list-decimal list-inside mt-1 space-y-1">
-                  <li>Klik tombol di atas untuk mendapatkan kode koneksi</li>
-                  <li>Buka Telegram dan cari @SecretMeBot</li>
-                  <li>Kirim pesan /start ke bot</li>
-                  <li>Kirim kode koneksi ke bot</li>
-                </ol>
-              </div>
+          <Alert className="bg-green-50 border-green-200">
+            <Check className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800">Terhubung</AlertTitle>
+            <AlertDescription className="text-green-700">
+              Akun Telegram Anda telah terhubung. Anda akan menerima notifikasi melalui Telegram.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="telegram-notifications" className="text-base">
+                Notifikasi Telegram
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Aktifkan untuk menerima notifikasi pesan baru melalui Telegram
+              </p>
             </div>
-          ) : (
-            <div className="flex flex-col items-center p-6 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="mb-4 text-center">
-                <h4 className="font-medium text-blue-800 mb-2">Kirim Kode ke Bot Telegram</h4>
-                <p className="text-sm text-blue-600 mb-1">Buka Telegram dan kirim kode berikut ke @SecretMeBot:</p>
-              </div>
+            <Switch
+              id="telegram-notifications"
+              checked={telegramNotifications}
+              onCheckedChange={(checked) => {
+                updateTelegramNotifications(checked)
+              }}
+            />
+          </div>
 
-              <div className="flex items-center gap-2 bg-white p-3 rounded-md border border-blue-200 w-full max-w-xs mb-4">
-                <code className="flex-1 text-center font-mono text-lg font-bold text-blue-700">{connectionCode}</code>
-                <Button variant="ghost" size="icon" onClick={copyCodeToClipboard} className="h-8 w-8">
-                  <Copy className="h-4 w-4" />
-                  <span className="sr-only">Salin kode</span>
-                </Button>
-              </div>
-
-              {isPolling && (
-                <div className="flex items-center gap-2 text-sm text-blue-600">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-b-transparent border-blue-600"></span>
-                  <span>Menunggu koneksi...</span>
-                </div>
-              )}
-
-              <div className="mt-4 text-xs text-blue-600">
-                <p className="font-medium">Langkah-langkah:</p>
-                <ol className="list-decimal list-inside mt-1 space-y-1">
-                  <li>Buka Telegram dan cari @SecretMeBot</li>
-                  <li>Kirim pesan /start ke bot</li>
-                  <li>Kirim kode 6 digit di atas ke bot</li>
-                  <li>Status akan otomatis diperbarui setelah koneksi berhasil</li>
-                </ol>
-              </div>
-
-              <Button variant="outline" onClick={handleCancelConnection} className="mt-4" size="sm">
-                Batalkan
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={sendTestMessage} className="text-xs">
+              Kirim Pesan Uji
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={disconnectTelegram}
+              disabled={isDisconnecting}
+              className="text-xs text-red-500 border-red-200 hover:bg-red-50"
+            >
+              {isDisconnecting ? "Memutuskan..." : "Putuskan Koneksi"}
+            </Button>
+          </div>
         </div>
       ) : (
+        // Tampilan jika belum terhubung
         <div className="space-y-4">
-          <div className="flex items-center p-4 bg-green-50 rounded-lg border border-green-200 mb-4">
-            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-            <span className="text-sm text-green-700">Akun Telegram berhasil terhubung</span>
-          </div>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Belum Terhubung</AlertTitle>
+            <AlertDescription>Hubungkan akun Telegram Anda untuk menerima notifikasi pesan baru.</AlertDescription>
+          </Alert>
 
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="telegram_notifications"
-              checked={telegramNotifications}
-              onCheckedChange={handleToggleNotifications}
-              disabled={isSubmitting}
-            />
-            <div className="grid gap-1.5 leading-none">
-              <label htmlFor="telegram_notifications" className="text-sm font-medium leading-none">
-                Aktifkan notifikasi Telegram
-              </label>
-              <p className="text-xs text-muted-foreground">Terima notifikasi pesan baru melalui Telegram</p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Button variant="default" size="sm" onClick={generateConnectionCode} disabled={isGeneratingCode}>
+                {isGeneratingCode ? "Membuat Kode..." : "Buat Kode Koneksi"}
+              </Button>
+              <a
+                href="https://t.me/SecretMeNotifBot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 hover:underline flex items-center gap-1"
+              >
+                Buka Bot Telegram <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
+
+            {connectionCode && (
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="connection-code">Kode Koneksi</Label>
+                <div className="flex gap-2">
+                  <Input id="connection-code" value={connectionCode} readOnly className="font-mono" />
+                  <Button variant="outline" size="icon" onClick={copyConnectionCode} className="shrink-0">
+                    {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {codeExpiry && (
+                  <p className="text-xs text-muted-foreground">
+                    Kode berlaku hingga:{" "}
+                    {codeExpiry.toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                )}
+                <ol className="text-xs text-muted-foreground space-y-1 mt-2 list-decimal pl-4">
+                  <li>
+                    Buka bot Telegram kami di{" "}
+                    <a
+                      href="https://t.me/SecretMeNotifBot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      t.me/SecretMeNotifBot
+                    </a>
+                  </li>
+                  <li>
+                    Kirim pesan <code className="bg-gray-100 px-1 rounded">/start</code> ke bot
+                  </li>
+                  <li>Kirim kode koneksi di atas ke bot</li>
+                  <li>Klik tombol "Verifikasi Koneksi" di bawah</li>
+                </ol>
+                <Button variant="default" onClick={verifyConnection} disabled={isVerifying} className="w-full mt-2">
+                  {isVerifying ? "Memverifikasi..." : "Verifikasi Koneksi"}
+                </Button>
+              </div>
+            )}
           </div>
-
-          <div className="flex flex-wrap gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={handleSendTestMessage}
-              disabled={isSubmitting || connectionStatus === "disconnecting"}
-            >
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Kirim Pesan Test
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleDisconnect}
-              disabled={isSubmitting || connectionStatus === "disconnecting"}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
-            >
-              {connectionStatus === "disconnecting" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <AlertTriangle className="h-4 w-4 mr-2" />
-              )}
-              Putuskan Koneksi
-            </Button>
-          </div>
-
-          <p className="text-xs text-muted-foreground mt-1">
-            Anda juga dapat mengirim perintah /disconnect ke bot @SecretMeBot untuk memutuskan koneksi
-          </p>
         </div>
       )}
     </div>

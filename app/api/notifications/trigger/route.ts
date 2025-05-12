@@ -23,12 +23,8 @@ export async function POST(request: Request) {
 
     const supabase = createClient(cookies())
 
-    // Get user data termasuk notifications_enabled
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("*, notifications_enabled")
-      .eq("id", userId)
-      .single()
+    // Get user data
+    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
 
     if (userError) {
       console.error("Error fetching user data:", userError)
@@ -50,12 +46,26 @@ export async function POST(request: Request) {
       notificationsEnabled: userData.notifications_enabled,
     })
 
-    // Periksa apakah notifikasi diaktifkan
-    if (!userData.notifications_enabled) {
-      console.log("Notifications are disabled for this user")
+    // Periksa apakah notifikasi diaktifkan DAN telegram diaktifkan
+    // Kita hanya mengirim notifikasi jika kedua pengaturan aktif
+    if (!userData.notifications_enabled || !userData.telegram_notifications) {
+      const reason = !userData.notifications_enabled
+        ? "Notifications are disabled for this user"
+        : "Telegram notifications are disabled for this user"
+
+      console.log(reason)
       return NextResponse.json({
         success: true,
-        message: "Notifications are disabled for this user",
+        message: reason,
+      })
+    }
+
+    // Periksa apakah pengguna memiliki Telegram ID
+    if (!userData.telegram_id) {
+      console.log("User does not have Telegram ID")
+      return NextResponse.json({
+        success: true,
+        message: "User does not have Telegram ID",
       })
     }
 
@@ -88,23 +98,6 @@ export async function POST(request: Request) {
     if (logError) {
       console.error("Error creating notification log:", logError)
       throw new Error(logError.message)
-    }
-
-    // Periksa apakah pengguna memiliki Telegram ID dan notifikasi Telegram diaktifkan
-    if (!userData.telegram_id || !userData.telegram_notifications) {
-      console.log("User does not have Telegram ID or Telegram notifications are disabled")
-      await supabase
-        .from("notification_logs")
-        .update({
-          status: "skipped",
-          error_message: "Telegram ID not set or notifications disabled",
-        })
-        .eq("id", notificationLog.id)
-
-      return NextResponse.json({
-        success: true,
-        message: "Notification skipped: Telegram ID not set or notifications disabled",
-      })
     }
 
     // Generate profile URL
