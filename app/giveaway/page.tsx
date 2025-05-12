@@ -53,7 +53,7 @@ export default function GiveawayPage() {
                   <Award className="h-6 w-6 text-[var(--main)] mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-bold">Juara 1</h3>
-                    <p>Rp 100.0</p>
+                    <p>Rp 100.000</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">

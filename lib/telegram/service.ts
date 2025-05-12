@@ -98,35 +98,25 @@ export async function sendVerificationCode(telegramId: string, code: string): Pr
   })
 }
 
-// Function to send new message notification
+// Karena kita menghapus bagian preview pesan, kita perlu menyesuaikan fungsi sendNewMessageNotification
+// untuk tidak lagi memproses preview pesan
+
 export async function sendNewMessageNotification(params: {
   telegramId: string
   name: string
   messagePreview: string
   profileUrl: string
 }): Promise<any> {
-  const { telegramId, name, messagePreview, profileUrl } = params
+  const { telegramId, name, profileUrl } = params
   console.log("Preparing new message notification for Telegram:", {
     telegramId,
     name,
-    messagePreviewLength: messagePreview.length,
     profileUrl,
   })
-
-  // Truncate message preview to 50 characters
-  const truncatedPreview = messagePreview.length > 50 ? messagePreview.substring(0, 50) + "..." : messagePreview
-
-  // Sanitize the preview to avoid Markdown formatting issues
-  // Replace any asterisks with spaces to prevent Markdown formatting issues
-  const sanitizedPreview = truncatedPreview.replace(/\*/g, " ")
-
-  // Apply simple censoring (replace every other character with a dot)
-  const censoredPreview = sanitizedPreview.replace(/(.{1})(.{1})/g, "$1.")
 
   // Create the message with sanitized values
   const message = formatTelegramMessage(TELEGRAM_MESSAGE_TEMPLATES.NEW_MESSAGE, {
     name: name.replace(/\*/g, ""), // Remove any asterisks from name
-    preview: censoredPreview,
     url: profileUrl,
   })
 

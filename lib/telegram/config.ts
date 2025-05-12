@@ -9,8 +9,7 @@ export const TELEGRAM_MESSAGE_TEMPLATES = {
     "🔔 *Ada Pesan Baru!* 🔔\n\n" +
     "👋 Hai {name},\n" +
     "📩 Anda baru saja menerima pesan di SecretMe.\n\n" +
-    "👤 *Dari:* Seseorang\n" +
-    "💬 *Pesan:* {preview}\n\n" +
+    "👤 *Dari:* Seseorang\n\n" +
     "🔗 [Buka SecretMe untuk membaca selengkapnya]({url})",
   VERIFICATION:
     "🔐 *Kode Verifikasi* 🔑\n\n" +
