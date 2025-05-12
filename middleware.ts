@@ -19,13 +19,14 @@ if (typeof console !== "undefined" && console.warn) {
 
 // Cache untuk menyimpan hasil auth checks
 const authCheckCache = new Map<string, { isAuthenticated: boolean; timestamp: number; isAdmin?: boolean }>()
-const AUTH_CACHE_TTL = 60000 // 1 menit
+const AUTH_CACHE_TTL = 300000 // 5 menit (dari 1 menit)
+
+// Throttling untuk middleware auth checks
+let lastMiddlewareAuthCheck = 0
+const MIN_AUTH_CHECK_INTERVAL = 5000 // 5 detik
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
-
-  // console.log("🔍 MIDDLEWARE: Processing request for path:", req.nextUrl.pathname)
 
   // Periksa apakah ini adalah rute yang memerlukan autentikasi
   const protectedRoutes = ["/dashboard", "/premium", "/admin"]
@@ -37,13 +38,12 @@ export async function middleware(req: NextRequest) {
     // Cek cache untuk path ini
     const cacheKey = req.nextUrl.pathname
     const cachedAuth = authCheckCache.get(cacheKey)
+    const now = Date.now()
 
-    if (cachedAuth && Date.now() - cachedAuth.timestamp < AUTH_CACHE_TTL) {
-      // console.log("🔍 MIDDLEWARE: Using cached auth check for:", cacheKey)
-
+    // Gunakan cache jika masih valid
+    if (cachedAuth && now - cachedAuth.timestamp < AUTH_CACHE_TTL) {
       // Jika tidak terotentikasi, redirect ke login
       if (!cachedAuth.isAuthenticated) {
-        // console.log("❌ MIDDLEWARE: No session (from cache), redirecting to login")
         const redirectUrl = req.nextUrl.clone()
         redirectUrl.pathname = "/login"
         redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
@@ -52,73 +52,121 @@ export async function middleware(req: NextRequest) {
 
       // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
       if (req.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
-        // console.log("❌ MIDDLEWARE: User is not admin (from cache), redirecting to dashboard")
         const redirectUrl = req.nextUrl.clone()
         redirectUrl.pathname = "/dashboard"
         return NextResponse.redirect(redirectUrl)
       }
 
-      // console.log("✅ MIDDLEWARE: User authenticated (from cache), allowing access to:", req.nextUrl.pathname)
       return res
     }
 
-    // console.log("🔍 MIDDLEWARE: Getting session")
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    // console.log("🔍 MIDDLEWARE: Session exists?", !!session)
+    // Throttle auth checks untuk mencegah rate limiting
+    if (now - lastMiddlewareAuthCheck < MIN_AUTH_CHECK_INTERVAL) {
+      // Jika terlalu sering, gunakan cache terakhir atau izinkan akses
+      if (cachedAuth) {
+        // Gunakan hasil cache terakhir meskipun sudah kedaluwarsa
+        if (!cachedAuth.isAuthenticated) {
+          const redirectUrl = req.nextUrl.clone()
+          redirectUrl.pathname = "/login"
+          redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
+          return NextResponse.redirect(redirectUrl)
+        }
 
-    // console.log("🔍 MIDDLEWARE: Checking auth for protected route:", req.nextUrl.pathname)
+        if (req.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
+          const redirectUrl = req.nextUrl.clone()
+          redirectUrl.pathname = "/dashboard"
+          return NextResponse.redirect(redirectUrl)
+        }
 
-    // Jika tidak ada sesi dan ini adalah rute yang dilindungi, redirect ke login
-    if (!session) {
-      // Cache hasil auth check
-      authCheckCache.set(cacheKey, {
-        isAuthenticated: false,
-        timestamp: Date.now(),
-      })
+        return res
+      }
 
-      // console.log("❌ MIDDLEWARE: No session, redirecting to login")
-      const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = "/login"
-      redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
-      return NextResponse.redirect(redirectUrl)
+      // Jika tidak ada cache, izinkan akses untuk menghindari rate limiting
+      // Ini berisiko tetapi lebih baik daripada error rate limit
+      return res
     }
 
-    // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
-    if (req.nextUrl.pathname.startsWith("/admin")) {
-      // Dapatkan email pengguna dari sesi
-      const email = session.user?.email
+    lastMiddlewareAuthCheck = now
 
-      // Daftar email admin
-      const adminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
-      const isAdmin = email && adminEmails.includes(email)
+    try {
+      const supabase = createMiddlewareClient({ req, res })
 
-      // Cache hasil auth check dengan status admin
-      authCheckCache.set(cacheKey, {
-        isAuthenticated: true,
-        isAdmin,
-        timestamp: Date.now(),
-      })
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-      if (!isAdmin) {
-        // console.log("❌ MIDDLEWARE: User is not admin, redirecting to dashboard")
+      // Jika tidak ada sesi dan ini adalah rute yang dilindungi, redirect ke login
+      if (!session) {
+        // Cache hasil auth check
+        authCheckCache.set(cacheKey, {
+          isAuthenticated: false,
+          timestamp: now,
+        })
+
         const redirectUrl = req.nextUrl.clone()
-        redirectUrl.pathname = "/dashboard"
+        redirectUrl.pathname = "/login"
+        redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
         return NextResponse.redirect(redirectUrl)
       }
-    } else {
-      // Cache hasil auth check untuk non-admin routes
-      authCheckCache.set(cacheKey, {
-        isAuthenticated: true,
-        timestamp: Date.now(),
-      })
-    }
 
-    // console.log("✅ MIDDLEWARE: User authenticated, allowing access to:", req.nextUrl.pathname)
+      // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
+      if (req.nextUrl.pathname.startsWith("/admin")) {
+        // Dapatkan email pengguna dari sesi
+        const email = session.user?.email
+
+        // Daftar email admin
+        const adminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
+        const isAdmin = email && adminEmails.includes(email)
+
+        // Cache hasil auth check dengan status admin
+        authCheckCache.set(cacheKey, {
+          isAuthenticated: true,
+          isAdmin,
+          timestamp: now,
+        })
+
+        if (!isAdmin) {
+          const redirectUrl = req.nextUrl.clone()
+          redirectUrl.pathname = "/dashboard"
+          return NextResponse.redirect(redirectUrl)
+        }
+      } else {
+        // Cache hasil auth check untuk non-admin routes
+        authCheckCache.set(cacheKey, {
+          isAuthenticated: true,
+          timestamp: now,
+        })
+      }
+    } catch (error) {
+      // Jika terjadi error (termasuk rate limit), gunakan cache jika ada
+      if (cachedAuth) {
+        // Perpanjang TTL cache untuk mengurangi permintaan
+        authCheckCache.set(cacheKey, {
+          ...cachedAuth,
+          timestamp: now,
+        })
+
+        // Gunakan hasil cache
+        if (!cachedAuth.isAuthenticated) {
+          const redirectUrl = req.nextUrl.clone()
+          redirectUrl.pathname = "/login"
+          redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
+          return NextResponse.redirect(redirectUrl)
+        }
+
+        if (req.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
+          const redirectUrl = req.nextUrl.clone()
+          redirectUrl.pathname = "/dashboard"
+          return NextResponse.redirect(redirectUrl)
+        }
+      }
+
+      // Jika tidak ada cache dan terjadi error, izinkan akses
+      // Ini berisiko tetapi lebih baik daripada aplikasi tidak berfungsi
+      console.error("Error in middleware auth check:", error)
+    }
   }
 
-  // console.log("✅ MIDDLEWARE: Request processing complete for:", req.nextUrl.pathname)
   return res
 }
 

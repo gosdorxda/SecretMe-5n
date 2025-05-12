@@ -10,7 +10,7 @@ let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | n
 // Tambahkan throttling untuk permintaan auth
 const authRequestTimestamps: number[] = []
 // Kurangi batas permintaan secara drastis
-const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan
+const AUTH_REQUEST_LIMIT = 2 // Maksimum 2 permintaan
 const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
 
 // Tambahkan debounce untuk mencegah multiple calls
@@ -20,11 +20,21 @@ const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
 // Tambahkan flag untuk mencegah multiple refresh
 let isRefreshingToken = false
 let lastRefreshTime = 0
-const MIN_REFRESH_INTERVAL = 300000 // 5 menit
+const MIN_REFRESH_INTERVAL = 600000 // 10 menit (dari 5 menit)
+
+// Tambahkan flag untuk mendeteksi error rate limit
+let hasHitRateLimit = false
+let rateLimitResetTime = 0
+const RATE_LIMIT_BACKOFF = 600000 // 10 menit
 
 // Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
 function shouldThrottleAuthRequest(): boolean {
   const now = Date.now()
+
+  // Jika sudah pernah hit rate limit, throttle lebih agresif
+  if (hasHitRateLimit && now < rateLimitResetTime) {
+    return true
+  }
 
   // Hapus timestamp yang lebih lama dari jendela waktu
   while (authRequestTimestamps.length > 0 && authRequestTimestamps[0] < now - AUTH_REQUEST_WINDOW) {
@@ -62,6 +72,14 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
     if (sessionError) {
       console.error("❌ Error saat memeriksa sesi:", sessionError)
+
+      // Jika error adalah rate limit, set flag
+      if (sessionError.status === 429) {
+        hasHitRateLimit = true
+        rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF
+        console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+      }
+
       isRefreshingToken = false
       return false
     }
@@ -83,6 +101,23 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
             if (setSessionError) {
               console.error("❌ Gagal memperbaiki sesi:", setSessionError.message)
+
+              // Jika error adalah invalid refresh token, hapus token dari localStorage
+              if (
+                setSessionError.message.includes("Invalid Refresh Token") ||
+                setSessionError.message.includes("refresh_token_not_found")
+              ) {
+                localStorage.removeItem("supabase.auth.token")
+                console.warn("Invalid refresh token detected, cleared localStorage")
+              }
+
+              // Jika error adalah rate limit, set flag
+              if (setSessionError.status === 429) {
+                hasHitRateLimit = true
+                rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF
+                console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+              }
+
               isRefreshingToken = false
               return false
             }
@@ -132,7 +167,7 @@ if (typeof console !== "undefined" && console.warn) {
 
 // Cache untuk menyimpan hasil auth requests
 const authRequestCache = new Map<string, { data: any; timestamp: number }>()
-const AUTH_CACHE_TTL = 300000 // 5 menit (dari 1 menit)
+const AUTH_CACHE_TTL = 600000 // 10 menit (dari 5 menit)
 
 // Fungsi debounce untuk auth requests
 function debounceAuthRequest(fn: Function): Promise<any> {
@@ -145,6 +180,23 @@ function debounceAuthRequest(fn: Function): Promise<any> {
       resolve(fn())
     }, AUTH_DEBOUNCE_DELAY)
   })
+}
+
+// Fungsi untuk menangani error rate limit
+function handleRateLimitError(error: any) {
+  if (error?.status === 429 || (error?.message && error.message.includes("rate limit"))) {
+    hasHitRateLimit = true
+    rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF
+    console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+
+    // Hapus token yang mungkin bermasalah
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("supabase.auth.token")
+    }
+
+    return true
+  }
+  return false
 }
 
 export const createClient = () => {
@@ -183,6 +235,23 @@ export const createClient = () => {
             const isAuthRequest =
               url.toString().includes("/auth/") ||
               (options?.headers && (options.headers as any)["X-Client-Info"]?.includes("supabase-js"))
+
+            // Jika sudah hit rate limit, throttle semua permintaan auth
+            if (isAuthRequest && hasHitRateLimit && Date.now() < rateLimitResetTime) {
+              console.warn("Auth request throttled due to previous rate limit")
+              return Promise.resolve(
+                new Response(
+                  JSON.stringify({
+                    error: "Rate limit backoff in progress",
+                    data: { session: null, user: null },
+                  }),
+                  {
+                    status: 429,
+                    headers: { "Content-Type": "application/json" },
+                  },
+                ),
+              )
+            }
 
             // Khusus untuk logout, jangan throttle dan pastikan respons valid
             const isLogoutRequest =
@@ -240,7 +309,7 @@ export const createClient = () => {
                 )
               }
 
-              // Debounce auth requests untuk mengurangi multiple calls
+              // Khusus untuk permintaan refresh token
               if (urlStr.includes("/token?grant_type=refresh_token")) {
                 return debounceAuthRequest(async () => {
                   // Jika sudah refreshing, return cached response atau error
@@ -272,15 +341,76 @@ export const createClient = () => {
                     )
                   }
 
+                  // Periksa body untuk refresh token
+                  let refreshToken = null
+                  if (options?.body && typeof options.body === "string") {
+                    try {
+                      const bodyData = JSON.parse(options.body)
+                      refreshToken = bodyData.refresh_token
+                    } catch (e) {
+                      // Ignore parsing errors
+                    }
+                  }
+
+                  // Jika tidak ada refresh token atau kosong, return error
+                  if (!refreshToken) {
+                    console.warn("Refresh token missing in request, aborting")
+                    // Hapus token dari localStorage
+                    if (typeof window !== "undefined") {
+                      localStorage.removeItem("supabase.auth.token")
+                    }
+                    return new Response(
+                      JSON.stringify({
+                        error: "Invalid refresh token",
+                        error_description: "Refresh token is missing",
+                      }),
+                      {
+                        status: 400,
+                        headers: { "Content-Type": "application/json" },
+                      },
+                    )
+                  }
+
                   isRefreshingToken = true
                   lastRefreshTime = now
 
                   try {
                     const response = await fetch(url, options)
+
+                    // Periksa apakah respons adalah error
+                    if (!response.ok) {
+                      const errorData = await response.json()
+
+                      // Jika error adalah invalid refresh token, hapus token dari localStorage
+                      if (
+                        errorData.error === "invalid_grant" ||
+                        errorData.code === "refresh_token_not_found" ||
+                        (errorData.error_description &&
+                          (errorData.error_description.includes("Invalid Refresh Token") ||
+                            errorData.error_description.includes("refresh token not found")))
+                      ) {
+                        if (typeof window !== "undefined") {
+                          localStorage.removeItem("supabase.auth.token")
+                          console.warn("Invalid refresh token detected, cleared localStorage")
+                        }
+                      }
+
+                      // Jika error adalah rate limit, set flag
+                      if (response.status === 429 || errorData.code === "over_request_rate_limit") {
+                        hasHitRateLimit = true
+                        rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF
+                        console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+                      }
+                    }
+
                     isRefreshingToken = false
                     return response
                   } catch (error) {
                     isRefreshingToken = false
+
+                    // Periksa apakah error adalah rate limit
+                    handleRateLimitError(error)
+
                     throw error
                   }
                 })
@@ -333,6 +463,18 @@ export const createClient = () => {
                     cached: false,
                   })
 
+                  // Periksa apakah respons adalah error rate limit
+                  if (response.status === 429) {
+                    hasHitRateLimit = true
+                    rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF
+                    console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+
+                    // Hapus token yang mungkin bermasalah
+                    if (typeof window !== "undefined") {
+                      localStorage.removeItem("supabase.auth.token")
+                    }
+                  }
+
                   // Cache response jika sukses
                   if (response.ok) {
                     try {
@@ -362,6 +504,9 @@ export const createClient = () => {
                     cached: false,
                   })
 
+                  // Periksa apakah error adalah rate limit
+                  handleRateLimitError(error)
+
                   throw error
                 })
             }
@@ -382,10 +527,26 @@ export const createClient = () => {
 // Function to reset the client (useful for handling auth errors)
 export const resetClient = () => {
   supabaseClient = null
+
+  // Reset flags
+  isRefreshingToken = false
+  hasHitRateLimit = false
+
+  // Clear caches
+  authRequestCache.clear()
+  authRequestTimestamps.length = 0
 }
 
 // Fungsi untuk memperbaiki sesi secara manual
 export const repairSession = async () => {
   const client = createClient()
   return await repairSessionIfNeeded(client)
+}
+
+// Fungsi untuk menangani invalid refresh token
+export const handleInvalidRefreshToken = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("supabase.auth.token")
+  }
+  resetClient()
 }

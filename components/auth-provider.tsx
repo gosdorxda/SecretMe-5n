@@ -4,7 +4,7 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, handleInvalidRefreshToken, resetClient } from "@/lib/supabase/client"
 import type { Session, User } from "@supabase/supabase-js"
 import {
   cacheAuthSession,
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastAuthCheckRef = useRef<number>(0)
 
   // Meningkatkan interval throttle untuk mengurangi auth requests
-  const THROTTLE_INTERVAL = 300000 // 5 menit (dari 1 menit)
+  const THROTTLE_INTERVAL = 600000 // 10 menit (dari 5 menit)
 
   // Tambahkan flag untuk mencegah multiple auth checks pada initial load
   const initialAuthCheckDoneRef = useRef(false)
@@ -49,7 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Tambahkan flag untuk mencegah multiple refresh
   const isRefreshingTokenRef = useRef(false)
   const lastRefreshTimeRef = useRef(0)
-  const MIN_REFRESH_INTERVAL = 300000 // 5 menit
+  const MIN_REFRESH_INTERVAL = 600000 // 10 menit (dari 5 menit)
+
+  // Tambahkan flag untuk mendeteksi error rate limit
+  const hasHitRateLimitRef = useRef(false)
+  const rateLimitResetTimeRef = useRef(0)
+  const RATE_LIMIT_BACKOFF = 600000 // 10 menit
 
   const signOut = useCallback(async () => {
     try {
@@ -57,6 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearAuthCache()
       setSession(null)
       setUser(null)
+
+      // Reset flags
+      refreshingRef.current = false
+      isRefreshingTokenRef.current = false
+      hasHitRateLimitRef.current = false
 
       // Hapus token dari localStorage untuk mencegah error
       if (typeof window !== "undefined") {
@@ -71,6 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("Error during signOut API call:", signOutError)
       }
 
+      // Reset client untuk membersihkan state
+      resetClient()
+
       // Redirect ke login page
       router.push("/login")
       router.refresh()
@@ -83,10 +96,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, router])
 
+  // Fungsi untuk menangani error rate limit
+  const handleRateLimitError = useCallback(
+    (error: any) => {
+      if (error?.status === 429 || (error?.message && error.message.includes("rate limit"))) {
+        hasHitRateLimitRef.current = true
+        rateLimitResetTimeRef.current = Date.now() + RATE_LIMIT_BACKOFF
+        console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+        return true
+      }
+      return false
+    },
+    [RATE_LIMIT_BACKOFF],
+  )
+
+  // Fungsi untuk menangani invalid refresh token
+  const handleRefreshTokenError = useCallback(
+    (error: any) => {
+      if (
+        error?.message?.includes("Invalid Refresh Token") ||
+        error?.message?.includes("refresh_token_not_found") ||
+        error?.code === "refresh_token_not_found"
+      ) {
+        console.warn("Invalid refresh token detected, signing out")
+        handleInvalidRefreshToken()
+        signOut()
+        return true
+      }
+      return false
+    },
+    [signOut],
+  )
+
   // Fungsi untuk refresh session data dengan optimasi
   const refreshSession = useCallback(async () => {
     // Hindari multiple refresh
     if (refreshingRef.current || isRefreshingTokenRef.current) return
+
+    // Jika sudah hit rate limit, skip refresh
+    if (hasHitRateLimitRef.current && Date.now() < rateLimitResetTimeRef.current) {
+      console.warn("Skipping session refresh due to rate limit")
+      return
+    }
 
     // Hindari refresh yang terlalu sering
     const now = Date.now()
@@ -134,6 +185,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { data: userData, error: userError } = await supabase.auth.getUser()
 
             if (userError) {
+              // Periksa apakah error adalah rate limit
+              if (handleRateLimitError(userError)) {
+                refreshingRef.current = false
+                isRefreshingTokenRef.current = false
+                return
+              }
+
+              // Periksa apakah error adalah invalid refresh token
+              if (handleRefreshTokenError(userError)) {
+                refreshingRef.current = false
+                isRefreshingTokenRef.current = false
+                return
+              }
+
               // Jangan log error jika hanya "Auth session missing"
               if (userError.message !== "Auth session missing!") {
                 console.error("Error verifying user:", userError)
@@ -164,6 +229,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Update user dengan data yang terverifikasi
             setUser(userData.user)
           } catch (verifyError) {
+            // Periksa apakah error adalah rate limit
+            if (handleRateLimitError(verifyError)) {
+              refreshingRef.current = false
+              isRefreshingTokenRef.current = false
+              return
+            }
+
+            // Periksa apakah error adalah invalid refresh token
+            if (handleRefreshTokenError(verifyError)) {
+              refreshingRef.current = false
+              isRefreshingTokenRef.current = false
+              return
+            }
+
             // Tangani error dengan lebih baik
             if (verifyError instanceof Error && verifyError.message.includes("Auth session missing")) {
               console.warn("Auth session missing during verification, will retry later")
@@ -190,6 +269,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
         if (sessionError) {
+          // Periksa apakah error adalah rate limit
+          if (handleRateLimitError(sessionError)) {
+            refreshingRef.current = false
+            isRefreshingTokenRef.current = false
+            return
+          }
+
+          // Periksa apakah error adalah invalid refresh token
+          if (handleRefreshTokenError(sessionError)) {
+            refreshingRef.current = false
+            isRefreshingTokenRef.current = false
+            return
+          }
+
           console.error("Error getting session:", sessionError)
 
           // Handle refresh token errors by signing out
@@ -220,6 +313,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { data: userData, error: userError } = await supabase.auth.getUser()
 
             if (userError) {
+              // Periksa apakah error adalah rate limit
+              if (handleRateLimitError(userError)) {
+                refreshingRef.current = false
+                isRefreshingTokenRef.current = false
+                return
+              }
+
+              // Periksa apakah error adalah invalid refresh token
+              if (handleRefreshTokenError(userError)) {
+                refreshingRef.current = false
+                isRefreshingTokenRef.current = false
+                return
+              }
+
               // Jangan log error jika hanya "Auth session missing"
               if (userError.message !== "Auth session missing!") {
                 console.error("Error verifying user:", userError)
@@ -249,6 +356,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Gunakan user yang terverifikasi
             verifiedUser = userData.user
           } catch (verifyError) {
+            // Periksa apakah error adalah rate limit
+            if (handleRateLimitError(verifyError)) {
+              refreshingRef.current = false
+              isRefreshingTokenRef.current = false
+              return
+            }
+
+            // Periksa apakah error adalah invalid refresh token
+            if (handleRefreshTokenError(verifyError)) {
+              refreshingRef.current = false
+              isRefreshingTokenRef.current = false
+              return
+            }
+
             // Tangani error dengan lebih baik
             if (verifyError instanceof Error && verifyError.message.includes("Auth session missing")) {
               console.warn("Auth session missing during verification, will retry later")
@@ -269,17 +390,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(verifiedUser)
         setLoading(false)
       } catch (sessionError) {
+        // Periksa apakah error adalah rate limit
+        handleRateLimitError(sessionError)
+
+        // Periksa apakah error adalah invalid refresh token
+        handleRefreshTokenError(sessionError)
+
         console.error("Error fetching session:", sessionError)
         setLoading(false)
       }
     } catch (error) {
+      // Periksa apakah error adalah rate limit
+      handleRateLimitError(error)
+
+      // Periksa apakah error adalah invalid refresh token
+      handleRefreshTokenError(error)
+
       console.error("Unexpected error refreshing session:", error)
       setLoading(false)
     } finally {
       refreshingRef.current = false
       isRefreshingTokenRef.current = false
     }
-  }, [supabase, signOut, router, user])
+  }, [supabase, signOut, router, user, handleRateLimitError, handleRefreshTokenError])
 
   // Fetch session dan setup auth listener dengan optimasi
   useEffect(() => {
@@ -306,7 +439,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Delay refresh untuk menghindari multiple requests
             setTimeout(() => {
               refreshSession()
-            }, 2000)
+            }, 5000) // Increase delay to 5 seconds
           }
           return
         }
@@ -314,6 +447,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // No valid cache, do a full refresh
         await refreshSession()
       } catch (error) {
+        // Periksa apakah error adalah rate limit
+        handleRateLimitError(error)
+
+        // Periksa apakah error adalah invalid refresh token
+        handleRefreshTokenError(error)
+
         console.error("Error initializing auth:", error)
         if (mounted) setLoading(false)
       }
@@ -343,6 +482,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Handle sign out
         if (event === "SIGNED_OUT") {
           clearAuthCache()
+          // Reset flags
+          refreshingRef.current = false
+          isRefreshingTokenRef.current = false
+          hasHitRateLimitRef.current = false
         }
       })
 
@@ -366,7 +509,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [supabase, refreshSession])
+  }, [supabase, refreshSession, handleRateLimitError, handleRefreshTokenError])
 
   // Protect routes - optimasi dengan mengurangi re-renders
   useEffect(() => {
