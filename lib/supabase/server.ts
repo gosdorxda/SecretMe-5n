@@ -5,7 +5,7 @@ import type { Database } from "@/lib/supabase/database.types"
 // Server-side Supabase client
 export const createClient = () => {
   const cookieStore = cookies()
-  return createServerComponentClient<Database>({
+  const supabase = createServerComponentClient<Database>({
     cookies: () => cookieStore,
     options: {
       auth: {
@@ -23,6 +23,22 @@ export const createClient = () => {
       },
     },
   })
+
+  // Tambahkan logging untuk getSession
+  const originalGetSession = supabase.auth.getSession
+  supabase.auth.getSession = async function () {
+    console.log("🔍 SERVER getSession dipanggil dari:", new Error().stack)
+    return originalGetSession.apply(this, arguments)
+  }
+
+  // Tambahkan logging untuk getUser
+  const originalGetUser = supabase.auth.getUser
+  supabase.auth.getUser = async function () {
+    console.log("🔍 SERVER getUser dipanggil dari:", new Error().stack)
+    return originalGetUser.apply(this, arguments)
+  }
+
+  return supabase
 }
 
 // Fungsi helper untuk mendapatkan user terverifikasi

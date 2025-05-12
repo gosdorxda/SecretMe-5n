@@ -201,6 +201,20 @@ export const createClient = () => {
       },
     })
 
+    // Tambahkan logging untuk getSession
+    const originalGetSession = supabaseClient.auth.getSession
+    supabaseClient.auth.getSession = async function () {
+      console.log("🔍 CLIENT getSession dipanggil dari:", new Error().stack)
+      return originalGetSession.apply(this, arguments)
+    }
+
+    // Tambahkan logging untuk getUser
+    const originalGetUser = supabaseClient.auth.getUser
+    supabaseClient.auth.getUser = async function () {
+      console.log("🔍 CLIENT getUser dipanggil dari:", new Error().stack)
+      return originalGetUser.apply(this, arguments)
+    }
+
     // Coba perbaiki sesi jika diperlukan
     repairSessionIfNeeded(supabaseClient)
   }
