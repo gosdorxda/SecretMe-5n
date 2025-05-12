@@ -358,7 +358,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   <path d="M22 2 11 13" />
                 </svg>
               </div>
-              <span>Telegram Terhubung</span>
+              <span>Notifikasi Telegram</span>
             </CardTitle>
             <CardDescription>
               Akun Telegram Anda telah terhubung dan siap menerima notifikasi pesan baru.
@@ -466,7 +466,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   <path d="M22 2 11 13" />
                 </svg>
               </div>
-              <span>Hubungkan Telegram</span>
+              <span>Notifikasi Telegram</span>
             </CardTitle>
             <CardDescription>Terima notifikasi pesan baru langsung ke akun Telegram Anda.</CardDescription>
           </CardHeader>
