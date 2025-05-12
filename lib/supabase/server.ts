@@ -156,13 +156,26 @@ export const createClient = () => {
     console.error("Error creating Supabase client:", error)
 
     // Return dummy client yang akan mengembalikan null untuk auth operations
+    // dan mengimplementasikan semua method yang dibutuhkan
     return {
       auth: {
         getSession: async () => ({ data: { session: null }, error: null }),
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-      from: () => ({
-        select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
+      from: (table: string) => ({
+        select: (columns: string) => ({
+          eq: (column: string, value: any) => ({
+            single: async () => ({ data: null, error: null }),
+          }),
+          order: (column: string, options: any) => ({
+            data: [],
+            error: null,
+          }),
+        }),
+        order: (column: string, options: any) => ({
+          data: [],
+          error: null,
+        }),
       }),
     } as any
   }
