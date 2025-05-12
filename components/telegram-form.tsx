@@ -28,31 +28,11 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   const [isCopied, setIsCopied] = useState(false)
   const supabase = createClient()
 
-  // Efek untuk memeriksa status koneksi Telegram saat komponen dimuat
+  // Efek untuk menetapkan status koneksi Telegram berdasarkan initialTelegramId
   useEffect(() => {
-    if (initialTelegramId) {
-      checkTelegramConnection()
-    }
+    // Jika ada initialTelegramId, anggap sudah terhubung
+    setIsConnected(!!initialTelegramId && initialTelegramId.length > 0)
   }, [initialTelegramId])
-
-  // Fungsi untuk memeriksa koneksi Telegram
-  async function checkTelegramConnection() {
-    try {
-      const response = await fetch("/api/telegram/check-connection", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ telegramId: initialTelegramId }),
-      })
-
-      const data = await response.json()
-      setIsConnected(data.success)
-    } catch (error) {
-      console.error("Error checking Telegram connection:", error)
-      setIsConnected(false)
-    }
-  }
 
   // Fungsi untuk menghasilkan kode koneksi Telegram
   async function generateConnectionCode() {
