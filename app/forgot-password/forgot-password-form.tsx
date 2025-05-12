@@ -80,14 +80,14 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <div className="w-full flex items-center justify-center min-h-screen py-8 bg-[var(--bg)]">
-      <div className="w-full max-w-md mx-auto px-6">
-        <div className="text-center mb-8">
+    <div className="w-full flex items-center justify-center min-h-[calc(100vh-4rem)] py-4 bg-[var(--bg)]">
+      <div className="w-full max-w-md mx-auto px-4">
+        <div className="text-center mb-4">
           <h1 className="text-3xl font-bold mb-2">Lupa Password</h1>
           <p className="text-gray-600">Masukkan email Anda untuk menerima link reset password</p>
         </div>
 
-        <div className="bg-white p-8 rounded-md border-2 border-black">
+        <div className="bg-white p-4 rounded-md border-2 border-black">
           {isSuccess ? (
             <div className="text-center py-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">

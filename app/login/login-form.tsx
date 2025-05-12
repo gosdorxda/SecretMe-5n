@@ -195,7 +195,7 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="w-full flex items-center justify-center min-h-screen py-4 bg-[var(--bg)]">
+    <div className="w-full flex items-center justify-center min-h-[calc(100vh-4rem)] py-4 bg-[var(--bg)]">
       <div className="w-full max-w-md mx-auto px-4">
         <div className="text-center mb-4">
           <h1 className="text-3xl font-bold mb-2">Masuk untuk melanjutkan</h1>
