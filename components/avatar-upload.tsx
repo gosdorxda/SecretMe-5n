@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, LinkIcon, Upload, X, ImageIcon } from "lucide-react"
-import Image from "next/image"
 
 interface AvatarUploadProps {
   userId: string
@@ -246,28 +245,6 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
-      {/* Preview Avatar */}
-      {avatar && (
-        <div className="relative w-24 h-24 mx-auto mb-2">
-          <Image
-            src={avatar || "/placeholder.svg"}
-            alt="Avatar Preview"
-            className="rounded-full object-cover border-2 border-amber-200"
-            fill
-          />
-          <Button
-            size="icon"
-            variant="destructive"
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-            onClick={removeAvatar}
-            disabled={uploading}
-          >
-            <X className="h-3 w-3" />
-            <span className="sr-only">Hapus avatar</span>
-          </Button>
-        </div>
-      )}
-
       {/* Upload Method Selector */}
       <div className="flex gap-2 mb-1">
         <Button
@@ -378,6 +355,19 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
             </Button>
           </form>
         </div>
+      )}
+
+      {/* Tombol Hapus Avatar */}
+      {avatar && (
+        <Button
+          variant="outline"
+          onClick={removeAvatar}
+          disabled={uploading}
+          className="w-full mt-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs sm:text-sm"
+        >
+          <X className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+          Hapus Foto Profil
+        </Button>
       )}
     </div>
   )
