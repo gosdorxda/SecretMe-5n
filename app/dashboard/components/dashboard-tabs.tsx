@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast"
 import { MessagesTab } from "./tabs/messages-tab"
 import { ProfileTab } from "./tabs/profile-tab"
 import { SettingsTab } from "./tabs/settings-tab"
-import { NotificationTab } from "./tabs/notification-tab" // Import tab notifikasi baru
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -28,7 +27,7 @@ export function DashboardTabs({ user, messages, viewCount }: DashboardTabsProps)
 
   // Set active tab based on URL parameter
   useEffect(() => {
-    if (tabParam && ["messages", "profile", "settings", "notifications"].includes(tabParam)) {
+    if (tabParam && ["messages", "profile", "settings"].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam])
@@ -50,15 +49,12 @@ export function DashboardTabs({ user, messages, viewCount }: DashboardTabsProps)
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-4 mb-6 p-0.5 h-10 gap-1">
+      <TabsList className="grid w-full grid-cols-3 mb-6 p-0.5 h-10 gap-1">
         <TabsTrigger value="messages" className="rounded-md text-xs">
           <span>Pesan</span>
         </TabsTrigger>
         <TabsTrigger value="profile" className="rounded-md text-xs">
           <span>Profil</span>
-        </TabsTrigger>
-        <TabsTrigger value="notifications" className="rounded-md text-xs">
-          <span>Notifikasi</span>
         </TabsTrigger>
         <TabsTrigger value="settings" className="rounded-md text-xs">
           <span>Pengaturan</span>
@@ -71,10 +67,6 @@ export function DashboardTabs({ user, messages, viewCount }: DashboardTabsProps)
 
       <TabsContent value="profile">
         <ProfileTab user={user} />
-      </TabsContent>
-
-      <TabsContent value="notifications">
-        <NotificationTab user={user} />
       </TabsContent>
 
       <TabsContent value="settings">

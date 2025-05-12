@@ -11,16 +11,11 @@ import { Bell } from "lucide-react"
 
 interface SimpleNotificationPreferencesProps {
   userId: string
-  initialChannel: string
   initialEnabled: boolean
 }
 
-export function SimpleNotificationPreferences({
-  userId,
-  initialChannel,
-  initialEnabled,
-}: SimpleNotificationPreferencesProps) {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(initialEnabled)
+export function SimpleNotificationPreferences({ userId, initialEnabled }: SimpleNotificationPreferencesProps) {
+  const [newMessagesEnabled, setNewMessagesEnabled] = useState(initialEnabled)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const supabase = createClient()
 
@@ -28,17 +23,14 @@ export function SimpleNotificationPreferences({
     setIsSubmitting(true)
 
     try {
-      // Jika notifikasi diaktifkan, pastikan channel diatur
-      // Jika dinonaktifkan, kita tetap mempertahankan channel yang ada
       const { error } = await supabase
-        .from("users")
-        .update({
-          notification_channel: notificationsEnabled ? initialChannel || "email" : initialChannel,
-          whatsapp_notifications: notificationsEnabled && initialChannel === "whatsapp",
-          telegram_notifications: notificationsEnabled && initialChannel === "telegram",
+        .from("notification_preferences")
+        .upsert({
+          user_id: userId,
+          new_messages: newMessagesEnabled,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", userId)
+        .select()
 
       if (error) {
         throw new Error(error.message)
@@ -72,12 +64,12 @@ export function SimpleNotificationPreferences({
         <div className="space-y-4">
           <div className="flex items-center justify-between space-x-2">
             <div className="space-y-0.5">
-              <Label htmlFor="notifications" className="text-base">
+              <Label htmlFor="new-messages" className="text-base">
                 Notifikasi Pesan Baru
               </Label>
               <p className="text-sm text-muted-foreground">Dapatkan notifikasi saat ada pesan baru masuk</p>
             </div>
-            <Switch id="notifications" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
+            <Switch id="new-messages" checked={newMessagesEnabled} onCheckedChange={setNewMessagesEnabled} />
           </div>
 
           <Button onClick={handleSavePreferences} disabled={isSubmitting} className="w-full sm:w-auto mt-4">

@@ -46,34 +46,26 @@ export async function POST(request: Request) {
       telegramEnabled: userData.telegram_notifications,
       telegramId: userData.telegram_id,
       whatsappEnabled: userData.whatsapp_notifications,
-      phone: userData.whatsapp_number,
+      phone: userData.phone_number,
     })
 
-    // Get notification preferences from the new table
-    const { data: notificationPrefs, error: prefsError } = await supabase
-      .from("user_notifications")
+    // Get notification preferences
+    const { data: preferences, error: preferencesError } = await supabase
+      .from("notification_preferences")
       .select("*")
       .eq("user_id", userId)
       .single()
 
-    // Default to user settings if no preferences found
-    const notificationEnabled =
-      notificationPrefs?.enabled ??
-      (userData.telegram_notifications ||
-        userData.whatsapp_notifications_enabled ||
-        userData.email_notifications_enabled)
-
-    const notificationChannel =
-      notificationPrefs?.channel ??
-      userData.notification_channel ??
-      (userData.telegram_notifications ? "telegram" : userData.whatsapp_notifications_enabled ? "whatsapp" : "email")
+    // Default preferences if not set
+    const newMessagesEnabled = preferences ? preferences.new_messages : true
+    console.log("New messages notifications enabled:", newMessagesEnabled)
 
     // If notifications are disabled, return early
-    if (!notificationEnabled) {
-      console.log("Notifications are disabled for this user")
+    if (!newMessagesEnabled) {
+      console.log("New message notifications are disabled for this user")
       return NextResponse.json({
         success: true,
-        message: "Notifications are disabled for this user",
+        message: "New message notifications are disabled for this user",
       })
     }
 
@@ -89,13 +81,14 @@ export async function POST(request: Request) {
       throw new Error(messageError.message)
     }
 
-    // Create notification log using the new structure
+    // Create notification log
     const { data: notificationLog, error: logError } = await supabase
       .from("notification_logs")
       .insert({
         user_id: userId,
         message_id: messageId,
-        channel: notificationChannel, // Use channel instead of notification_type
+        notification_type: type,
+        channel: "pending",
         status: "pending",
         created_at: new Date().toISOString(),
       })
@@ -109,9 +102,9 @@ export async function POST(request: Request) {
 
     // Determine notification channel
     const useWhatsApp =
-      notificationChannel === "whatsapp" && (notificationPrefs?.whatsapp_number || userData.whatsapp_number)
-
-    const useTelegram = notificationChannel === "telegram" && (notificationPrefs?.telegram_id || userData.telegram_id)
+      userData.notification_channel === "whatsapp" && userData.whatsapp_notifications && userData.phone_number
+    const useTelegram =
+      userData.notification_channel === "telegram" && userData.telegram_notifications && userData.telegram_id
 
     console.log("Selected notification channel:", { useWhatsApp, useTelegram })
 
@@ -119,14 +112,21 @@ export async function POST(request: Request) {
     const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${userData.username || userData.numeric_id}`
     console.log("Profile URL for notification:", profileUrl)
 
+    // Update notification channel
+    await supabase
+      .from("notification_logs")
+      .update({
+        channel: useWhatsApp ? "whatsapp" : useTelegram ? "telegram" : "email",
+      })
+      .eq("id", notificationLog.id)
+
     // Send notification based on channel
     if (useWhatsApp) {
       // Send WhatsApp notification
       try {
-        const whatsappNumber = notificationPrefs?.whatsapp_number || userData.whatsapp_number
-        console.log("Sending WhatsApp notification to:", whatsappNumber)
+        console.log("Sending WhatsApp notification to:", userData.phone_number)
         const whatsappResult = await sendWhatsAppNotification({
-          phone: whatsappNumber,
+          phone: userData.phone_number,
           name: userData.name,
           messagePreview: message.content,
           profileUrl,
@@ -145,10 +145,9 @@ export async function POST(request: Request) {
     } else if (useTelegram) {
       // Send Telegram notification
       try {
-        const telegramId = notificationPrefs?.telegram_id || userData.telegram_id
-        console.log("Sending Telegram notification to:", telegramId)
+        console.log("Sending Telegram notification to:", userData.telegram_id)
         const telegramResult = await sendTelegramNotification({
-          telegramId: telegramId,
+          telegramId: userData.telegram_id,
           name: userData.name,
           messagePreview: message.content,
           profileUrl,
