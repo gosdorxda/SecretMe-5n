@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { PremiumClient } from "./client"
 
+// Pastikan halaman ini selalu dirender secara dinamis
+export const dynamic = "force-dynamic"
+
 export default async function PremiumPage({
   searchParams,
 }: {
