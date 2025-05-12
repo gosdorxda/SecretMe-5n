@@ -52,7 +52,10 @@ export const getVerifiedUser = async () => {
     } = await supabase.auth.getSession()
 
     if (sessionError) {
-      console.error("Error getting session:", sessionError)
+      // Jangan log error jika hanya "Auth session missing"
+      if (sessionError.message !== "Auth session missing!") {
+        console.error("Error getting session:", sessionError)
+      }
       return { user: null, error: sessionError }
     }
 
@@ -60,18 +63,39 @@ export const getVerifiedUser = async () => {
       return { user: null, error: "No session" }
     }
 
-    // Verifikasi user dengan getUser()
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      console.error("Error verifying user:", userError)
-      return { user: null, error: userError || "User verification failed" }
+    // Tambahkan pemeriksaan token
+    if (!session.access_token) {
+      return { user: null, error: "Invalid session: no access token" }
     }
 
-    return { user, error: null }
+    try {
+      // Verifikasi user dengan getUser()
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        // Jangan log error jika hanya "Auth session missing"
+        if (userError.message !== "Auth session missing!") {
+          console.error("Error verifying user:", userError)
+        }
+        return { user: null, error: userError }
+      }
+
+      if (!user) {
+        return { user: null, error: "User verification failed" }
+      }
+
+      return { user, error: null }
+    } catch (userError) {
+      // Tangani error dengan lebih baik
+      if (userError instanceof Error && userError.message.includes("Auth session missing")) {
+        return { user: null, error: "Auth session missing" }
+      }
+      console.error("Unexpected error in getUser:", userError)
+      return { user: null, error: "Unexpected error occurred" }
+    }
   } catch (error) {
     console.error("Unexpected error in getVerifiedUser:", error)
     return { user: null, error: "Unexpected error occurred" }

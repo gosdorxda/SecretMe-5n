@@ -70,9 +70,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Gunakan cache lebih agresif
       if (timeSinceLastCheck < THROTTLE_INTERVAL && isAuthCacheValid()) {
-        // console.log(
-        //   `🔄 Auth check throttled (${Math.round(timeSinceLastCheck / 1000)}s < ${THROTTLE_INTERVAL / 1000}s), using cache`,
-        // )
         extendAuthCacheExpiry() // Extend cache expiry
         refreshingRef.current = false
         return
@@ -90,19 +87,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Hanya verifikasi user jika ada session dan belum ada user data
         if (cachedSession && !user) {
           try {
+            // Verifikasi user dengan server auth - TAMBAHKAN PEMERIKSAAN SESI YANG LEBIH KETAT
+            if (!cachedSession.access_token) {
+              console.warn("Skipping user verification: No access token in session")
+              refreshingRef.current = false
+              return
+            }
+
             // Verifikasi user dengan server auth
             const { data: userData, error: userError } = await supabase.auth.getUser()
 
             if (userError) {
-              console.error("Error verifying user:", userError)
+              // Jangan log error jika hanya "Auth session missing"
+              if (userError.message !== "Auth session missing!") {
+                console.error("Error verifying user:", userError)
+              }
+
+              // Jika error adalah "Auth session missing", jangan langsung sign out
+              // Ini mungkin hanya masalah sementara
+              if (userError.message === "Auth session missing!") {
+                console.warn("Auth session missing during verification, will retry later")
+                refreshingRef.current = false
+                return
+              }
+
               await signOut()
               refreshingRef.current = false
               return
             }
 
             if (!userData.user) {
-              console.error("No user data returned from getUser")
-              await signOut()
+              console.warn("No user data returned from getUser")
               refreshingRef.current = false
               return
             }
@@ -110,8 +125,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Update user dengan data yang terverifikasi
             setUser(userData.user)
           } catch (verifyError) {
-            console.error("Error during user verification:", verifyError)
-            await signOut()
+            // Tangani error dengan lebih baik
+            if (verifyError instanceof Error && verifyError.message.includes("Auth session missing")) {
+              console.warn("Auth session missing during verification, will retry later")
+            } else {
+              console.error("Error during user verification:", verifyError)
+              await signOut()
+            }
             refreshingRef.current = false
             return
           }
@@ -125,8 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // No valid cache, fetch from Supabase
-      // console.log("🔄 Fetching fresh auth session from Supabase")
-
       try {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
@@ -148,19 +166,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (sessionData?.session && !user) {
           try {
+            // TAMBAHKAN PEMERIKSAAN SESI YANG LEBIH KETAT
+            if (!sessionData.session.access_token) {
+              console.warn("Skipping user verification: No access token in session")
+              refreshingRef.current = false
+              return
+            }
+
             // Verifikasi user dengan server auth
             const { data: userData, error: userError } = await supabase.auth.getUser()
 
             if (userError) {
-              console.error("Error verifying user:", userError)
+              // Jangan log error jika hanya "Auth session missing"
+              if (userError.message !== "Auth session missing!") {
+                console.error("Error verifying user:", userError)
+              }
+
+              // Jika error adalah "Auth session missing", jangan langsung sign out
+              if (userError.message === "Auth session missing!") {
+                console.warn("Auth session missing during verification, will retry later")
+                refreshingRef.current = false
+                return
+              }
+
               await signOut()
               refreshingRef.current = false
               return
             }
 
             if (!userData.user) {
-              console.error("No user data returned from getUser")
-              await signOut()
+              console.warn("No user data returned from getUser")
               refreshingRef.current = false
               return
             }
@@ -168,8 +203,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Gunakan user yang terverifikasi
             verifiedUser = userData.user
           } catch (verifyError) {
-            console.error("Error during user verification:", verifyError)
-            await signOut()
+            // Tangani error dengan lebih baik
+            if (verifyError instanceof Error && verifyError.message.includes("Auth session missing")) {
+              console.warn("Auth session missing during verification, will retry later")
+            } else {
+              console.error("Error during user verification:", verifyError)
+              await signOut()
+            }
             refreshingRef.current = false
             return
           }
@@ -233,8 +273,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state change listener
     try {
       const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-        // console.log("Auth state changed:", event)
-
         if (mounted) {
           setSession(newSession)
           setUser(newSession?.user ?? null)
@@ -246,13 +284,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // If token was refreshed, update the session
         if (event === "TOKEN_REFRESHED") {
-          // console.log("🔄 Token refreshed successfully")
           cacheAuthSession(newSession)
         }
 
         // Handle sign out
         if (event === "SIGNED_OUT") {
-          // console.log("👋 User signed out")
           clearAuthCache()
         }
       })
@@ -282,7 +318,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Protect routes - optimasi dengan mengurangi re-renders
   useEffect(() => {
     if (!loading && !session && pathname?.startsWith("/dashboard")) {
-      // console.log("🔍 AUTH PROVIDER: Redirecting to login from protected route", pathname)
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
   }, [session, loading, pathname, router])
