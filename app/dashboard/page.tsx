@@ -1,36 +1,50 @@
+import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { DashboardClient } from "./client"
 
-export const dynamic = "force-dynamic"
-
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = createClient(cookies())
 
-  // Dapatkan user terverifikasi
-  const { user, error } = await getVerifiedUser()
-
-  if (error || !user) {
+  // Periksa apakah pengguna sudah login
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) {
     redirect("/login")
   }
 
-  // Ambil data user dari database menggunakan ID yang terverifikasi
-  const { data: userData } = await supabase
+  // Ambil data pengguna
+  const { data: userData, error: userError } = await supabase
     .from("users")
-    .select("*, instagram_url, facebook_url, linkedin_url, tiktok_url")
-    .eq("id", user.id)
+    .select("*")
+    .eq("id", session.user.id)
     .single()
 
-  if (!userData) {
+  if (userError || !userData) {
+    console.error("Error fetching user data:", userError)
     redirect("/login")
   }
 
-  // Ambil pesan
-  const { data: messages } = await supabase
+  // Ambil pesan pengguna
+  const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", session.user.id)
     .order("created_at", { ascending: false })
 
-  return <DashboardClient user={userData} messages={messages || []} />
+  if (messagesError) {
+    console.error("Error fetching messages:", messagesError)
+  }
+
+  // Ambil jumlah view profil
+  const { data: profileViews, error: viewsError } = await supabase
+    .from("profile_views")
+    .select("count")
+    .eq("user_id", session.user.id)
+    .single()
+
+  const viewCount = viewsError ? 0 : profileViews?.count || 0
+
+  return <DashboardClient user={userData} messages={messages || []} viewCount={viewCount} />
 }

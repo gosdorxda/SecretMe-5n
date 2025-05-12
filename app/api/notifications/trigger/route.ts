@@ -23,8 +23,12 @@ export async function POST(request: Request) {
 
     const supabase = createClient(cookies())
 
-    // Get user data
-    const { data: userData, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
+    // Get user data termasuk notifications_enabled
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("*, notifications_enabled")
+      .eq("id", userId)
+      .single()
 
     if (userError) {
       console.error("Error fetching user data:", userError)
@@ -43,25 +47,15 @@ export async function POST(request: Request) {
     console.log("User notification settings:", {
       telegramEnabled: userData.telegram_notifications,
       telegramId: userData.telegram_id,
+      notificationsEnabled: userData.notifications_enabled,
     })
 
-    // Get notification preferences
-    const { data: preferences, error: preferencesError } = await supabase
-      .from("notification_preferences")
-      .select("new_messages")
-      .eq("user_id", userId)
-      .single()
-
-    // Default preferences if not set
-    const newMessagesEnabled = preferences ? preferences.new_messages : true
-    console.log("New messages notifications enabled:", newMessagesEnabled)
-
-    // If notifications are disabled, return early
-    if (!newMessagesEnabled) {
-      console.log("New message notifications are disabled for this user")
+    // Periksa apakah notifikasi diaktifkan
+    if (!userData.notifications_enabled) {
+      console.log("Notifications are disabled for this user")
       return NextResponse.json({
         success: true,
-        message: "New message notifications are disabled for this user",
+        message: "Notifications are disabled for this user",
       })
     }
 

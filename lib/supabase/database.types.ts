@@ -28,7 +28,7 @@ export interface Database {
           notification_channel: string | null
           role: string | null
           last_ip: string | null
-          // Kolom WhatsApp dan email telah dihapus dari database
+          notifications_enabled: boolean // Kolom baru untuk preferensi notifikasi
         }
         Insert: {
           id?: string
@@ -54,7 +54,7 @@ export interface Database {
           notification_channel?: string | null
           role?: string | null
           last_ip?: string | null
-          // Kolom WhatsApp dan email telah dihapus dari database
+          notifications_enabled?: boolean // Kolom baru untuk preferensi notifikasi
         }
         Update: {
           id?: string
@@ -80,7 +80,7 @@ export interface Database {
           notification_channel?: string | null
           role?: string | null
           last_ip?: string | null
-          // Kolom WhatsApp dan email telah dihapus dari database
+          notifications_enabled?: boolean // Kolom baru untuk preferensi notifikasi
         }
       }
       messages: {
