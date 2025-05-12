@@ -2,16 +2,40 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 
+// Support untuk metode GET
 export async function GET(request: Request) {
+  return handlePollConnection(request)
+}
+
+// Support untuk metode POST
+export async function POST(request: Request) {
+  return handlePollConnection(request)
+}
+
+// Fungsi umum untuk menangani polling koneksi
+async function handlePollConnection(request: Request) {
   try {
+    const supabase = createClient(cookies())
+
+    let code: string | null = null
+
+    // Coba dapatkan kode dari URL query string (untuk GET request)
     const url = new URL(request.url)
-    const code = url.searchParams.get("code")
+    code = url.searchParams.get("code")
+
+    // Jika tidak ada di query string, coba dapatkan dari body (untuk POST request)
+    if (!code && request.headers.get("content-type")?.includes("application/json")) {
+      try {
+        const body = await request.json()
+        code = body.code
+      } catch (error) {
+        console.error("Error parsing JSON body:", error)
+      }
+    }
 
     if (!code) {
       return NextResponse.json({ success: false, error: "Code is required" }, { status: 400 })
     }
-
-    const supabase = createClient(cookies())
 
     // Gunakan getUser() untuk autentikasi yang lebih aman
     const {
@@ -63,6 +87,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         success: true,
         connected: !!userData.telegram_id,
+        telegramId: userData.telegram_id,
         telegramNotificationsEnabled: userData.telegram_notifications || false,
       })
     }
