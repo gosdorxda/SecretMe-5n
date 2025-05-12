@@ -2,24 +2,26 @@ import { createClient } from "@supabase/supabase-js"
 import type { NextRequest } from "next/server"
 import type { Database } from "@/lib/supabase/database.types"
 
-// Buat Supabase client yang tidak bergantung pada cookies
-const createDirectClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ""
-
-  return createClient<Database>(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  })
-}
+// Mencegah prerendering statis untuk route ini
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${request.headers.get("host") || "localhost:3000"}`
 
-  // Gunakan direct client yang tidak bergantung pada cookies
-  const supabase = createDirectClient()
+  // Pastikan kunci Supabase tersedia
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase credentials missing:", {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey,
+    })
+    return new Response("Server configuration error", { status: 500 })
+  }
+
+  // Buat Supabase client dengan kunci yang tersedia
+  const supabase = createClient<Database>(supabaseUrl, supabaseKey)
 
   try {
     // Mendapatkan semua pengguna dengan username (untuk profil kustom)
@@ -61,8 +63,8 @@ export async function GET(request: NextRequest) {
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
     <image:image>
-      <image:loc>${baseUrl}/api/og?username=${page.username}&name=${encodeURIComponent(page.name)}</image:loc>
-      <image:title>Profil ${page.name} di SecretMe</image:title>
+      <image:loc>${baseUrl}/api/og?username=${page.username}&name=${encodeURIComponent(page.name || "")}</image:loc>
+      <image:title>Profil ${page.name || "Pengguna"} di SecretMe</image:title>
     </image:image>
   </url>`,
     )
