@@ -9,7 +9,7 @@ let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | n
 
 // Tambahkan throttling untuk permintaan auth
 const authRequestTimestamps: number[] = []
-const AUTH_REQUEST_LIMIT = 10 // Maksimum 10 permintaan
+const AUTH_REQUEST_LIMIT = 5 // Kurangi dari 10 menjadi 5 permintaan
 const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
 
 // Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
@@ -43,7 +43,7 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
     // Jika tidak ada sesi valid tetapi ada token di localStorage
     if (!sessionData?.session && typeof window !== "undefined") {
-      console.log("🔄 Mencoba memperbaiki sesi dari localStorage...")
+      // console.log("🔄 Mencoba memperbaiki sesi dari localStorage...")
 
       // Coba ambil token dari localStorage
       const localStorageData = localStorage.getItem("supabase.auth.token")
@@ -53,7 +53,7 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
           // Jika ada token di localStorage, coba set session secara manual
           if (parsedData?.currentSession?.access_token && parsedData?.currentSession?.refresh_token) {
-            console.log("🔄 Token ditemukan di localStorage, mencoba set session...")
+            // console.log("🔄 Token ditemukan di localStorage, mencoba set session...")
 
             const { error: setSessionError } = await client.auth.setSession({
               access_token: parsedData.currentSession.access_token,
@@ -73,7 +73,7 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
               return false
             }
 
-            console.log("✅ Sesi berhasil diperbaiki dari localStorage")
+            // console.log("✅ Sesi berhasil diperbaiki dari localStorage")
             return true
           }
         } catch (e) {
@@ -102,6 +102,10 @@ if (typeof console !== "undefined" && console.warn) {
     originalConsoleWarn.apply(this, [message, ...args])
   }
 }
+
+// Cache untuk menyimpan hasil auth requests
+const authRequestCache = new Map<string, { data: any; timestamp: number }>()
+const AUTH_CACHE_TTL = 60000 // 1 menit
 
 export const createClient = () => {
   if (!supabaseClient) {
@@ -141,8 +145,23 @@ export const createClient = () => {
               (options?.headers && (options.headers as any)["X-Client-Info"]?.includes("supabase-js"))
 
             if (isAuthRequest) {
+              const urlStr = url.toString()
+              const cacheKey = `${urlStr}-${JSON.stringify(options?.body || {})}`
+
+              // Cek cache untuk request yang sama
+              const cachedResponse = authRequestCache.get(cacheKey)
+              if (cachedResponse && Date.now() - cachedResponse.timestamp < AUTH_CACHE_TTL) {
+                // console.log("🔄 Using cached auth response for:", urlStr)
+                return Promise.resolve(
+                  new Response(JSON.stringify(cachedResponse.data), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                  }),
+                )
+              }
+
               const startTime = performance.now()
-              const endpoint = url.toString().split("/").slice(-2).join("/")
+              const endpoint = urlStr.split("/").slice(-2).join("/")
 
               // Jika perlu throttle, tunda permintaan
               if (shouldThrottleAuthRequest()) {
@@ -177,7 +196,7 @@ export const createClient = () => {
 
               // Lanjutkan dengan permintaan normal
               return fetch(url, options)
-                .then((response) => {
+                .then(async (response) => {
                   const endTime = performance.now()
                   const duration = endTime - startTime
 
@@ -189,6 +208,16 @@ export const createClient = () => {
                     source: "client",
                     cached: false,
                   })
+
+                  // Cache response jika sukses
+                  if (response.ok) {
+                    const clonedResponse = response.clone()
+                    const responseData = await clonedResponse.json()
+                    authRequestCache.set(cacheKey, {
+                      data: responseData,
+                      timestamp: Date.now(),
+                    })
+                  }
 
                   return response
                 })

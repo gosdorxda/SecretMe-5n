@@ -40,8 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshingRef = useRef(false)
   const lastAuthCheckRef = useRef<number>(0)
 
-  // Throttle auth checks to prevent too many requests
-  const THROTTLE_INTERVAL = 10000 // 10 seconds
+  // Meningkatkan interval throttle untuk mengurangi auth requests
+  const THROTTLE_INTERVAL = 60000 // 1 menit (dari 10 detik)
+
+  // Tambahkan flag untuk mencegah multiple auth checks pada initial load
+  const initialAuthCheckDoneRef = useRef(false)
 
   const signOut = useCallback(async () => {
     try {
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, router])
 
-  // Fungsi untuk refresh session data
+  // Fungsi untuk refresh session data dengan optimasi
   const refreshSession = useCallback(async () => {
     if (refreshingRef.current) return
     refreshingRef.current = true
@@ -65,10 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now()
       const timeSinceLastCheck = now - lastAuthCheckRef.current
 
+      // Gunakan cache lebih agresif
       if (timeSinceLastCheck < THROTTLE_INTERVAL && isAuthCacheValid()) {
-        console.log(
-          `🔄 Auth check throttled (${Math.round(timeSinceLastCheck / 1000)}s < ${THROTTLE_INTERVAL / 1000}s), using cache`,
-        )
+        // console.log(
+        //   `🔄 Auth check throttled (${Math.round(timeSinceLastCheck / 1000)}s < ${THROTTLE_INTERVAL / 1000}s), using cache`,
+        // )
         extendAuthCacheExpiry() // Extend cache expiry
         refreshingRef.current = false
         return
@@ -83,14 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // We have a valid cached session or null (meaning no session)
         setSession(cachedSession)
 
-        // Selalu verifikasi user dengan getUser() bahkan jika menggunakan cache
-        if (cachedSession) {
+        // Hanya verifikasi user jika ada session dan belum ada user data
+        if (cachedSession && !user) {
           try {
             // Verifikasi user dengan server auth
             const { data: userData, error: userError } = await supabase.auth.getUser()
 
             if (userError) {
-              // Jika verifikasi gagal, sign out
               console.error("Error verifying user:", userError)
               await signOut()
               refreshingRef.current = false
@@ -112,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             refreshingRef.current = false
             return
           }
-        } else {
+        } else if (!cachedSession) {
           setUser(null)
         }
 
@@ -122,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // No valid cache, fetch from Supabase
-      console.log("🔄 Fetching fresh auth session from Supabase")
+      // console.log("🔄 Fetching fresh auth session from Supabase")
 
       try {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -140,16 +143,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        // Jika ada session, SELALU verifikasi dengan getUser()
-        let verifiedUser = null
+        // Jika ada session, verifikasi user hanya jika belum ada user data
+        let verifiedUser = user
 
-        if (sessionData?.session) {
+        if (sessionData?.session && !user) {
           try {
             // Verifikasi user dengan server auth
             const { data: userData, error: userError } = await supabase.auth.getUser()
 
             if (userError) {
-              // Jika verifikasi gagal, sign out
               console.error("Error verifying user:", userError)
               await signOut()
               refreshingRef.current = false
@@ -189,15 +191,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       refreshingRef.current = false
     }
-  }, [supabase, signOut, router])
+  }, [supabase, signOut, router, user])
 
-  // Fetch session and set up auth listener
+  // Fetch session dan setup auth listener dengan optimasi
   useEffect(() => {
     let mounted = true
     let authSubscription: { unsubscribe: () => void } | undefined = undefined
 
     // Initial session check
     const initializeAuth = async () => {
+      // Hindari multiple initial auth checks
+      if (initialAuthCheckDoneRef.current) return
+      initialAuthCheckDoneRef.current = true
+
       try {
         // Try to get from cache first on initial load
         const cachedSession = getCachedAuthSession()
@@ -207,8 +213,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(cachedSession?.user ?? null)
           setLoading(false)
 
-          // Still refresh in background if we used cache
-          refreshSession()
+          // Refresh in background hanya jika ada session tapi tidak ada user
+          if (cachedSession && !cachedSession.user) {
+            refreshSession()
+          }
           return
         }
 
@@ -225,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state change listener
     try {
       const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-        console.log("Auth state changed:", event)
+        // console.log("Auth state changed:", event)
 
         if (mounted) {
           setSession(newSession)
@@ -238,13 +246,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // If token was refreshed, update the session
         if (event === "TOKEN_REFRESHED") {
-          console.log("🔄 Token refreshed successfully")
+          // console.log("🔄 Token refreshed successfully")
           cacheAuthSession(newSession)
         }
 
         // Handle sign out
         if (event === "SIGNED_OUT") {
-          console.log("👋 User signed out")
+          // console.log("👋 User signed out")
           clearAuthCache()
         }
       })
@@ -271,10 +279,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, refreshSession])
 
-  // Protect routes
+  // Protect routes - optimasi dengan mengurangi re-renders
   useEffect(() => {
     if (!loading && !session && pathname?.startsWith("/dashboard")) {
-      console.log("🔍 AUTH PROVIDER: Redirecting to login from protected route", pathname)
+      // console.log("🔍 AUTH PROVIDER: Redirecting to login from protected route", pathname)
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
   }, [session, loading, pathname, router])
