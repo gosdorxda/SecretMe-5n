@@ -287,7 +287,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   const renderConnectionStatus = () => {
     if (connectionStep === 0) {
       return (
-        <Alert>
+        <Alert className="p-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Belum Terhubung</AlertTitle>
           <AlertDescription>Hubungkan akun Telegram Anda untuk menerima notifikasi pesan baru.</AlertDescription>
@@ -295,7 +295,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
       )
     } else if (connectionStep === 1) {
       return (
-        <Alert>
+        <Alert className="p-4">
           <Loader2 className="h-4 w-4 animate-spin" />
           <AlertTitle>Membuat Kode Koneksi</AlertTitle>
           <AlertDescription>Mohon tunggu sebentar...</AlertDescription>
@@ -303,7 +303,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
       )
     } else if (connectionStep === 2) {
       return (
-        <Alert className="bg-blue-50 border-blue-200">
+        <Alert className="bg-blue-50 border-blue-200 p-4">
           <RefreshCw className="h-4 w-4 text-blue-600 animate-spin" />
           <AlertTitle className="text-blue-800">Menunggu Koneksi</AlertTitle>
           <AlertDescription className="text-blue-700">
@@ -313,7 +313,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
       )
     } else if (connectionStep === 3) {
       return (
-        <Alert className="bg-green-50 border-green-200">
+        <Alert className="bg-green-50 border-green-200 p-4">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">Terhubung</AlertTitle>
           <AlertDescription className="text-green-700">Akun Telegram Anda berhasil terhubung.</AlertDescription>
@@ -323,9 +323,9 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   }
 
   return (
-    <div className="space-y-6 pt-2 md:pt-4">
+    <div className="space-y-4">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="p-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
@@ -334,8 +334,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
 
       {isConnected ? (
         // Tampilan jika sudah terhubung
-        <Card className="mt-2 md:mt-4">
-          <CardHeader className="pb-3 pt-6 relative">
+        <Card className="mt-4">
+          <CardHeader className="pb-4 pt-4 relative">
             <div className="absolute top-3 right-3 bg-green-50 text-green-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 border border-green-100">
               <CheckCircle2 className="h-3 w-3" />
               <span>Aktif</span>
@@ -366,7 +366,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           </CardHeader>
 
           <CardContent className="relative">
-            <div className="p-3 bg-gray-50 rounded-lg border mb-4">
+            <div className="p-4 bg-gray-50 rounded-lg border mb-4">
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
                   <Label htmlFor="telegram-notifications" className="text-base font-medium">
@@ -386,7 +386,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between pt-5 mt-2 border-t">
+          <CardFooter className="flex justify-between pt-4 mt-4 border-t">
             <Button
               variant="outline"
               size="sm"
@@ -447,8 +447,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         </Card>
       ) : (
         // Tampilan jika belum terhubung
-        <Card className="mt-2 md:mt-4">
-          <CardHeader className="pb-3 pt-6">
+        <Card className="mt-4">
+          <CardHeader className="pb-4 pt-4">
             <CardTitle className="text-lg font-medium flex items-center gap-2">
               <div className="flex items-center justify-center bg-blue-50 text-blue-500 p-1.5 rounded-lg">
                 <svg
@@ -532,7 +532,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   </p>
                 </div>
 
-                <div className="rounded-lg border bg-card p-3 space-y-2">
+                <div className="rounded-lg border bg-card p-4 space-y-2">
                   <h4 className="text-sm font-medium">Langkah-langkah Koneksi:</h4>
                   <ol className="text-xs text-muted-foreground space-y-2 list-decimal pl-4">
                     <li className="pb-1">
