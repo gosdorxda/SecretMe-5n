@@ -2,70 +2,90 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    // Get user session
-    const supabase = createClient(cookies())
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Get the code from the request body
-    const { code } = await request.json()
+    const url = new URL(request.url)
+    const code = url.searchParams.get("code")
 
     if (!code) {
       return NextResponse.json({ success: false, error: "Code is required" }, { status: 400 })
     }
 
-    // Check if the user has a telegram_id
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("telegram_id, telegram_notifications")
-      .eq("id", session.user.id)
-      .single()
+    const supabase = createClient(cookies())
 
-    if (userError) {
-      console.error("Error fetching user data:", userError)
-      return NextResponse.json({ success: false, error: "Failed to fetch user data" }, { status: 500 })
+    // Gunakan getUser() untuk autentikasi yang lebih aman
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json(
+        { success: false, error: userError?.message || "User verification failed" },
+        { status: 401 },
+      )
     }
 
-    // Check if the code has been used
+    // Cek status kode koneksi
     const { data: codeData, error: codeError } = await supabase
       .from("telegram_connection_codes")
-      .select("is_used")
+      .select("is_used, expires_at")
       .eq("code", code)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single()
 
     if (codeError) {
       console.error("Error fetching code data:", codeError)
-      return NextResponse.json({ success: false, error: "Failed to fetch code data" }, { status: 500 })
+      return NextResponse.json(
+        { success: false, error: codeError.message || "Failed to fetch code data" },
+        { status: 500 },
+      )
     }
 
-    // If the user has a telegram_id and the code is used, connection is successful
-    if (userData?.telegram_id && codeData?.is_used) {
+    // Cek apakah kode sudah digunakan
+    if (codeData.is_used) {
+      // Cek apakah user memiliki telegram_id
+      const { data: userData, error: userDataError } = await supabase
+        .from("users")
+        .select("telegram_id, telegram_notifications")
+        .eq("id", user.id)
+        .single()
+
+      if (userDataError) {
+        console.error("Error fetching user data:", userDataError)
+        return NextResponse.json(
+          { success: false, error: userDataError.message || "Failed to fetch user data" },
+          { status: 500 },
+        )
+      }
+
       return NextResponse.json({
         success: true,
-        connected: true,
-        telegramId: userData.telegram_id,
-        telegramNotifications: userData.telegram_notifications,
+        connected: !!userData.telegram_id,
+        telegramNotificationsEnabled: userData.telegram_notifications || false,
       })
     }
 
-    // Otherwise, still waiting for connection
+    // Cek apakah kode sudah kadaluwarsa
+    const now = new Date()
+    const expiresAt = new Date(codeData.expires_at)
+
+    if (now > expiresAt) {
+      return NextResponse.json({
+        success: false,
+        expired: true,
+        error: "Code has expired",
+      })
+    }
+
     return NextResponse.json({
       success: true,
       connected: false,
+      pending: true,
     })
   } catch (error: any) {
-    console.error("Error polling connection status:", error)
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to poll connection status" },
-      { status: 500 },
-    )
+    console.error("Error polling connection:", error)
+    return NextResponse.json({ success: false, error: error.message || "Failed to poll connection" }, { status: 500 })
   }
 }

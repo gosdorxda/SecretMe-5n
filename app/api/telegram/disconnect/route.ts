@@ -7,31 +7,46 @@ export async function POST(request: Request) {
   try {
     const supabase = createClient(cookies())
 
-    // Dapatkan session pengguna
+    // Gunakan getUser() untuk autentikasi yang lebih aman
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
-    if (!session) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json(
+        { success: false, error: userError?.message || "User verification failed" },
+        { status: 401 },
+      )
     }
 
-    const userId = session.user.id
-
-    // Dapatkan Telegram ID pengguna sebelum diputuskan
+    // Cek apakah user memiliki telegram_id
     const { data: userData, error: fetchError } = await supabase
       .from("users")
       .select("telegram_id")
-      .eq("id", userId)
+      .eq("id", user.id)
       .single()
 
-    if (fetchError || !userData?.telegram_id) {
-      return NextResponse.json({ success: false, error: "Telegram ID not found" }, { status: 404 })
+    if (fetchError) {
+      console.error("Error fetching user data:", fetchError)
+      return NextResponse.json(
+        { success: false, error: fetchError.message || "Failed to fetch user data" },
+        { status: 500 },
+      )
     }
 
+    if (!userData.telegram_id) {
+      return NextResponse.json(
+        { success: false, error: "User does not have a connected Telegram account" },
+        { status: 400 },
+      )
+    }
+
+    // Simpan telegram_id untuk mengirim pesan disconnection
     const telegramId = userData.telegram_id
 
-    // Update user untuk menghapus Telegram ID
+    // Update user untuk menghapus telegram_id
     const { error: updateError } = await supabase
       .from("users")
       .update({
@@ -39,22 +54,23 @@ export async function POST(request: Request) {
         telegram_notifications: false,
         notification_channel: null,
       })
-      .eq("id", userId)
+      .eq("id", user.id)
 
     if (updateError) {
-      console.error("Error disconnecting Telegram account:", updateError)
-      return NextResponse.json({ success: false, error: updateError.message }, { status: 500 })
+      console.error("Error disconnecting Telegram:", updateError)
+      return NextResponse.json(
+        { success: false, error: updateError.message || "Failed to disconnect Telegram" },
+        { status: 500 },
+      )
     }
 
-    // Kirim notifikasi ke pengguna Telegram bahwa koneksi telah diputus
-    try {
-      await sendDisconnectionMessage(telegramId)
-    } catch (error) {
-      console.error("Error sending disconnection message:", error)
-      // Lanjutkan meskipun gagal mengirim pesan
-    }
+    // Kirim pesan disconnection
+    await sendDisconnectionMessage(telegramId)
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      message: "Telegram disconnected successfully",
+    })
   } catch (error: any) {
     console.error("Error disconnecting Telegram:", error)
     return NextResponse.json(

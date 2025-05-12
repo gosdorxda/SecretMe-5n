@@ -2,39 +2,46 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    // Get user session
     const supabase = createClient(cookies())
+
+    // Gunakan getUser() untuk autentikasi yang lebih aman
     const {
-      data: { session },
-    } = await supabase.auth.getSession()
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
-    if (!session) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return NextResponse.json(
+        { success: false, error: userError?.message || "User verification failed" },
+        { status: 401 },
+      )
     }
 
-    // Parse request body
-    const body = await request.json()
-    const { telegramId } = body
+    // Cek apakah user memiliki telegram_id
+    const { data: userData, error: fetchError } = await supabase
+      .from("users")
+      .select("telegram_id, telegram_notifications")
+      .eq("id", user.id)
+      .single()
 
-    // Validate telegramId
-    if (!telegramId) {
-      return NextResponse.json({ success: false, error: "Telegram ID is required" }, { status: 400 })
+    if (fetchError) {
+      console.error("Error fetching user data:", fetchError)
+      return NextResponse.json(
+        { success: false, error: fetchError.message || "Failed to fetch user data" },
+        { status: 500 },
+      )
     }
 
-    // Check if the Telegram ID exists and is valid
-    // This is a simple check - you might want to add more validation
-    if (telegramId && telegramId.length > 0) {
-      return NextResponse.json({ success: true })
-    } else {
-      return NextResponse.json({ success: false, error: "Invalid Telegram ID" }, { status: 400 })
-    }
+    return NextResponse.json({
+      success: true,
+      connected: !!userData.telegram_id,
+      telegramNotificationsEnabled: userData.telegram_notifications || false,
+    })
   } catch (error: any) {
-    console.error("Error checking Telegram connection:", error)
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to check Telegram connection" },
-      { status: 500 },
-    )
+    console.error("Error checking connection:", error)
+    return NextResponse.json({ success: false, error: error.message || "Failed to check connection" }, { status: 500 })
   }
 }

@@ -29,16 +29,7 @@ export const createClient = () => {
 export const getVerifiedUser = async () => {
   const supabase = createClient()
 
-  // Cek session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) {
-    return { user: null, error: "No session" }
-  }
-
-  // Verifikasi user dengan getUser()
+  // Gunakan getUser() untuk autentikasi yang lebih aman
   const {
     data: { user },
     error: userError,
