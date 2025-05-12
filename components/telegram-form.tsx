@@ -323,7 +323,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-2 md:pt-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -334,35 +334,80 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
 
       {isConnected ? (
         // Tampilan jika sudah terhubung
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="mt-2 md:mt-4">
+          <CardHeader className="pb-3 pt-6 relative">
+            <div className="absolute top-3 right-3 bg-green-50 text-green-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 border border-green-100">
+              <CheckCircle2 className="h-3 w-3" />
+              <span>Aktif</span>
+            </div>
+
             <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              Telegram Terhubung
-            </CardTitle>
-            <CardDescription>Akun Telegram Anda telah terhubung dan siap menerima notifikasi.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between space-x-2">
-              <div className="space-y-0.5">
-                <Label htmlFor="telegram-notifications" className="text-base">
-                  Notifikasi Telegram
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Aktifkan untuk menerima notifikasi pesan baru melalui Telegram
-                </p>
+              <div className="flex items-center justify-center bg-blue-50 text-blue-500 p-1.5 rounded-lg">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m22 2-7 20-4-9-9-4Z" />
+                  <path d="M22 2 11 13" />
+                </svg>
               </div>
-              <Switch
-                id="telegram-notifications"
-                checked={telegramNotifications}
-                onCheckedChange={(checked) => {
-                  updateTelegramNotifications(checked)
-                }}
-              />
+              <span>Telegram Terhubung</span>
+            </CardTitle>
+            <CardDescription>
+              Akun Telegram Anda telah terhubung dan siap menerima notifikasi pesan baru.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="relative">
+            <div className="p-3 bg-gray-50 rounded-lg border mb-4">
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="telegram-notifications" className="text-base font-medium">
+                    Notifikasi Telegram
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Aktifkan untuk menerima notifikasi pesan baru melalui Telegram
+                  </p>
+                </div>
+                <Switch
+                  id="telegram-notifications"
+                  checked={telegramNotifications}
+                  onCheckedChange={(checked) => {
+                    updateTelegramNotifications(checked)
+                  }}
+                />
+              </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between pt-3 border-t">
-            <Button variant="outline" size="sm" onClick={sendTestMessage}>
+          <CardFooter className="flex justify-between pt-5 mt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={sendTestMessage}
+              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mr-1.5 text-blue-500"
+              >
+                <path d="m3 3 3 9-3 9 19-9Z" />
+                <path d="M6 12h16" />
+              </svg>
               Kirim Pesan Uji
             </Button>
             <Button
@@ -370,7 +415,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
               size="sm"
               onClick={disconnectTelegram}
               disabled={isDisconnecting}
-              className="text-red-500 border-red-200 hover:bg-red-50"
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
               {isDisconnecting ? (
                 <>
@@ -378,16 +423,51 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   Memutuskan...
                 </>
               ) : (
-                "Putuskan Koneksi"
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-1.5 text-red-500"
+                  >
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                  Putuskan Koneksi
+                </>
               )}
             </Button>
           </CardFooter>
         </Card>
       ) : (
         // Tampilan jika belum terhubung
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-medium">Hubungkan Telegram</CardTitle>
+        <Card className="mt-2 md:mt-4">
+          <CardHeader className="pb-3 pt-6">
+            <CardTitle className="text-lg font-medium flex items-center gap-2">
+              <div className="flex items-center justify-center bg-blue-50 text-blue-500 p-1.5 rounded-lg">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m22 2-7 20-4-9-9-4Z" />
+                  <path d="M22 2 11 13" />
+                </svg>
+              </div>
+              <span>Hubungkan Telegram</span>
+            </CardTitle>
             <CardDescription>Terima notifikasi pesan baru langsung ke akun Telegram Anda.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -399,7 +479,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   variant="default"
                   onClick={generateConnectionCode}
                   disabled={isGeneratingCode}
-                  className="w-full"
+                  className="w-full bg-blue-500 hover:bg-blue-600"
                 >
                   {isGeneratingCode ? (
                     <>
