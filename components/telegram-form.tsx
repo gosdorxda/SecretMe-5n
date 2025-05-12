@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "@/hooks/use-toast"
-import { AlertCircle, Check, Copy, ExternalLink } from "lucide-react"
+import { AlertCircle, Check, Copy, ExternalLink, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface TelegramFormProps {
@@ -26,6 +26,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   const [codeExpiry, setCodeExpiry] = useState<Date | null>(null)
   const [isConnected, setIsConnected] = useState(!!initialTelegramId)
   const [isCopied, setIsCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
 
   // Efek untuk menetapkan status koneksi Telegram berdasarkan initialTelegramId
@@ -37,16 +38,29 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   // Fungsi untuk menghasilkan kode koneksi Telegram
   async function generateConnectionCode() {
     setIsGeneratingCode(true)
+    setError(null)
+
     try {
+      console.log("Generating connection code...")
+
       const response = await fetch("/api/telegram/generate-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId }),
       })
 
+      console.log("Response status:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Error response:", errorText)
+        throw new Error(`Server error: ${response.status} ${errorText}`)
+      }
+
       const data = await response.json()
+      console.log("Response data:", data)
+
       if (data.success) {
         setConnectionCode(data.code)
         setCodeExpiry(new Date(data.expiresAt))
@@ -58,6 +72,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         throw new Error(data.error || "Gagal membuat kode koneksi")
       }
     } catch (error: any) {
+      console.error("Error generating code:", error)
+      setError(error.message || "Gagal membuat kode koneksi")
       toast({
         title: "Error",
         description: error.message || "Gagal membuat kode koneksi",
@@ -71,14 +87,21 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   // Fungsi untuk memverifikasi koneksi Telegram
   async function verifyConnection() {
     setIsVerifying(true)
+    setError(null)
+
     try {
       const response = await fetch("/api/telegram/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId, code: connectionCode }),
+        body: JSON.stringify({ code: connectionCode }),
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Server error: ${response.status} ${errorText}`)
+      }
 
       const data = await response.json()
       if (data.success) {
@@ -102,6 +125,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         throw new Error(data.error || "Verifikasi gagal. Pastikan Anda telah mengirim kode ke bot Telegram.")
       }
     } catch (error: any) {
+      console.error("Error verifying connection:", error)
+      setError(error.message || "Gagal memverifikasi koneksi")
       toast({
         title: "Error",
         description: error.message || "Gagal memverifikasi koneksi",
@@ -115,6 +140,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   // Fungsi untuk memutuskan koneksi Telegram
   async function disconnectTelegram() {
     setIsDisconnecting(true)
+    setError(null)
+
     try {
       const response = await fetch("/api/telegram/disconnect", {
         method: "POST",
@@ -123,6 +150,11 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         },
         body: JSON.stringify({ userId }),
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Server error: ${response.status} ${errorText}`)
+      }
 
       const data = await response.json()
       if (data.success) {
@@ -141,6 +173,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         throw new Error(data.error || "Gagal memutuskan koneksi")
       }
     } catch (error: any) {
+      console.error("Error disconnecting:", error)
+      setError(error.message || "Gagal memutuskan koneksi")
       toast({
         title: "Error",
         description: error.message || "Gagal memutuskan koneksi",
@@ -183,6 +217,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         description: enabled ? "Notifikasi Telegram telah diaktifkan" : "Notifikasi Telegram telah dinonaktifkan",
       })
     } catch (error: any) {
+      console.error("Error updating notifications:", error)
+      setError(error.message || "Gagal memperbarui pengaturan notifikasi")
       toast({
         title: "Error",
         description: error.message || "Gagal memperbarui pengaturan notifikasi",
@@ -193,6 +229,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
 
   // Fungsi untuk mengirim pesan uji
   async function sendTestMessage() {
+    setError(null)
     try {
       const response = await fetch("/api/telegram/test", {
         method: "POST",
@@ -201,6 +238,11 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         },
         body: JSON.stringify({ userId }),
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Server error: ${response.status} ${errorText}`)
+      }
 
       const data = await response.json()
       if (data.success) {
@@ -212,6 +254,8 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         throw new Error(data.error || "Gagal mengirim pesan uji")
       }
     } catch (error: any) {
+      console.error("Error sending test message:", error)
+      setError(error.message || "Gagal mengirim pesan uji")
       toast({
         title: "Error",
         description: error.message || "Gagal mengirim pesan uji",
@@ -222,6 +266,14 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
 
   return (
     <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {isConnected ? (
         // Tampilan jika sudah terhubung
         <div className="space-y-4">
@@ -262,7 +314,14 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
               disabled={isDisconnecting}
               className="text-xs text-red-500 border-red-200 hover:bg-red-50"
             >
-              {isDisconnecting ? "Memutuskan..." : "Putuskan Koneksi"}
+              {isDisconnecting ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  Memutuskan...
+                </>
+              ) : (
+                "Putuskan Koneksi"
+              )}
             </Button>
           </div>
         </div>
@@ -278,7 +337,14 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Button variant="default" size="sm" onClick={generateConnectionCode} disabled={isGeneratingCode}>
-                {isGeneratingCode ? "Membuat Kode..." : "Buat Kode Koneksi"}
+                {isGeneratingCode ? (
+                  <>
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    Membuat Kode...
+                  </>
+                ) : (
+                  "Buat Kode Koneksi"
+                )}
               </Button>
               <a
                 href="https://t.me/SecretMeNotifBot"
@@ -327,7 +393,14 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   <li>Klik tombol "Verifikasi Koneksi" di bawah</li>
                 </ol>
                 <Button variant="default" onClick={verifyConnection} disabled={isVerifying} className="w-full mt-2">
-                  {isVerifying ? "Memverifikasi..." : "Verifikasi Koneksi"}
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Memverifikasi...
+                    </>
+                  ) : (
+                    "Verifikasi Koneksi"
+                  )}
                 </Button>
               </div>
             )}
