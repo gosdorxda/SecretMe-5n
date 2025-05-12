@@ -88,6 +88,21 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
   return false
 }
 
+// Menekan peringatan Supabase tentang getSession
+const originalConsoleWarn = console.warn
+if (typeof console !== "undefined" && console.warn) {
+  console.warn = function (message, ...args) {
+    // Menekan peringatan spesifik dari Supabase
+    if (
+      typeof message === "string" &&
+      message.includes("Using the user object as returned from supabase.auth.getSession()")
+    ) {
+      return
+    }
+    originalConsoleWarn.apply(this, [message, ...args])
+  }
+}
+
 export const createClient = () => {
   if (!supabaseClient) {
     supabaseClient = createClientComponentClient<Database>({
@@ -200,20 +215,6 @@ export const createClient = () => {
         },
       },
     })
-
-    // Tambahkan logging untuk getSession
-    const originalGetSession = supabaseClient.auth.getSession
-    supabaseClient.auth.getSession = async function () {
-      console.log("🔍 CLIENT getSession dipanggil dari:", new Error().stack)
-      return originalGetSession.apply(this, arguments)
-    }
-
-    // Tambahkan logging untuk getUser
-    const originalGetUser = supabaseClient.auth.getUser
-    supabaseClient.auth.getUser = async function () {
-      console.log("🔍 CLIENT getUser dipanggil dari:", new Error().stack)
-      return originalGetUser.apply(this, arguments)
-    }
 
     // Coba perbaiki sesi jika diperlukan
     repairSessionIfNeeded(supabaseClient)

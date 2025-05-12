@@ -2,10 +2,25 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 
+// Menekan peringatan Supabase tentang getSession
+const originalConsoleWarn = console.warn
+if (typeof console !== "undefined" && console.warn) {
+  console.warn = function (message, ...args) {
+    // Menekan peringatan spesifik dari Supabase
+    if (
+      typeof message === "string" &&
+      message.includes("Using the user object as returned from supabase.auth.getSession()")
+    ) {
+      return
+    }
+    originalConsoleWarn.apply(this, [message, ...args])
+  }
+}
+
 // Server-side Supabase client
 export const createClient = () => {
   const cookieStore = cookies()
-  const supabase = createServerComponentClient<Database>({
+  return createServerComponentClient<Database>({
     cookies: () => cookieStore,
     options: {
       auth: {
@@ -23,22 +38,6 @@ export const createClient = () => {
       },
     },
   })
-
-  // Tambahkan logging untuk getSession
-  const originalGetSession = supabase.auth.getSession
-  supabase.auth.getSession = async function () {
-    console.log("🔍 SERVER getSession dipanggil dari:", new Error().stack)
-    return originalGetSession.apply(this, arguments)
-  }
-
-  // Tambahkan logging untuk getUser
-  const originalGetUser = supabase.auth.getUser
-  supabase.auth.getUser = async function () {
-    console.log("🔍 SERVER getUser dipanggil dari:", new Error().stack)
-    return originalGetUser.apply(this, arguments)
-  }
-
-  return supabase
 }
 
 // Fungsi helper untuk mendapatkan user terverifikasi
