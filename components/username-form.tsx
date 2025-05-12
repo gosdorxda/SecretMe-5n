@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { Check, X, Loader2 } from "lucide-react"
+// Tambahkan import untuk isReservedUsername
+import { isReservedUsername } from "@/lib/reserved-usernames"
 
 interface UsernameFormProps {
   userId: string
@@ -43,6 +45,12 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
     // Validasi format username
     const usernameRegex = /^[a-z0-9_-]+$/
     if (!usernameRegex.test(username)) {
+      setIsAvailable(false)
+      return
+    }
+
+    // Tambahkan validasi reserved username
+    if (isReservedUsername(username)) {
       setIsAvailable(false)
       return
     }
@@ -96,6 +104,16 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
       toast({
         title: "Format username tidak valid",
         description: "Username hanya boleh berisi huruf kecil, angka, underscore (_) dan dash (-)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Tambahkan validasi reserved username
+    if (isReservedUsername(username)) {
+      toast({
+        title: "Username tidak tersedia",
+        description: "Username ini dicadangkan untuk sistem dan tidak dapat digunakan",
         variant: "destructive",
       })
       return
