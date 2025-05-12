@@ -13,6 +13,7 @@ import { SocialMediaForm } from "@/components/social-media-form"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { TelegramForm } from "@/components/telegram-form"
 import type { Database } from "@/lib/supabase/database.types"
+import { WhatsAppForm } from "@/components/whatsapp-form"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 
@@ -387,6 +388,9 @@ export function ProfileTab({ user }: ProfileTabProps) {
                   initialTelegramNotifications={user.telegram_notifications || false}
                 />
               </div>
+
+              {/* WhatsApp Notification Card */}
+              <WhatsAppForm userId={user.id} />
             </div>
           </div>
         ) : (

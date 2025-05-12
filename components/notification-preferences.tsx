@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { TelegramForm } from "@/components/telegram-form"
 import { Bell, MessageCircle } from "lucide-react"
+import { WhatsAppForm } from "@/components/whatsapp-form"
 
 interface NotificationPreferencesProps {
   userId: string
@@ -120,6 +121,9 @@ export function NotificationPreferences({
           />
         </CardContent>
       </Card>
+
+      {/* WhatsApp Settings */}
+      <WhatsAppForm userId={userId} />
     </div>
   )
 }
