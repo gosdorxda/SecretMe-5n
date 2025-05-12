@@ -184,6 +184,47 @@ export const createClient = () => {
               url.toString().includes("/auth/") ||
               (options?.headers && (options.headers as any)["X-Client-Info"]?.includes("supabase-js"))
 
+            // Khusus untuk logout, jangan throttle dan pastikan respons valid
+            const isLogoutRequest =
+              url.toString().includes("/logout") ||
+              (options?.method === "POST" && url.toString().includes("/auth/v1/logout"))
+
+            if (isLogoutRequest) {
+              // Untuk logout, selalu berikan respons valid
+              return fetch(url, options)
+                .then(async (response) => {
+                  // Jika respons kosong atau tidak valid, berikan respons default
+                  if (!response.ok || response.status === 204) {
+                    return new Response(JSON.stringify({ error: null }), {
+                      status: 200,
+                      headers: { "Content-Type": "application/json" },
+                    })
+                  }
+
+                  try {
+                    // Coba parse respons untuk memastikan valid
+                    const clone = response.clone()
+                    await clone.json()
+                    return response
+                  } catch (e) {
+                    // Jika parsing gagal, berikan respons default
+                    console.warn("Invalid JSON in logout response, providing default")
+                    return new Response(JSON.stringify({ error: null }), {
+                      status: 200,
+                      headers: { "Content-Type": "application/json" },
+                    })
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error during logout:", error)
+                  // Berikan respons default untuk mencegah error
+                  return new Response(JSON.stringify({ error: null }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                  })
+                })
+            }
+
             if (isAuthRequest) {
               const urlStr = url.toString()
               const cacheKey = `${urlStr}-${JSON.stringify(options?.body || {})}`
@@ -294,12 +335,16 @@ export const createClient = () => {
 
                   // Cache response jika sukses
                   if (response.ok) {
-                    const clonedResponse = response.clone()
-                    const responseData = await clonedResponse.json()
-                    authRequestCache.set(cacheKey, {
-                      data: responseData,
-                      timestamp: Date.now(),
-                    })
+                    try {
+                      const clonedResponse = response.clone()
+                      const responseData = await clonedResponse.json()
+                      authRequestCache.set(cacheKey, {
+                        data: responseData,
+                        timestamp: Date.now(),
+                      })
+                    } catch (e) {
+                      console.warn("Failed to cache response:", e)
+                    }
                   }
 
                   return response

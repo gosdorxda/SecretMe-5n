@@ -13,12 +13,6 @@ import {
   isAuthCacheValid,
   extendAuthCacheExpiry,
 } from "@/lib/auth-cache"
-import { patchSupabaseSDK } from "@/lib/supabase/patch"
-
-// Patch Supabase SDK untuk mencegah loop refresh token
-if (typeof window !== "undefined") {
-  patchSupabaseSDK()
-}
 
 type AuthContextType = {
   session: Session | null
@@ -59,13 +53,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut()
+      // Bersihkan state dan cache terlebih dahulu
       clearAuthCache()
       setSession(null)
       setUser(null)
-      router.push("/login") // Redirect to login page after sign out
+
+      // Hapus token dari localStorage untuk mencegah error
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("supabase.auth.token")
+      }
+
+      try {
+        // Coba sign out dari Supabase
+        await supabase.auth.signOut()
+      } catch (signOutError) {
+        // Jika gagal, log error tapi tetap lanjutkan
+        console.warn("Error during signOut API call:", signOutError)
+      }
+
+      // Redirect ke login page
+      router.push("/login")
+      router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
+
+      // Jika terjadi error, tetap redirect ke login
+      router.push("/login")
+      router.refresh()
     }
   }, [supabase, router])
 
