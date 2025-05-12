@@ -5,45 +5,42 @@ import { sendTestMessage } from "@/lib/telegram/service"
 
 export async function POST(request: Request) {
   try {
+    // Get user session
     const supabase = createClient(cookies())
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    // Gunakan getUser() untuk autentikasi yang lebih aman
+    if (!session) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Verifikasi user dengan getUser() yang lebih aman
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      console.error("Error verifying user:", userError)
-      return NextResponse.json(
-        { success: false, error: userError?.message || "User verification failed" },
-        { status: 401 },
-      )
+      return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
     }
 
-    // Cek apakah user memiliki telegram_id
-    const { data: userData, error: fetchError } = await supabase
+    // Get user data
+    const { data: userData, error: userError2 } = await supabase
       .from("users")
-      .select("telegram_id, name")
-      .eq("id", user.id)
+      .select("name, telegram_id")
+      .eq("id", session.user.id)
       .single()
 
-    if (fetchError) {
-      console.error("Error fetching user data:", fetchError)
-      return NextResponse.json(
-        { success: false, error: fetchError.message || "Failed to fetch user data" },
-        { status: 500 },
-      )
+    if (userError2 || !userData) {
+      throw new Error(userError2?.message || "User not found")
     }
 
     if (!userData.telegram_id) {
-      return NextResponse.json(
-        { success: false, error: "User does not have a connected Telegram account" },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: "Telegram ID not set" }, { status: 400 })
     }
 
-    // Kirim pesan test
+    // Send test message
     await sendTestMessage(userData.telegram_id, userData.name)
 
     return NextResponse.json({

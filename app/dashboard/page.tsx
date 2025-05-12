@@ -6,23 +6,23 @@ import { DashboardClient } from "./client"
 export default async function DashboardPage() {
   const supabase = createClient(cookies())
 
-  // Gunakan getUser() yang lebih aman daripada getSession()
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-
-  if (userError || !userData.user) {
-    console.error("Error fetching user data:", userError)
+  // Periksa apakah pengguna sudah login
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) {
     redirect("/login")
   }
 
-  // Ambil data pengguna dari database
-  const { data: userProfile, error: profileError } = await supabase
+  // Ambil data pengguna
+  const { data: userData, error: userError } = await supabase
     .from("users")
     .select("*")
-    .eq("id", userData.user.id)
+    .eq("id", session.user.id)
     .single()
 
-  if (profileError || !userProfile) {
-    console.error("Error fetching user profile:", profileError)
+  if (userError || !userData) {
+    console.error("Error fetching user data:", userError)
     redirect("/login")
   }
 
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select("*")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", session.user.id)
     .order("created_at", { ascending: false })
 
   if (messagesError) {
@@ -41,10 +41,10 @@ export default async function DashboardPage() {
   const { data: profileViews, error: viewsError } = await supabase
     .from("profile_views")
     .select("count")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", session.user.id)
     .single()
 
   const viewCount = viewsError ? 0 : profileViews?.count || 0
 
-  return <DashboardClient user={userProfile} messages={messages || []} viewCount={viewCount} />
+  return <DashboardClient user={userData} messages={messages || []} viewCount={viewCount} />
 }

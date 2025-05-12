@@ -30,15 +30,6 @@ const AuthContext = createContext<AuthContextType>({
   refreshSession: async () => {},
 })
 
-// Daftar rute yang memerlukan autentikasi
-const PROTECTED_ROUTES = ["/dashboard", "/premium", "/settings"]
-
-// Fungsi untuk memeriksa apakah rute saat ini memerlukan autentikasi
-function isProtectedRoute(pathname: string | null): boolean {
-  if (!pathname) return false
-  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -48,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const refreshingRef = useRef(false)
   const lastAuthCheckRef = useRef<number>(0)
-  const isCurrentRouteProtected = isProtectedRoute(pathname)
 
   // Throttle auth checks to prevent too many requests
   const THROTTLE_INTERVAL = 10000 // 10 seconds
@@ -56,16 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Custom sign out function to handle redirects and state cleanup
   const signOut = async () => {
     try {
-      // Tambahkan pengecekan session sebelum logout
-      const { data: userData } = await supabase.auth.getUser()
-
-      if (userData?.user) {
-        await supabase.auth.signOut()
-      } else {
-        console.log("No active session found, clearing state only")
-      }
-
-      // Selalu bersihkan state lokal terlepas dari hasil API
+      await supabase.auth.signOut()
       setSession(null)
       setUser(null)
       clearAuthCache() // Clear auth cache on sign out
@@ -75,14 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Error signing out:", error)
-      // Tetap bersihkan state dan redirect meskipun ada error
-      setSession(null)
-      setUser(null)
-      clearAuthCache()
-
-      if (pathname?.startsWith("/dashboard")) {
-        router.push("/login")
-      }
     }
   }
 
@@ -107,81 +80,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       lastAuthCheckRef.current = now
 
-      // Periksa apakah ada sesi di localStorage sebelum mencoba getUser
-      // Ini mencegah error "Auth session missing" di halaman publik
-      const hasLocalStorageSession =
-        typeof window !== "undefined" && localStorage.getItem("supabase.auth.token") !== null
-
-      // Jika ini bukan rute yang dilindungi dan tidak ada sesi di localStorage,
-      // kita tidak perlu memverifikasi sesi
-      if (!isCurrentRouteProtected && !hasLocalStorageSession) {
-        setSession(null)
-        setUser(null)
-        setLoading(false)
-        refreshingRef.current = false
-        return
-      }
-
-      // Coba dapatkan sesi dari cache terlebih dahulu
+      // Try to get session from cache first
       const cachedSession = getCachedAuthSession()
 
-      // Jika tidak ada sesi di cache dan ini bukan rute yang dilindungi,
-      // kita tidak perlu memverifikasi dengan server
-      if (cachedSession === null && !isCurrentRouteProtected) {
-        setSession(null)
-        setUser(null)
+      if (cachedSession !== undefined) {
+        // We have a valid cached session or null (meaning no session)
+        setSession(cachedSession)
+
+        // Selalu verifikasi user dengan getUser() bahkan jika menggunakan cache
+        if (cachedSession) {
+          // Verifikasi user dengan server auth
+          const { data: userData, error: userError } = await supabase.auth.getUser()
+          if (!userError && userData.user) {
+            // Update user dengan data yang terverifikasi
+            setUser(userData.user)
+          } else if (userError) {
+            // Jika verifikasi gagal, sign out
+            console.error("Error verifying user:", userError)
+            await signOut()
+          }
+        } else {
+          setUser(null)
+        }
+
         setLoading(false)
         refreshingRef.current = false
         return
       }
 
-      // Hanya lakukan getUser jika ada indikasi bahwa pengguna mungkin login
-      // atau jika ini adalah rute yang dilindungi
-      if (hasLocalStorageSession || isCurrentRouteProtected || cachedSession) {
+      // No valid cache, fetch from Supabase
+      console.log("🔄 Fetching fresh auth session from Supabase")
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error("Error getting session:", sessionError)
+
+        // Handle refresh token errors by signing out
+        if (sessionError.message?.includes("refresh_token_already_used") || sessionError.name === "AuthApiError") {
+          console.log("🔄 Auth token error detected, signing out and resetting state")
+          await signOut()
+        }
+
+        refreshingRef.current = false
+        return
+      }
+
+      // Jika ada session, SELALU verifikasi dengan getUser()
+      let verifiedUser = null
+
+      if (sessionData?.session) {
+        // Verifikasi user dengan server auth
         const { data: userData, error: userError } = await supabase.auth.getUser()
-
-        if (userError) {
-          // Jangan log error untuk halaman publik jika error adalah "Auth session missing"
-          if (isCurrentRouteProtected || !userError.message?.includes("Auth session missing")) {
-            console.error("Error verifying user:", userError)
-          }
-
-          // Jika error autentikasi, bersihkan state
-          if (
-            userError.message?.includes("Auth session missing") ||
-            userError.name === "AuthApiError" ||
-            userError.message?.includes("refresh_token")
-          ) {
-            setSession(null)
-            setUser(null)
-            clearAuthCache()
-          }
-
-          setLoading(false)
+        if (!userError && userData.user) {
+          // Gunakan user yang terverifikasi
+          verifiedUser = userData.user
+        } else if (userError) {
+          // Jika verifikasi gagal, sign out
+          console.error("Error verifying user:", userError)
+          await signOut()
           refreshingRef.current = false
           return
         }
-
-        // Jika user terverifikasi, dapatkan session lengkap
-        if (userData.user) {
-          // Gunakan getSession hanya untuk mendapatkan token, bukan data user
-          const { data: sessionData } = await supabase.auth.getSession()
-          setSession(sessionData?.session || null)
-          // Gunakan data user dari getUser yang lebih aman
-          setUser(userData.user)
-          cacheAuthSession(sessionData?.session || null)
-        } else {
-          // Tidak ada user yang terautentikasi
-          setSession(null)
-          setUser(null)
-          cacheAuthSession(null)
-        }
-      } else {
-        // Tidak ada indikasi login, set state ke null
-        setSession(null)
-        setUser(null)
       }
 
+      // Cache the session data
+      cacheAuthSession(sessionData?.session ?? null)
+
+      setSession(sessionData?.session ?? null)
+      setUser(verifiedUser)
       setLoading(false)
     } catch (error) {
       console.error("Unexpected error refreshing session:", error)
@@ -189,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       refreshingRef.current = false
     }
-  }, [supabase, isCurrentRouteProtected])
+  }, [supabase])
 
   // Fetch session and set up auth listener
   useEffect(() => {
@@ -203,29 +169,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const cachedSession = getCachedAuthSession()
 
         if (cachedSession !== undefined && mounted) {
-          // Jika menggunakan cache, tetap verifikasi user dengan getUser
-          if (cachedSession) {
-            try {
-              const { data: userData } = await supabase.auth.getUser()
-              if (userData?.user) {
-                setUser(userData.user) // Gunakan data user dari getUser yang lebih aman
-              } else {
-                // Jika getUser gagal memverifikasi, bersihkan cache
-                clearAuthCache()
-                setSession(null)
-                setUser(null)
-              }
-            } catch (e) {
-              console.error("Error verifying cached user:", e)
-              clearAuthCache()
-              setSession(null)
-              setUser(null)
-            }
-          } else {
-            setSession(null)
-            setUser(null)
-          }
-
+          setSession(cachedSession)
+          setUser(cachedSession?.user ?? null)
           setLoading(false)
 
           // Still refresh in background if we used cache
@@ -245,37 +190,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up auth state change listener
     try {
-      const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
         console.log("Auth state changed:", event)
 
         if (mounted) {
-          // Untuk event yang mengubah state auth, verifikasi dengan getUser
-          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-            try {
-              // Verifikasi user dengan getUser yang lebih aman
-              const { data: userData } = await supabase.auth.getUser()
-              if (userData?.user) {
-                setSession(newSession)
-                setUser(userData.user) // Gunakan data user dari getUser
-                cacheAuthSession(newSession)
-              }
-            } catch (e) {
-              console.error(`Error verifying user after ${event}:`, e)
-            }
-          } else {
-            // Untuk event lain (SIGNED_OUT), cukup update state
-            setSession(newSession)
-            setUser(newSession?.user ?? null)
-
-            // Update cache when auth state changes
-            if (event === "SIGNED_OUT") {
-              clearAuthCache()
-            } else {
-              cacheAuthSession(newSession)
-            }
-          }
-
+          setSession(newSession)
+          setUser(newSession?.user ?? null)
           setLoading(false)
+
+          // Update cache when auth state changes
+          cacheAuthSession(newSession)
+        }
+
+        // If token was refreshed, update the session
+        if (event === "TOKEN_REFRESHED") {
+          console.log("🔄 Token refreshed successfully")
+          cacheAuthSession(newSession)
         }
 
         // Handle sign out

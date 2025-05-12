@@ -34,14 +34,6 @@ function storeAuthRequestLog(log: AuthRequestLog) {
   // Untuk implementasi produksi, kirim log ke endpoint API
 }
 
-// Daftar rute yang memerlukan autentikasi
-const PROTECTED_ROUTES = ["/dashboard", "/premium", "/settings"]
-
-// Fungsi untuk memeriksa apakah rute saat ini memerlukan autentikasi
-function isProtectedRoute(pathname: string): boolean {
-  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route))
-}
-
 export async function middleware(req: NextRequest) {
   // Jangan jalankan middleware untuk rute statis atau auth callback
   if (
@@ -54,10 +46,10 @@ export async function middleware(req: NextRequest) {
   }
 
   // Cek apakah ini adalah rute yang memerlukan auth
-  const isCurrentRouteProtected = isProtectedRoute(req.nextUrl.pathname)
+  const isProtectedRoute = req.nextUrl.pathname.startsWith("/dashboard")
 
   // Jika bukan rute yang dilindungi, lewati pengecekan auth
-  if (!isCurrentRouteProtected) {
+  if (!isProtectedRoute) {
     return NextResponse.next()
   }
 
@@ -121,7 +113,7 @@ export async function middleware(req: NextRequest) {
 
       // If token refresh error, redirect to login for protected routes
       if (
-        isCurrentRouteProtected &&
+        isProtectedRoute &&
         (error.message?.includes("refresh_token_already_used") || error.name === "AuthApiError")
       ) {
         console.log("❌ MIDDLEWARE: Auth token error, redirecting to login")
@@ -139,7 +131,7 @@ export async function middleware(req: NextRequest) {
     console.log("🔍 MIDDLEWARE: Session exists?", !!sessionData.session)
 
     // Protect dashboard route
-    if (isCurrentRouteProtected) {
+    if (isProtectedRoute) {
       console.log("🔍 MIDDLEWARE: Checking auth for protected route:", req.nextUrl.pathname)
 
       if (!sessionData.session || !userData?.user) {
@@ -204,7 +196,7 @@ export async function middleware(req: NextRequest) {
     })
 
     // For protected routes, redirect to login on error
-    if (isCurrentRouteProtected) {
+    if (isProtectedRoute) {
       const redirectUrl = new URL("/login", req.url)
       redirectUrl.searchParams.set("redirect", req.nextUrl.pathname)
       redirectUrl.searchParams.set("error", "auth_error")

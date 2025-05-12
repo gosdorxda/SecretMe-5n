@@ -31,7 +31,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   const [isPolling, setIsPolling] = useState(false)
   const [progress, setProgress] = useState(0)
   const [connectionStep, setConnectionStep] = useState(0)
-  const [pollFailCount, setPollFailCount] = useState(0) // Track polling failures
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
@@ -58,7 +57,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     setIsGeneratingCode(true)
     setError(null)
     setConnectionStep(1)
-    setPollFailCount(0)
 
     try {
       const response = await fetch("/api/telegram/generate-code", {
@@ -105,7 +103,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   function startPolling(code: string) {
     setIsPolling(true)
     setProgress(0)
-    setPollFailCount(0)
 
     // Mulai progress bar animation
     progressIntervalRef.current = setInterval(() => {
@@ -116,39 +113,30 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
       })
     }, 1000)
 
-    // Fungsi polling yang akan digunakan
-    const pollConnection = async () => {
+    // Mulai polling untuk memeriksa status koneksi
+    pollingIntervalRef.current = setInterval(async () => {
       try {
-        // Gunakan URLSearchParams untuk query string
-        const params = new URLSearchParams({ code })
-
-        const response = await fetch(`/api/telegram/poll-connection?${params.toString()}`, {
-          method: "GET",
+        const response = await fetch("/api/telegram/poll-connection", {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Cache-Control": "no-cache, no-store",
-            Pragma: "no-cache",
           },
-          cache: "no-store",
+          body: JSON.stringify({ code }),
         })
 
         if (!response.ok) {
-          setPollFailCount((prev) => prev + 1)
           throw new Error("Gagal memeriksa status koneksi")
         }
 
         const data = await response.json()
 
-        // Reset fail counter on success
-        setPollFailCount(0)
-
         if (data.success && data.connected) {
           // Koneksi berhasil
-          setTelegramId(data.telegramId || "")
+          setTelegramId(data.telegramId)
           setIsConnected(true)
           setConnectionCode("")
           setCodeExpiry(null)
-          setTelegramNotifications(data.telegramNotificationsEnabled || false)
+          setTelegramNotifications(data.telegramNotifications)
           setConnectionStep(3)
           setProgress(100)
 
@@ -166,49 +154,11 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
             title: "Berhasil",
             description: "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
           })
-        } else if (data.expired) {
-          // Kode sudah kadaluwarsa
-          setError("Kode koneksi telah kadaluwarsa. Silakan buat kode baru.")
-          stopPolling()
-          setConnectionStep(0)
-          toast({
-            title: "Kode kadaluwarsa",
-            description: "Kode koneksi telah kadaluwarsa. Silakan buat kode baru.",
-            variant: "destructive",
-          })
         }
       } catch (error) {
         console.error("Polling error:", error)
-
-        // Jika terlalu banyak kegagalan, hentikan polling
-        if (pollFailCount >= 5) {
-          stopPolling()
-          setError("Gagal memeriksa status koneksi. Silakan coba lagi.")
-          toast({
-            title: "Error koneksi",
-            description: "Gagal memeriksa status koneksi. Silakan coba lagi.",
-            variant: "destructive",
-          })
-        }
       }
-    }
-
-    // Panggil polling pertama kali secara langsung
-    pollConnection()
-
-    // Kemudian atur interval
-    pollingIntervalRef.current = setInterval(pollConnection, 3000) // Periksa setiap 3 detik
-  }
-
-  // Function to stop polling
-  function stopPolling() {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-    }
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current)
-    }
-    setIsPolling(false)
+    }, 3000) // Periksa setiap 3 detik
   }
 
   // Fungsi untuk memutuskan koneksi Telegram
@@ -222,6 +172,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ userId }),
       })
 
       if (!response.ok) {
@@ -304,6 +255,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ userId }),
       })
 
       if (!response.ok) {
@@ -328,57 +280,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         description: error.message || "Gagal mengirim pesan uji",
         variant: "destructive",
       })
-    }
-  }
-
-  // Fungsi untuk memeriksa status koneksi secara manual
-  async function checkConnectionStatus() {
-    if (!connectionCode) return
-
-    setError(null)
-    try {
-      const params = new URLSearchParams({ code: connectionCode })
-      const response = await fetch(`/api/telegram/poll-connection?${params.toString()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store",
-          Pragma: "no-cache",
-        },
-        cache: "no-store",
-      })
-
-      if (!response.ok) {
-        throw new Error("Gagal memeriksa status koneksi")
-      }
-
-      const data = await response.json()
-
-      if (data.success && data.connected) {
-        // Koneksi berhasil
-        setTelegramId(data.telegramId || "")
-        setIsConnected(true)
-        setConnectionCode("")
-        setCodeExpiry(null)
-        setTelegramNotifications(data.telegramNotificationsEnabled || false)
-        setConnectionStep(3)
-        setProgress(100)
-        stopPolling()
-
-        toast({
-          title: "Berhasil",
-          description: "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
-        })
-      } else if (data.expired) {
-        setError("Kode koneksi telah kadaluwarsa. Silakan buat kode baru.")
-        stopPolling()
-        setConnectionStep(0)
-      } else {
-        setError("Belum terhubung. Pastikan Anda telah mengirimkan kode ke bot Telegram.")
-      }
-    } catch (error: any) {
-      console.error("Error checking connection:", error)
-      setError(error.message || "Gagal memeriksa status koneksi")
     }
   }
 
@@ -579,19 +480,6 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                       <span className="font-medium">Tunggu konfirmasi</span> - status akan otomatis diperbarui
                     </li>
                   </ol>
-                </div>
-
-                {/* Tombol untuk memeriksa koneksi secara manual jika auto-polling tidak berfungsi */}
-                <div className="flex justify-center mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={checkConnectionStatus}
-                    className="text-blue-500 border-blue-200 hover:bg-blue-50"
-                  >
-                    <RefreshCw className="mr-2 h-3 w-3" />
-                    Periksa Koneksi
-                  </Button>
                 </div>
               </div>
             )}

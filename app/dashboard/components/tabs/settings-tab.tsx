@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { TelegramForm } from "@/components/telegram-form"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -133,6 +134,16 @@ export function SettingsTab({ user }: SettingsTabProps) {
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Telegram Notification Settings */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h3 className="font-medium mb-3 text-sm sm:text-base">Notifikasi</h3>
+              <TelegramForm
+                userId={user.id}
+                initialTelegramId={user.telegram_id}
+                initialTelegramNotifications={user.telegram_notifications || false}
+              />
             </div>
 
             <div className="rounded-lg border border-gray-200 p-4">

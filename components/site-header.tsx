@@ -16,38 +16,21 @@ export function SiteHeader() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // Perbaiki fungsi handleLogout untuk menangani error dengan lebih baik
   async function handleLogout() {
     try {
-      // Cek session terlebih dahulu
-      const { data: sessionData } = await supabase.auth.getSession()
-
-      if (sessionData?.session) {
-        await supabase.auth.signOut()
-        toast({
-          title: "Logout berhasil",
-          description: "Anda telah keluar dari akun",
-        })
-      } else {
-        // Jika tidak ada session, hanya navigasi
-        toast({
-          title: "Logout berhasil",
-          description: "Anda telah keluar dari akun",
-        })
-      }
-
-      // Selalu navigasi ke halaman utama
+      await supabase.auth.signOut()
+      toast({
+        title: "Logout berhasil",
+        description: "Anda telah keluar dari akun",
+      })
       router.push("/")
       router.refresh()
     } catch (error: any) {
-      console.error("Logout error:", error)
       toast({
-        title: "Logout berhasil",
-        description: "Anda telah keluar dari akun, tetapi terjadi error di background",
+        title: "Logout gagal",
+        description: error.message || "Terjadi kesalahan saat logout",
+        variant: "destructive",
       })
-      // Tetap navigasi meskipun ada error
-      router.push("/")
-      router.refresh()
     }
   }
 
