@@ -20,124 +20,152 @@ if (typeof console !== "undefined" && console.warn) {
 
 // Server-side Supabase client
 export const createClient = () => {
-  const cookieStore = cookies()
-  return createServerComponentClient<Database>({
-    cookies: () => cookieStore,
-    options: {
-      auth: {
-        flowType: "pkce",
-        persistSession: true,
-        autoRefreshToken: true,
-        cookieOptions: {
-          name: "sb-auth-token",
-          lifetime: 60 * 60 * 8,
-          domain: "",
-          path: "/",
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
+  try {
+    const cookieStore = cookies()
+    return createServerComponentClient<Database>({
+      cookies: () => cookieStore,
+      options: {
+        auth: {
+          flowType: "pkce",
+          persistSession: true,
+          autoRefreshToken: true,
+          cookieOptions: {
+            name: "sb-auth-token",
+            lifetime: 60 * 60 * 8,
+            domain: "",
+            path: "/",
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+          },
         },
-      },
-      global: {
-        fetch: (url, options) => {
-          // Periksa apakah ini adalah permintaan auth
-          const isAuthRequest =
-            url.toString().includes("/auth/") ||
-            (options?.headers && (options.headers as any)["X-Client-Info"]?.includes("supabase-js"))
+        global: {
+          fetch: (url, options) => {
+            // Periksa apakah ini adalah permintaan auth
+            const isAuthRequest =
+              url.toString().includes("/auth/") ||
+              (options?.headers && (options.headers as any)["X-Client-Info"]?.includes("supabase-js"))
 
-          if (isAuthRequest) {
-            const urlStr = url.toString()
-            const method = options?.method || "GET"
+            if (isAuthRequest) {
+              const urlStr = url.toString()
+              const method = options?.method || "GET"
 
-            // Tentukan endpoint
-            let endpoint = "unknown"
-            if (urlStr.includes("/auth/v1/token")) endpoint = "refreshToken"
-            else if (urlStr.includes("/auth/v1/logout")) endpoint = "signOut"
-            else if (urlStr.includes("/auth/v1/user")) endpoint = "getUser"
-            else if (urlStr.includes("/auth/v1/session")) endpoint = "getSession"
-            else {
-              // Ekstrak bagian terakhir dari path
-              const parts = urlStr.split("/")
-              endpoint = parts[parts.length - 1] || urlStr
+              // Tentukan endpoint
+              let endpoint = "unknown"
+              if (urlStr.includes("/auth/v1/token")) endpoint = "refreshToken"
+              else if (urlStr.includes("/auth/v1/logout")) endpoint = "signOut"
+              else if (urlStr.includes("/auth/v1/user")) endpoint = "getUser"
+              else if (urlStr.includes("/auth/v1/session")) endpoint = "getSession"
+              else {
+                // Ekstrak bagian terakhir dari path
+                const parts = urlStr.split("/")
+                endpoint = parts[parts.length - 1] || urlStr
+              }
+
+              // Log request start
+              logAuthRequest({
+                endpoint,
+                method,
+                source: "server",
+                success: true,
+                duration: 0,
+                cached: false,
+                details: { action: "start", url: urlStr },
+              })
+
+              const startTime = performance.now()
+
+              return fetch(url, options)
+                .then(async (response) => {
+                  const endTime = performance.now()
+                  const duration = endTime - startTime
+
+                  // Log response
+                  let userId = undefined
+
+                  // Coba ekstrak user ID jika ada
+                  if (response.ok) {
+                    try {
+                      const clonedResponse = response.clone()
+                      const responseData = await clonedResponse.json()
+                      userId = responseData?.user?.id || responseData?.session?.user?.id
+                    } catch (e) {
+                      // Ignore parsing errors
+                    }
+                  }
+
+                  logAuthRequest({
+                    endpoint,
+                    method,
+                    source: "server",
+                    success: response.ok,
+                    duration,
+                    cached: false,
+                    userId,
+                    error: !response.ok ? `HTTP ${response.status}` : undefined,
+                    details: {
+                      status: response.status,
+                      url: urlStr,
+                    },
+                  })
+
+                  return response
+                })
+                .catch((error) => {
+                  const endTime = performance.now()
+                  const duration = endTime - startTime
+
+                  // Log error
+                  logAuthRequest({
+                    endpoint,
+                    method,
+                    source: "server",
+                    success: false,
+                    duration,
+                    cached: false,
+                    error: error instanceof Error ? error.message : "Unknown error",
+                    details: {
+                      error,
+                      url: urlStr,
+                    },
+                  })
+
+                  throw error
+                })
             }
 
-            // Log request start
-            logAuthRequest({
-              endpoint,
-              method,
-              source: "server",
-              success: true,
-              duration: 0,
-              cached: false,
-              details: { action: "start", url: urlStr },
-            })
-
-            const startTime = performance.now()
-
+            // Lanjutkan dengan permintaan normal untuk non-auth
             return fetch(url, options)
-              .then(async (response) => {
-                const endTime = performance.now()
-                const duration = endTime - startTime
-
-                // Log response
-                let userId = undefined
-
-                // Coba ekstrak user ID jika ada
-                if (response.ok) {
-                  try {
-                    const clonedResponse = response.clone()
-                    const responseData = await clonedResponse.json()
-                    userId = responseData?.user?.id || responseData?.session?.user?.id
-                  } catch (e) {
-                    // Ignore parsing errors
-                  }
-                }
-
-                logAuthRequest({
-                  endpoint,
-                  method,
-                  source: "server",
-                  success: response.ok,
-                  duration,
-                  cached: false,
-                  userId,
-                  error: !response.ok ? `HTTP ${response.status}` : undefined,
-                  details: {
-                    status: response.status,
-                    url: urlStr,
-                  },
-                })
-
-                return response
-              })
-              .catch((error) => {
-                const endTime = performance.now()
-                const duration = endTime - startTime
-
-                // Log error
-                logAuthRequest({
-                  endpoint,
-                  method,
-                  source: "server",
-                  success: false,
-                  duration,
-                  cached: false,
-                  error: error instanceof Error ? error.message : "Unknown error",
-                  details: {
-                    error,
-                    url: urlStr,
-                  },
-                })
-
-                throw error
-              })
-          }
-
-          // Lanjutkan dengan permintaan normal untuk non-auth
-          return fetch(url, options)
+          },
         },
       },
-    },
-  })
+    })
+  } catch (error) {
+    // Log error saat membuat client
+    logAuthRequest({
+      endpoint: "createClient",
+      method: "INTERNAL",
+      source: "server",
+      success: false,
+      duration: 0,
+      cached: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      details: { error },
+    })
+
+    // Fallback ke client tanpa cookies untuk mencegah crash
+    console.error("Error creating Supabase client:", error)
+
+    // Return dummy client yang akan mengembalikan null untuk auth operations
+    return {
+      auth: {
+        getSession: async () => ({ data: { session: null }, error: null }),
+        getUser: async () => ({ data: { user: null }, error: null }),
+      },
+      from: () => ({
+        select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
+      }),
+    } as any
+  }
 }
 
 // Tambahkan logging untuk fungsi getVerifiedUser
@@ -145,9 +173,26 @@ export async function getVerifiedUser() {
   const start = performance.now()
   let success = false
   let error = null
+  let userId = null
 
   try {
-    const supabase = createServerComponentClient()
+    let supabase
+    try {
+      supabase = createClient()
+    } catch (err) {
+      logAuthRequest({
+        endpoint: "getVerifiedUser",
+        method: "GET",
+        source: "server",
+        success: false,
+        duration: performance.now() - start,
+        cached: false,
+        error: err instanceof Error ? err.message : "Error creating client",
+        details: { error: err },
+      })
+      return { user: null, error: err }
+    }
+
     const {
       data: { session },
       error: sessionError,
@@ -162,6 +207,7 @@ export async function getVerifiedUser() {
       return { user: null, error: new Error("No user found in session") }
     }
 
+    userId = session.user.id
     success = true
     return { user: session.user, error: null }
   } catch (err) {
@@ -176,7 +222,7 @@ export async function getVerifiedUser() {
       success,
       duration: performance.now() - start,
       cached: false,
-      userId: success ? (await createServerComponentClient().auth.getSession()).data.session?.user?.id : undefined,
+      userId,
       error: error ? String(error) : undefined,
     })
   }
@@ -184,7 +230,23 @@ export async function getVerifiedUser() {
 
 // Fungsi helper untuk memeriksa apakah user adalah admin
 export const isAdmin = async (userId: string) => {
-  const supabase = createClient()
+  let supabase
+  try {
+    supabase = createClient()
+  } catch (err) {
+    logAuthRequest({
+      endpoint: "isAdmin",
+      method: "INTERNAL",
+      source: "server",
+      success: false,
+      duration: 0,
+      cached: false,
+      userId,
+      error: err instanceof Error ? err.message : "Error creating client",
+      details: { error: err },
+    })
+    return false
+  }
 
   // Log isAdmin check
   logAuthRequest({
