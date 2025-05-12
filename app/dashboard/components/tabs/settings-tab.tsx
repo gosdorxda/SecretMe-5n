@@ -7,7 +7,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Crown, LogOut, Settings } from "lucide-react"
+import { AlertTriangle, Crown, LogOut, Settings } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { TelegramForm } from "@/components/telegram-form"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -18,6 +29,7 @@ interface SettingsTabProps {
 
 export function SettingsTab({ user }: SettingsTabProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   const { toast } = useToast()
@@ -36,6 +48,39 @@ export function SettingsTab({ user }: SettingsTabProps) {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setIsLoading(true)
+    try {
+      // Delete user data from database
+      const { error: deleteError } = await supabase.from("users").delete().eq("id", user.id)
+
+      if (deleteError) {
+        throw deleteError
+      }
+
+      // Sign out
+      await supabase.auth.signOut()
+
+      toast({
+        title: "Akun berhasil dihapus",
+        description: "Semua data Anda telah dihapus dari sistem kami",
+      })
+
+      router.push("/")
+      router.refresh()
+    } catch (error: any) {
+      console.error("Error deleting account:", error)
+      toast({
+        title: "Gagal menghapus akun",
+        description: error.message || "Terjadi kesalahan saat menghapus akun",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setIsDeleteDialogOpen(false)
     }
   }
 
@@ -91,6 +136,16 @@ export function SettingsTab({ user }: SettingsTabProps) {
               </div>
             </div>
 
+            {/* Telegram Notification Settings */}
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h3 className="font-medium mb-3 text-sm sm:text-base">Notifikasi</h3>
+              <TelegramForm
+                userId={user.id}
+                initialTelegramId={user.telegram_id}
+                initialTelegramNotifications={user.telegram_notifications || false}
+              />
+            </div>
+
             <div className="rounded-lg border border-gray-200 p-4">
               <h3 className="font-medium mb-3 text-sm sm:text-base">Keluar Akun</h3>
               <p className="text-xs text-gray-500 mb-3">
@@ -110,9 +165,61 @@ export function SettingsTab({ user }: SettingsTabProps) {
                 Keluar
               </Button>
             </div>
+
+            <div className="rounded-lg border border-red-200 p-4 bg-red-50">
+              <h3 className="font-medium mb-3 text-sm sm:text-base text-red-700 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Hapus Akun
+              </h3>
+              <p className="text-xs text-red-600 mb-3">
+                Menghapus akun Anda akan menghapus semua data Anda secara permanen. Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <Button
+                variant="destructive"
+                onClick={() => setIsDeleteDialogOpen(true)}
+                disabled={isLoading}
+                className="w-full sm:w-auto"
+              >
+                {isLoading ? (
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white rounded-full border-t-transparent"></div>
+                ) : (
+                  "Hapus Akun"
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Account Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Akun Permanen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan menghapus akun Anda dan semua data terkait secara permanen. Tindakan ini tidak dapat
+              dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={isLoading}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white rounded-full border-t-transparent"></div>
+                  Menghapus...
+                </>
+              ) : (
+                "Hapus Akun"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
