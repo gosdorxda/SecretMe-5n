@@ -24,7 +24,7 @@ export function ProfileSeo({ user }: ProfileSeoProps) {
   const username = user.username || user.numeric_id
   const profileUrl = `${origin}/${username}`
   const title = `${user.name} (@${username}) | SecretMe`
-  const description = user.bio || `Kirim pesan anonim ke ${user.name} melalui SecretMe`
+  const description = `Kirim pesan anonim ke ${user.name} melalui SecretMe`
   const imageUrl = user.avatar_url || `${origin}/api/og?username=${username}&name=${encodeURIComponent(user.name)}`
 
   return (

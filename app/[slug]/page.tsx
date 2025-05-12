@@ -12,10 +12,10 @@ import { ProfileImageButton } from "@/components/profile-image-button"
 import { TruncatedBio } from "@/components/truncated-bio"
 import { PremiumFeatureTeaser } from "@/components/premium-feature-teaser"
 
-// Tambahkan metadata statis untuk SEO dasar
+// Modifikasi metadata statis untuk SEO dasar
 export const metadata = {
   title: "Profil Pengguna | SecretMe",
-  description: "Kirim pesan anonim ke pengguna SecretMe",
+  description: "Kirim pesan anonim melalui SecretMe",
 }
 
 export default async function ProfilePage({ params }: { params: { slug: string } }) {
