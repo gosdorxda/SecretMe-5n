@@ -13,6 +13,12 @@ import {
   isAuthCacheValid,
   extendAuthCacheExpiry,
 } from "@/lib/auth-cache"
+import { patchSupabaseSDK } from "@/lib/supabase/patch"
+
+// Patch Supabase SDK untuk mencegah loop refresh token
+if (typeof window !== "undefined") {
+  patchSupabaseSDK()
+}
 
 type AuthContextType = {
   session: Session | null
@@ -41,10 +47,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastAuthCheckRef = useRef<number>(0)
 
   // Meningkatkan interval throttle untuk mengurangi auth requests
-  const THROTTLE_INTERVAL = 60000 // 1 menit (dari 10 detik)
+  const THROTTLE_INTERVAL = 300000 // 5 menit (dari 1 menit)
 
   // Tambahkan flag untuk mencegah multiple auth checks pada initial load
   const initialAuthCheckDoneRef = useRef(false)
+
+  // Tambahkan flag untuk mencegah multiple refresh
+  const isRefreshingTokenRef = useRef(false)
+  const lastRefreshTimeRef = useRef(0)
+  const MIN_REFRESH_INTERVAL = 300000 // 5 menit
 
   const signOut = useCallback(async () => {
     try {
@@ -60,18 +71,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Fungsi untuk refresh session data dengan optimasi
   const refreshSession = useCallback(async () => {
-    if (refreshingRef.current) return
+    // Hindari multiple refresh
+    if (refreshingRef.current || isRefreshingTokenRef.current) return
+
+    // Hindari refresh yang terlalu sering
+    const now = Date.now()
+    if (now - lastRefreshTimeRef.current < MIN_REFRESH_INTERVAL) {
+      return
+    }
+
     refreshingRef.current = true
+    isRefreshingTokenRef.current = true
+    lastRefreshTimeRef.current = now
 
     try {
       // Check if we should use the cache
-      const now = Date.now()
       const timeSinceLastCheck = now - lastAuthCheckRef.current
 
       // Gunakan cache lebih agresif
       if (timeSinceLastCheck < THROTTLE_INTERVAL && isAuthCacheValid()) {
         extendAuthCacheExpiry() // Extend cache expiry
         refreshingRef.current = false
+        isRefreshingTokenRef.current = false
         return
       }
 
@@ -91,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!cachedSession.access_token) {
               console.warn("Skipping user verification: No access token in session")
               refreshingRef.current = false
+              isRefreshingTokenRef.current = false
               return
             }
 
@@ -108,17 +130,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (userError.message === "Auth session missing!") {
                 console.warn("Auth session missing during verification, will retry later")
                 refreshingRef.current = false
+                isRefreshingTokenRef.current = false
                 return
               }
 
               await signOut()
               refreshingRef.current = false
+              isRefreshingTokenRef.current = false
               return
             }
 
             if (!userData.user) {
               console.warn("No user data returned from getUser")
               refreshingRef.current = false
+              isRefreshingTokenRef.current = false
               return
             }
 
@@ -133,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await signOut()
             }
             refreshingRef.current = false
+            isRefreshingTokenRef.current = false
             return
           }
         } else if (!cachedSession) {
@@ -141,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setLoading(false)
         refreshingRef.current = false
+        isRefreshingTokenRef.current = false
         return
       }
 
@@ -158,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           refreshingRef.current = false
+          isRefreshingTokenRef.current = false
           return
         }
 
@@ -170,6 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!sessionData.session.access_token) {
               console.warn("Skipping user verification: No access token in session")
               refreshingRef.current = false
+              isRefreshingTokenRef.current = false
               return
             }
 
@@ -186,17 +215,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (userError.message === "Auth session missing!") {
                 console.warn("Auth session missing during verification, will retry later")
                 refreshingRef.current = false
+                isRefreshingTokenRef.current = false
                 return
               }
 
               await signOut()
               refreshingRef.current = false
+              isRefreshingTokenRef.current = false
               return
             }
 
             if (!userData.user) {
               console.warn("No user data returned from getUser")
               refreshingRef.current = false
+              isRefreshingTokenRef.current = false
               return
             }
 
@@ -211,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await signOut()
             }
             refreshingRef.current = false
+            isRefreshingTokenRef.current = false
             return
           }
         }
@@ -230,6 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     } finally {
       refreshingRef.current = false
+      isRefreshingTokenRef.current = false
     }
   }, [supabase, signOut, router, user])
 
@@ -255,7 +289,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Refresh in background hanya jika ada session tapi tidak ada user
           if (cachedSession && !cachedSession.user) {
-            refreshSession()
+            // Delay refresh untuk menghindari multiple requests
+            setTimeout(() => {
+              refreshSession()
+            }, 2000)
           }
           return
         }
@@ -285,6 +322,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If token was refreshed, update the session
         if (event === "TOKEN_REFRESHED") {
           cacheAuthSession(newSession)
+          // Update last refresh time to prevent multiple refreshes
+          lastRefreshTimeRef.current = Date.now()
         }
 
         // Handle sign out

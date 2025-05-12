@@ -9,8 +9,18 @@ let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | n
 
 // Tambahkan throttling untuk permintaan auth
 const authRequestTimestamps: number[] = []
-const AUTH_REQUEST_LIMIT = 5 // Kurangi dari 10 menjadi 5 permintaan
+// Kurangi batas permintaan secara drastis
+const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan
 const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
+
+// Tambahkan debounce untuk mencegah multiple calls
+let authDebounceTimer: NodeJS.Timeout | null = null
+const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
+
+// Tambahkan flag untuk mencegah multiple refresh
+let isRefreshingToken = false
+let lastRefreshTime = 0
+const MIN_REFRESH_INTERVAL = 300000 // 5 menit
 
 // Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
 function shouldThrottleAuthRequest(): boolean {
@@ -33,18 +43,31 @@ function recordAuthRequestTimestamp() {
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
 async function repairSessionIfNeeded(client: ReturnType<typeof createClientComponentClient<Database>>) {
   try {
+    // Hindari multiple repair attempts
+    if (isRefreshingToken) {
+      return false
+    }
+
+    // Hindari refresh yang terlalu sering
+    const now = Date.now()
+    if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+      return false
+    }
+
+    isRefreshingToken = true
+    lastRefreshTime = now
+
     // Periksa apakah ada sesi yang valid
     const { data: sessionData, error: sessionError } = await client.auth.getSession()
 
     if (sessionError) {
       console.error("❌ Error saat memeriksa sesi:", sessionError)
+      isRefreshingToken = false
       return false
     }
 
     // Jika tidak ada sesi valid tetapi ada token di localStorage
     if (!sessionData?.session && typeof window !== "undefined") {
-      // console.log("🔄 Mencoba memperbaiki sesi dari localStorage...")
-
       // Coba ambil token dari localStorage
       const localStorageData = localStorage.getItem("supabase.auth.token")
       if (localStorageData) {
@@ -53,8 +76,6 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
           // Jika ada token di localStorage, coba set session secara manual
           if (parsedData?.currentSession?.access_token && parsedData?.currentSession?.refresh_token) {
-            // console.log("🔄 Token ditemukan di localStorage, mencoba set session...")
-
             const { error: setSessionError } = await client.auth.setSession({
               access_token: parsedData.currentSession.access_token,
               refresh_token: parsedData.currentSession.refresh_token,
@@ -62,6 +83,7 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
             if (setSessionError) {
               console.error("❌ Gagal memperbaiki sesi:", setSessionError.message)
+              isRefreshingToken = false
               return false
             }
 
@@ -70,10 +92,11 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
             if (verifyError || !verifyData.user) {
               console.error("❌ Sesi diperbaiki tetapi verifikasi user gagal:", verifyError)
+              isRefreshingToken = false
               return false
             }
 
-            // console.log("✅ Sesi berhasil diperbaiki dari localStorage")
+            isRefreshingToken = false
             return true
           }
         } catch (e) {
@@ -81,11 +104,14 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
         }
       }
     }
+
+    isRefreshingToken = false
+    return false
   } catch (e) {
     console.error("❌ Error saat memeriksa sesi:", e)
+    isRefreshingToken = false
+    return false
   }
-
-  return false
 }
 
 // Menekan peringatan Supabase tentang getSession
@@ -95,7 +121,8 @@ if (typeof console !== "undefined" && console.warn) {
     // Menekan peringatan spesifik dari Supabase
     if (
       typeof message === "string" &&
-      message.includes("Using the user object as returned from supabase.auth.getSession()")
+      (message.includes("Using the user object as returned from supabase.auth.getSession()") ||
+        message.includes("RATE LIMIT WARNING"))
     ) {
       return
     }
@@ -105,7 +132,20 @@ if (typeof console !== "undefined" && console.warn) {
 
 // Cache untuk menyimpan hasil auth requests
 const authRequestCache = new Map<string, { data: any; timestamp: number }>()
-const AUTH_CACHE_TTL = 60000 // 1 menit
+const AUTH_CACHE_TTL = 300000 // 5 menit (dari 1 menit)
+
+// Fungsi debounce untuk auth requests
+function debounceAuthRequest(fn: Function): Promise<any> {
+  return new Promise((resolve) => {
+    if (authDebounceTimer) {
+      clearTimeout(authDebounceTimer)
+    }
+
+    authDebounceTimer = setTimeout(() => {
+      resolve(fn())
+    }, AUTH_DEBOUNCE_DELAY)
+  })
+}
 
 export const createClient = () => {
   if (!supabaseClient) {
@@ -151,7 +191,6 @@ export const createClient = () => {
               // Cek cache untuk request yang sama
               const cachedResponse = authRequestCache.get(cacheKey)
               if (cachedResponse && Date.now() - cachedResponse.timestamp < AUTH_CACHE_TTL) {
-                // console.log("🔄 Using cached auth response for:", urlStr)
                 return Promise.resolve(
                   new Response(JSON.stringify(cachedResponse.data), {
                     status: 200,
@@ -160,13 +199,57 @@ export const createClient = () => {
                 )
               }
 
+              // Debounce auth requests untuk mengurangi multiple calls
+              if (urlStr.includes("/token?grant_type=refresh_token")) {
+                return debounceAuthRequest(async () => {
+                  // Jika sudah refreshing, return cached response atau error
+                  if (isRefreshingToken) {
+                    return new Response(
+                      JSON.stringify({
+                        error: "Token refresh in progress",
+                        data: { session: null, user: null },
+                      }),
+                      {
+                        status: 429,
+                        headers: { "Content-Type": "application/json" },
+                      },
+                    )
+                  }
+
+                  // Jika refresh terlalu sering, throttle
+                  const now = Date.now()
+                  if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+                    return new Response(
+                      JSON.stringify({
+                        error: "Token refresh too frequent",
+                        data: { session: null, user: null },
+                      }),
+                      {
+                        status: 429,
+                        headers: { "Content-Type": "application/json" },
+                      },
+                    )
+                  }
+
+                  isRefreshingToken = true
+                  lastRefreshTime = now
+
+                  try {
+                    const response = await fetch(url, options)
+                    isRefreshingToken = false
+                    return response
+                  } catch (error) {
+                    isRefreshingToken = false
+                    throw error
+                  }
+                })
+              }
+
               const startTime = performance.now()
               const endpoint = urlStr.split("/").slice(-2).join("/")
 
               // Jika perlu throttle, tunda permintaan
               if (shouldThrottleAuthRequest()) {
-                console.warn("🛑 Auth request throttled to prevent rate limiting")
-
                 // Catat permintaan yang di-throttle
                 recordAuthRequest({
                   endpoint,
