@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { logAuthRequest } from "@/lib/auth-logger"
 
 // Menekan peringatan Supabase tentang getSession
 const originalConsoleWarn = console.warn
@@ -27,6 +28,25 @@ const MIN_AUTH_CHECK_INTERVAL = 5000 // 5 detik
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
+  const path = req.nextUrl.pathname
+
+  // Log middleware start
+  logAuthRequest({
+    endpoint: "middleware",
+    method: "INTERNAL",
+    source: "middleware",
+    success: true,
+    duration: 0,
+    cached: false,
+    details: {
+      path,
+      action: "start",
+      userAgent: req.headers.get("user-agent") || undefined,
+      ip: req.ip || req.headers.get("x-forwarded-for") || undefined,
+    },
+  })
+
+  const startTime = performance.now()
 
   // Periksa apakah ini adalah rute yang memerlukan autentikasi
   const protectedRoutes = ["/dashboard", "/premium", "/admin"]
@@ -42,6 +62,26 @@ export async function middleware(req: NextRequest) {
 
     // Gunakan cache jika masih valid
     if (cachedAuth && now - cachedAuth.timestamp < AUTH_CACHE_TTL) {
+      const endTime = performance.now()
+      const duration = endTime - startTime
+
+      // Log cache hit
+      logAuthRequest({
+        endpoint: "middleware",
+        method: "INTERNAL",
+        source: "middleware",
+        success: true,
+        duration,
+        cached: true,
+        details: {
+          path,
+          cacheHit: true,
+          isAuthenticated: cachedAuth.isAuthenticated,
+          isAdmin: cachedAuth.isAdmin,
+          cacheAge: now - cachedAuth.timestamp,
+        },
+      })
+
       // Jika tidak terotentikasi, redirect ke login
       if (!cachedAuth.isAuthenticated) {
         const redirectUrl = req.nextUrl.clone()
@@ -62,6 +102,25 @@ export async function middleware(req: NextRequest) {
 
     // Throttle auth checks untuk mencegah rate limiting
     if (now - lastMiddlewareAuthCheck < MIN_AUTH_CHECK_INTERVAL) {
+      const endTime = performance.now()
+      const duration = endTime - startTime
+
+      // Log throttled check
+      logAuthRequest({
+        endpoint: "middleware",
+        method: "INTERNAL",
+        source: "middleware",
+        success: true,
+        duration,
+        cached: true,
+        details: {
+          path,
+          throttled: true,
+          timeSinceLastCheck: now - lastMiddlewareAuthCheck,
+          minInterval: MIN_AUTH_CHECK_INTERVAL,
+        },
+      })
+
       // Jika terlalu sering, gunakan cache terakhir atau izinkan akses
       if (cachedAuth) {
         // Gunakan hasil cache terakhir meskipun sudah kedaluwarsa
@@ -91,9 +150,43 @@ export async function middleware(req: NextRequest) {
     try {
       const supabase = createMiddlewareClient({ req, res })
 
+      // Log getSession start
+      logAuthRequest({
+        endpoint: "getSession",
+        method: "GET",
+        source: "middleware",
+        success: true,
+        duration: 0,
+        cached: false,
+        details: {
+          path,
+          action: "start",
+        },
+      })
+
+      const sessionStartTime = performance.now()
+
       const {
         data: { session },
       } = await supabase.auth.getSession()
+
+      const sessionEndTime = performance.now()
+      const sessionDuration = sessionEndTime - sessionStartTime
+
+      // Log getSession result
+      logAuthRequest({
+        endpoint: "getSession",
+        method: "GET",
+        source: "middleware",
+        success: true,
+        duration: sessionDuration,
+        cached: false,
+        userId: session?.user?.id,
+        details: {
+          path,
+          hasSession: !!session,
+        },
+      })
 
       // Jika tidak ada sesi dan ini adalah rute yang dilindungi, redirect ke login
       if (!session) {
@@ -101,6 +194,25 @@ export async function middleware(req: NextRequest) {
         authCheckCache.set(cacheKey, {
           isAuthenticated: false,
           timestamp: now,
+        })
+
+        const endTime = performance.now()
+        const duration = endTime - startTime
+
+        // Log unauthenticated
+        logAuthRequest({
+          endpoint: "middleware",
+          method: "INTERNAL",
+          source: "middleware",
+          success: false,
+          duration,
+          cached: false,
+          details: {
+            path,
+            action: "redirect",
+            reason: "no_session",
+            redirectTo: "/login",
+          },
         })
 
         const redirectUrl = req.nextUrl.clone()
@@ -125,19 +237,94 @@ export async function middleware(req: NextRequest) {
           timestamp: now,
         })
 
+        const endTime = performance.now()
+        const duration = endTime - startTime
+
         if (!isAdmin) {
+          // Log not admin
+          logAuthRequest({
+            endpoint: "middleware",
+            method: "INTERNAL",
+            source: "middleware",
+            success: false,
+            duration,
+            cached: false,
+            userId: session.user.id,
+            details: {
+              path,
+              action: "redirect",
+              reason: "not_admin",
+              email,
+              redirectTo: "/dashboard",
+            },
+          })
+
           const redirectUrl = req.nextUrl.clone()
           redirectUrl.pathname = "/dashboard"
           return NextResponse.redirect(redirectUrl)
         }
+
+        // Log admin access
+        logAuthRequest({
+          endpoint: "middleware",
+          method: "INTERNAL",
+          source: "middleware",
+          success: true,
+          duration,
+          cached: false,
+          userId: session.user.id,
+          details: {
+            path,
+            action: "allow",
+            isAdmin: true,
+            email,
+          },
+        })
       } else {
         // Cache hasil auth check untuk non-admin routes
         authCheckCache.set(cacheKey, {
           isAuthenticated: true,
           timestamp: now,
         })
+
+        const endTime = performance.now()
+        const duration = endTime - startTime
+
+        // Log authenticated
+        logAuthRequest({
+          endpoint: "middleware",
+          method: "INTERNAL",
+          source: "middleware",
+          success: true,
+          duration,
+          cached: false,
+          userId: session.user.id,
+          details: {
+            path,
+            action: "allow",
+          },
+        })
       }
     } catch (error) {
+      const endTime = performance.now()
+      const duration = endTime - startTime
+
+      // Log error
+      logAuthRequest({
+        endpoint: "middleware",
+        method: "INTERNAL",
+        source: "middleware",
+        success: false,
+        duration,
+        cached: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: {
+          path,
+          error,
+          action: "error",
+        },
+      })
+
       // Jika terjadi error (termasuk rate limit), gunakan cache jika ada
       if (cachedAuth) {
         // Perpanjang TTL cache untuk mengurangi permintaan
@@ -165,6 +352,24 @@ export async function middleware(req: NextRequest) {
       // Ini berisiko tetapi lebih baik daripada aplikasi tidak berfungsi
       console.error("Error in middleware auth check:", error)
     }
+  } else {
+    // Log non-protected route
+    const endTime = performance.now()
+    const duration = endTime - startTime
+
+    logAuthRequest({
+      endpoint: "middleware",
+      method: "INTERNAL",
+      source: "middleware",
+      success: true,
+      duration,
+      cached: false,
+      details: {
+        path,
+        action: "allow",
+        reason: "public_route",
+      },
+    })
   }
 
   return res

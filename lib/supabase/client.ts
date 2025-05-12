@@ -3,6 +3,7 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/supabase/database.types"
 import { recordAuthRequest } from "@/lib/auth-monitor"
+import { logAuthRequest } from "@/lib/auth-logger"
 
 // Client-side Supabase client
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
@@ -20,7 +21,7 @@ const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
 // Tambahkan flag untuk mencegah multiple refresh
 let isRefreshingToken = false
 let lastRefreshTime = 0
-const MIN_REFRESH_INTERVAL = 600000 // 10 menit (dari 5 menit)
+const MIN_REFRESH_INTERVAL = 600000 // 10 menit
 
 // Tambahkan flag untuk mendeteksi error rate limit
 let hasHitRateLimit = false
@@ -67,10 +68,38 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
     isRefreshingToken = true
     lastRefreshTime = now
 
+    const startTime = performance.now()
+
+    // Log permintaan
+    logAuthRequest({
+      endpoint: "repairSession",
+      method: "GET",
+      source: "client",
+      success: true,
+      duration: 0,
+      cached: false,
+      details: { action: "start" },
+    })
+
     // Periksa apakah ada sesi yang valid
     const { data: sessionData, error: sessionError } = await client.auth.getSession()
 
+    const endTime = performance.now()
+    const duration = endTime - startTime
+
     if (sessionError) {
+      // Log error
+      logAuthRequest({
+        endpoint: "repairSession",
+        method: "GET",
+        source: "client",
+        success: false,
+        duration,
+        cached: false,
+        error: sessionError.message,
+        details: { error: sessionError },
+      })
+
       console.error("❌ Error saat memeriksa sesi:", sessionError)
 
       // Jika error adalah rate limit, set flag
@@ -84,6 +113,18 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       return false
     }
 
+    // Log hasil
+    logAuthRequest({
+      endpoint: "getSession",
+      method: "GET",
+      source: "client",
+      success: true,
+      duration,
+      cached: false,
+      userId: sessionData?.session?.user?.id,
+      details: { hasSession: !!sessionData?.session },
+    })
+
     // Jika tidak ada sesi valid tetapi ada token di localStorage
     if (!sessionData?.session && typeof window !== "undefined") {
       // Coba ambil token dari localStorage
@@ -94,12 +135,37 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
           // Jika ada token di localStorage, coba set session secara manual
           if (parsedData?.currentSession?.access_token && parsedData?.currentSession?.refresh_token) {
+            logAuthRequest({
+              endpoint: "setSession",
+              method: "POST",
+              source: "client",
+              success: true,
+              duration: 0,
+              cached: false,
+              details: { action: "start" },
+            })
+
+            const setSessionStartTime = performance.now()
             const { error: setSessionError } = await client.auth.setSession({
               access_token: parsedData.currentSession.access_token,
               refresh_token: parsedData.currentSession.refresh_token,
             })
+            const setSessionEndTime = performance.now()
+            const setSessionDuration = setSessionEndTime - setSessionStartTime
 
             if (setSessionError) {
+              // Log error
+              logAuthRequest({
+                endpoint: "setSession",
+                method: "POST",
+                source: "client",
+                success: false,
+                duration: setSessionDuration,
+                cached: false,
+                error: setSessionError.message,
+                details: { error: setSessionError },
+              })
+
               console.error("❌ Gagal memperbaiki sesi:", setSessionError.message)
 
               // Jika error adalah invalid refresh token, hapus token dari localStorage
@@ -122,19 +188,79 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
               return false
             }
 
+            // Log sukses
+            logAuthRequest({
+              endpoint: "setSession",
+              method: "POST",
+              source: "client",
+              success: true,
+              duration: setSessionDuration,
+              cached: false,
+              details: { action: "success" },
+            })
+
             // Verifikasi bahwa session berhasil diperbaiki
+            logAuthRequest({
+              endpoint: "getUser",
+              method: "GET",
+              source: "client",
+              success: true,
+              duration: 0,
+              cached: false,
+              details: { action: "start" },
+            })
+
+            const getUserStartTime = performance.now()
             const { data: verifyData, error: verifyError } = await client.auth.getUser()
+            const getUserEndTime = performance.now()
+            const getUserDuration = getUserEndTime - getUserStartTime
 
             if (verifyError || !verifyData.user) {
+              // Log error
+              logAuthRequest({
+                endpoint: "getUser",
+                method: "GET",
+                source: "client",
+                success: false,
+                duration: getUserDuration,
+                cached: false,
+                error: verifyError?.message || "No user data",
+                details: { error: verifyError },
+              })
+
               console.error("❌ Sesi diperbaiki tetapi verifikasi user gagal:", verifyError)
               isRefreshingToken = false
               return false
             }
 
+            // Log sukses
+            logAuthRequest({
+              endpoint: "getUser",
+              method: "GET",
+              source: "client",
+              success: true,
+              duration: getUserDuration,
+              cached: false,
+              userId: verifyData.user.id,
+              details: { user: verifyData.user.id },
+            })
+
             isRefreshingToken = false
             return true
           }
         } catch (e) {
+          // Log error
+          logAuthRequest({
+            endpoint: "repairSession",
+            method: "GET",
+            source: "client",
+            success: false,
+            duration,
+            cached: false,
+            error: e instanceof Error ? e.message : "Unknown error",
+            details: { error: e },
+          })
+
           console.error("❌ Error parsing localStorage data:", e)
         }
       }
@@ -143,6 +269,18 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
     isRefreshingToken = false
     return false
   } catch (e) {
+    // Log error
+    logAuthRequest({
+      endpoint: "repairSession",
+      method: "GET",
+      source: "client",
+      success: false,
+      duration: 0,
+      cached: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+      details: { error: e },
+    })
+
     console.error("❌ Error saat memeriksa sesi:", e)
     isRefreshingToken = false
     return false
@@ -199,6 +337,18 @@ function handleRateLimitError(error: any) {
   return false
 }
 
+// Fungsi untuk mendapatkan nama endpoint dari URL
+function getEndpointName(url: string): string {
+  if (url.includes("/auth/v1/token")) return "refreshToken"
+  if (url.includes("/auth/v1/logout")) return "signOut"
+  if (url.includes("/auth/v1/user")) return "getUser"
+  if (url.includes("/auth/v1/session")) return "getSession"
+
+  // Ekstrak bagian terakhir dari path
+  const parts = url.split("/")
+  return parts[parts.length - 1] || url
+}
+
 export const createClient = () => {
   if (!supabaseClient) {
     supabaseClient = createClientComponentClient<Database>({
@@ -221,10 +371,48 @@ export const createClient = () => {
           },
           // Add error handling for token refresh
           onAuthStateChange: (event, session) => {
+            // Log auth state change
+            logAuthRequest({
+              endpoint: "authStateChange",
+              method: "EVENT",
+              source: "client",
+              success: true,
+              duration: 0,
+              cached: false,
+              userId: session?.user?.id,
+              details: { event, hasSession: !!session },
+            })
+
             if (event === "TOKEN_REFRESHED_FAILED") {
               // Handle failed token refresh by clearing local storage
               localStorage.removeItem("supabase.auth.token")
               console.error("Token refresh failed. Local storage cleared.")
+
+              // Log token refresh failure
+              logAuthRequest({
+                endpoint: "tokenRefresh",
+                method: "EVENT",
+                source: "client",
+                success: false,
+                duration: 0,
+                cached: false,
+                error: "TOKEN_REFRESHED_FAILED",
+                details: { event },
+              })
+            }
+
+            if (event === "TOKEN_REFRESHED") {
+              // Log token refresh success
+              logAuthRequest({
+                endpoint: "tokenRefresh",
+                method: "EVENT",
+                source: "client",
+                success: true,
+                duration: 0,
+                cached: false,
+                userId: session?.user?.id,
+                details: { event },
+              })
             }
           },
         },
@@ -239,6 +427,20 @@ export const createClient = () => {
             // Jika sudah hit rate limit, throttle semua permintaan auth
             if (isAuthRequest && hasHitRateLimit && Date.now() < rateLimitResetTime) {
               console.warn("Auth request throttled due to previous rate limit")
+
+              // Log throttled request
+              const endpoint = getEndpointName(url.toString())
+              logAuthRequest({
+                endpoint,
+                method: options?.method || "GET",
+                source: "client",
+                success: false,
+                duration: 0,
+                cached: true,
+                error: "Rate limit backoff in progress",
+                details: { url: url.toString(), rateLimitReset: new Date(rateLimitResetTime).toISOString() },
+              })
+
               return Promise.resolve(
                 new Response(
                   JSON.stringify({
@@ -259,9 +461,36 @@ export const createClient = () => {
               (options?.method === "POST" && url.toString().includes("/auth/v1/logout"))
 
             if (isLogoutRequest) {
+              // Log logout request
+              logAuthRequest({
+                endpoint: "signOut",
+                method: "POST",
+                source: "client",
+                success: true,
+                duration: 0,
+                cached: false,
+                details: { action: "start" },
+              })
+
+              const startTime = performance.now()
+
               // Untuk logout, selalu berikan respons valid
               return fetch(url, options)
                 .then(async (response) => {
+                  const endTime = performance.now()
+                  const duration = endTime - startTime
+
+                  // Log logout response
+                  logAuthRequest({
+                    endpoint: "signOut",
+                    method: "POST",
+                    source: "client",
+                    success: response.ok,
+                    duration,
+                    cached: false,
+                    details: { status: response.status },
+                  })
+
                   // Jika respons kosong atau tidak valid, berikan respons default
                   if (!response.ok || response.status === 204) {
                     return new Response(JSON.stringify({ error: null }), {
@@ -278,6 +507,19 @@ export const createClient = () => {
                   } catch (e) {
                     // Jika parsing gagal, berikan respons default
                     console.warn("Invalid JSON in logout response, providing default")
+
+                    // Log parsing error
+                    logAuthRequest({
+                      endpoint: "signOut",
+                      method: "POST",
+                      source: "client",
+                      success: true, // Tetap anggap sukses
+                      duration,
+                      cached: false,
+                      error: "Invalid JSON response",
+                      details: { error: e },
+                    })
+
                     return new Response(JSON.stringify({ error: null }), {
                       status: 200,
                       headers: { "Content-Type": "application/json" },
@@ -285,6 +527,21 @@ export const createClient = () => {
                   }
                 })
                 .catch((error) => {
+                  const endTime = performance.now()
+                  const duration = endTime - startTime
+
+                  // Log error
+                  logAuthRequest({
+                    endpoint: "signOut",
+                    method: "POST",
+                    source: "client",
+                    success: false,
+                    duration,
+                    cached: false,
+                    error: error instanceof Error ? error.message : "Unknown error",
+                    details: { error },
+                  })
+
                   console.error("Error during logout:", error)
                   // Berikan respons default untuk mencegah error
                   return new Response(JSON.stringify({ error: null }), {
@@ -296,11 +553,25 @@ export const createClient = () => {
 
             if (isAuthRequest) {
               const urlStr = url.toString()
+              const endpoint = getEndpointName(urlStr)
+              const method = options?.method || "GET"
               const cacheKey = `${urlStr}-${JSON.stringify(options?.body || {})}`
 
               // Cek cache untuk request yang sama
               const cachedResponse = authRequestCache.get(cacheKey)
               if (cachedResponse && Date.now() - cachedResponse.timestamp < AUTH_CACHE_TTL) {
+                // Log cached request
+                logAuthRequest({
+                  endpoint,
+                  method,
+                  source: "client",
+                  success: true,
+                  duration: 0,
+                  cached: true,
+                  userId: cachedResponse.data?.user?.id || cachedResponse.data?.session?.user?.id,
+                  details: { fromCache: true, url: urlStr },
+                })
+
                 return Promise.resolve(
                   new Response(JSON.stringify(cachedResponse.data), {
                     status: 200,
@@ -312,8 +583,31 @@ export const createClient = () => {
               // Khusus untuk permintaan refresh token
               if (urlStr.includes("/token?grant_type=refresh_token")) {
                 return debounceAuthRequest(async () => {
+                  // Log refresh token request
+                  logAuthRequest({
+                    endpoint: "refreshToken",
+                    method: "POST",
+                    source: "client",
+                    success: true,
+                    duration: 0,
+                    cached: false,
+                    details: { action: "start", debounced: true },
+                  })
+
                   // Jika sudah refreshing, return cached response atau error
                   if (isRefreshingToken) {
+                    // Log throttled refresh
+                    logAuthRequest({
+                      endpoint: "refreshToken",
+                      method: "POST",
+                      source: "client",
+                      success: false,
+                      duration: 0,
+                      cached: true,
+                      error: "Token refresh in progress",
+                      details: { throttled: true },
+                    })
+
                     return new Response(
                       JSON.stringify({
                         error: "Token refresh in progress",
@@ -329,6 +623,22 @@ export const createClient = () => {
                   // Jika refresh terlalu sering, throttle
                   const now = Date.now()
                   if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+                    // Log throttled refresh
+                    logAuthRequest({
+                      endpoint: "refreshToken",
+                      method: "POST",
+                      source: "client",
+                      success: false,
+                      duration: 0,
+                      cached: true,
+                      error: "Token refresh too frequent",
+                      details: {
+                        throttled: true,
+                        lastRefresh: new Date(lastRefreshTime).toISOString(),
+                        nextAllowed: new Date(lastRefreshTime + MIN_REFRESH_INTERVAL).toISOString(),
+                      },
+                    })
+
                     return new Response(
                       JSON.stringify({
                         error: "Token refresh too frequent",
@@ -355,6 +665,19 @@ export const createClient = () => {
                   // Jika tidak ada refresh token atau kosong, return error
                   if (!refreshToken) {
                     console.warn("Refresh token missing in request, aborting")
+
+                    // Log missing token
+                    logAuthRequest({
+                      endpoint: "refreshToken",
+                      method: "POST",
+                      source: "client",
+                      success: false,
+                      duration: 0,
+                      cached: false,
+                      error: "Refresh token is missing",
+                      details: { missingToken: true },
+                    })
+
                     // Hapus token dari localStorage
                     if (typeof window !== "undefined") {
                       localStorage.removeItem("supabase.auth.token")
@@ -374,12 +697,31 @@ export const createClient = () => {
                   isRefreshingToken = true
                   lastRefreshTime = now
 
+                  const startTime = performance.now()
+
                   try {
                     const response = await fetch(url, options)
+                    const endTime = performance.now()
+                    const duration = endTime - startTime
 
                     // Periksa apakah respons adalah error
                     if (!response.ok) {
                       const errorData = await response.json()
+
+                      // Log error response
+                      logAuthRequest({
+                        endpoint: "refreshToken",
+                        method: "POST",
+                        source: "client",
+                        success: false,
+                        duration,
+                        cached: false,
+                        error: errorData.error || errorData.error_description || "Unknown error",
+                        details: {
+                          status: response.status,
+                          error: errorData,
+                        },
+                      })
 
                       // Jika error adalah invalid refresh token, hapus token dari localStorage
                       if (
@@ -401,11 +743,58 @@ export const createClient = () => {
                         rateLimitResetTime = Date.now() + RATE_LIMIT_BACKOFF
                         console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
                       }
+                    } else {
+                      // Log successful refresh
+                      try {
+                        const responseData = await response.clone().json()
+                        logAuthRequest({
+                          endpoint: "refreshToken",
+                          method: "POST",
+                          source: "client",
+                          success: true,
+                          duration,
+                          cached: false,
+                          userId: responseData?.user?.id,
+                          details: {
+                            status: response.status,
+                            hasUser: !!responseData?.user,
+                          },
+                        })
+                      } catch (e) {
+                        // Jika gagal parse JSON, tetap log sukses
+                        logAuthRequest({
+                          endpoint: "refreshToken",
+                          method: "POST",
+                          source: "client",
+                          success: true,
+                          duration,
+                          cached: false,
+                          details: {
+                            status: response.status,
+                            parseError: true,
+                          },
+                        })
+                      }
                     }
 
                     isRefreshingToken = false
                     return response
                   } catch (error) {
+                    const endTime = performance.now()
+                    const duration = endTime - startTime
+
+                    // Log error
+                    logAuthRequest({
+                      endpoint: "refreshToken",
+                      method: "POST",
+                      source: "client",
+                      success: false,
+                      duration,
+                      cached: false,
+                      error: error instanceof Error ? error.message : "Unknown error",
+                      details: { error },
+                    })
+
                     isRefreshingToken = false
 
                     // Periksa apakah error adalah rate limit
@@ -417,7 +806,6 @@ export const createClient = () => {
               }
 
               const startTime = performance.now()
-              const endpoint = urlStr.split("/").slice(-2).join("/")
 
               // Jika perlu throttle, tunda permintaan
               if (shouldThrottleAuthRequest()) {
@@ -428,6 +816,24 @@ export const createClient = () => {
                   duration: 0,
                   source: "client",
                   cached: true,
+                })
+
+                // Log throttled request
+                logAuthRequest({
+                  endpoint,
+                  method,
+                  source: "client",
+                  success: false,
+                  duration: 0,
+                  cached: true,
+                  error: "Request throttled",
+                  details: {
+                    throttled: true,
+                    url: urlStr,
+                    requestsInWindow: authRequestTimestamps.length,
+                    windowSize: AUTH_REQUEST_WINDOW,
+                    limit: AUTH_REQUEST_LIMIT,
+                  },
                 })
 
                 // Kembalikan respons kosong untuk mencegah error
@@ -448,6 +854,17 @@ export const createClient = () => {
               // Catat permintaan auth baru
               recordAuthRequestTimestamp()
 
+              // Log request start
+              logAuthRequest({
+                endpoint,
+                method,
+                source: "client",
+                success: true,
+                duration: 0,
+                cached: false,
+                details: { action: "start", url: urlStr },
+              })
+
               // Lanjutkan dengan permintaan normal
               return fetch(url, options)
                 .then(async (response) => {
@@ -463,6 +880,36 @@ export const createClient = () => {
                     cached: false,
                   })
 
+                  // Log response
+                  let userId = undefined
+                  let responseData = undefined
+
+                  // Coba ekstrak user ID jika ada
+                  if (response.ok) {
+                    try {
+                      const clonedResponse = response.clone()
+                      responseData = await clonedResponse.json()
+                      userId = responseData?.user?.id || responseData?.session?.user?.id
+                    } catch (e) {
+                      // Ignore parsing errors
+                    }
+                  }
+
+                  logAuthRequest({
+                    endpoint,
+                    method,
+                    source: "client",
+                    success: response.ok,
+                    duration,
+                    cached: false,
+                    userId,
+                    error: !response.ok ? `HTTP ${response.status}` : undefined,
+                    details: {
+                      status: response.status,
+                      url: urlStr,
+                    },
+                  })
+
                   // Periksa apakah respons adalah error rate limit
                   if (response.status === 429) {
                     hasHitRateLimit = true
@@ -476,17 +923,11 @@ export const createClient = () => {
                   }
 
                   // Cache response jika sukses
-                  if (response.ok) {
-                    try {
-                      const clonedResponse = response.clone()
-                      const responseData = await clonedResponse.json()
-                      authRequestCache.set(cacheKey, {
-                        data: responseData,
-                        timestamp: Date.now(),
-                      })
-                    } catch (e) {
-                      console.warn("Failed to cache response:", e)
-                    }
+                  if (response.ok && responseData) {
+                    authRequestCache.set(cacheKey, {
+                      data: responseData,
+                      timestamp: Date.now(),
+                    })
                   }
 
                   return response
@@ -502,6 +943,21 @@ export const createClient = () => {
                     duration,
                     source: "client",
                     cached: false,
+                  })
+
+                  // Log error
+                  logAuthRequest({
+                    endpoint,
+                    method,
+                    source: "client",
+                    success: false,
+                    duration,
+                    cached: false,
+                    error: error instanceof Error ? error.message : "Unknown error",
+                    details: {
+                      error,
+                      url: urlStr,
+                    },
                   })
 
                   // Periksa apakah error adalah rate limit
@@ -526,6 +982,17 @@ export const createClient = () => {
 
 // Function to reset the client (useful for handling auth errors)
 export const resetClient = () => {
+  // Log reset client
+  logAuthRequest({
+    endpoint: "resetClient",
+    method: "INTERNAL",
+    source: "client",
+    success: true,
+    duration: 0,
+    cached: false,
+    details: { action: "reset" },
+  })
+
   supabaseClient = null
 
   // Reset flags
@@ -539,12 +1006,34 @@ export const resetClient = () => {
 
 // Fungsi untuk memperbaiki sesi secara manual
 export const repairSession = async () => {
+  // Log repair session
+  logAuthRequest({
+    endpoint: "repairSession",
+    method: "INTERNAL",
+    source: "client",
+    success: true,
+    duration: 0,
+    cached: false,
+    details: { action: "manual" },
+  })
+
   const client = createClient()
   return await repairSessionIfNeeded(client)
 }
 
 // Fungsi untuk menangani invalid refresh token
 export const handleInvalidRefreshToken = () => {
+  // Log invalid refresh token
+  logAuthRequest({
+    endpoint: "handleInvalidRefreshToken",
+    method: "INTERNAL",
+    source: "client",
+    success: true,
+    duration: 0,
+    cached: false,
+    details: { action: "cleanup" },
+  })
+
   if (typeof window !== "undefined") {
     localStorage.removeItem("supabase.auth.token")
   }
