@@ -93,6 +93,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         description: error.message || "Gagal membuat kode koneksi",
         variant: "destructive",
       })
+      setConnectionStep(0)
     } finally {
       setIsGeneratingCode(false)
     }

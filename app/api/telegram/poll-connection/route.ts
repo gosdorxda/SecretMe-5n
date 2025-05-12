@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Code is required" }, { status: 400 })
     }
 
-    // Check if the code has been used and a telegram_id has been associated
+    // Check if the user has a telegram_id
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("telegram_id, telegram_notifications")
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     // Check if the code has been used
     const { data: codeData, error: codeError } = await supabase
       .from("telegram_connection_codes")
-      .select("is_used, telegram_id")
+      .select("is_used")
       .eq("code", code)
       .eq("user_id", session.user.id)
       .single()
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Failed to fetch code data" }, { status: 500 })
     }
 
-    // If the code is used and we have a telegram_id, connection is successful
-    if (codeData?.is_used && userData?.telegram_id) {
+    // If the user has a telegram_id and the code is used, connection is successful
+    if (userData?.telegram_id && codeData?.is_used) {
       return NextResponse.json({
         success: true,
         connected: true,
