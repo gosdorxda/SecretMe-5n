@@ -22,11 +22,18 @@ export interface Database {
           twitter_url: string | null
           tiktok_url: string | null
           allow_public_replies: boolean | null
-          phone_number: string | null
-          notification_channel: string | null
-          whatsapp_notifications: boolean | null
           telegram_id: string | null
           telegram_notifications: boolean | null
+          telegram_chat_id: string | null
+          notification_channel: string | null
+          role: string | null
+          last_ip: string | null
+          // Kolom WhatsApp dan email tetap ada untuk kompatibilitas database
+          // tapi tidak digunakan dalam kode aplikasi
+          whatsapp_number: string | null
+          whatsapp_notifications_enabled: boolean | null
+          email_notifications_enabled: boolean | null
+          email_notification_preferences: Json | null
         }
         Insert: {
           id?: string
@@ -46,11 +53,16 @@ export interface Database {
           twitter_url?: string | null
           tiktok_url?: string | null
           allow_public_replies?: boolean | null
-          phone_number?: string | null
-          notification_channel?: string | null
-          whatsapp_notifications?: boolean | null
           telegram_id?: string | null
           telegram_notifications?: boolean | null
+          telegram_chat_id?: string | null
+          notification_channel?: string | null
+          role?: string | null
+          last_ip?: string | null
+          whatsapp_number?: string | null
+          whatsapp_notifications_enabled?: boolean | null
+          email_notifications_enabled?: boolean | null
+          email_notification_preferences?: Json | null
         }
         Update: {
           id?: string
@@ -70,11 +82,16 @@ export interface Database {
           twitter_url?: string | null
           tiktok_url?: string | null
           allow_public_replies?: boolean | null
-          phone_number?: string | null
-          notification_channel?: string | null
-          whatsapp_notifications?: boolean | null
           telegram_id?: string | null
           telegram_notifications?: boolean | null
+          telegram_chat_id?: string | null
+          notification_channel?: string | null
+          role?: string | null
+          last_ip?: string | null
+          whatsapp_number?: string | null
+          whatsapp_notifications_enabled?: boolean | null
+          email_notifications_enabled?: boolean | null
+          email_notification_preferences?: Json | null
         }
       }
       messages: {
@@ -199,6 +216,35 @@ export interface Database {
           error_message?: string | null
         }
       }
+      notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          new_messages: boolean
+          message_replies: boolean
+          system_updates: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          new_messages?: boolean
+          message_replies?: boolean
+          system_updates?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          new_messages?: boolean
+          message_replies?: boolean
+          system_updates?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
       profile_views: {
         Row: {
           id: string
@@ -220,6 +266,32 @@ export interface Database {
           count?: number
           created_at?: string
           updated_at?: string
+        }
+      }
+      telegram_connection_codes: {
+        Row: {
+          id: string
+          code: string
+          user_id: string
+          created_at: string
+          expires_at: string
+          used: boolean
+        }
+        Insert: {
+          id?: string
+          code: string
+          user_id: string
+          created_at?: string
+          expires_at: string
+          used?: boolean
+        }
+        Update: {
+          id?: string
+          code?: string
+          user_id?: string
+          created_at?: string
+          expires_at?: string
+          used?: boolean
         }
       }
     }

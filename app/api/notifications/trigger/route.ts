@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { cookies } from "next/headers"
-import { sendNewMessageNotification as sendWhatsAppNotification } from "@/lib/fonnte/service"
 import { sendNewMessageNotification as sendTelegramNotification } from "@/lib/telegram/service"
 
 export async function POST(request: Request) {
@@ -42,11 +41,8 @@ export async function POST(request: Request) {
     }
 
     console.log("User notification settings:", {
-      channel: userData.notification_channel,
       telegramEnabled: userData.telegram_notifications,
       telegramId: userData.telegram_id,
-      whatsappEnabled: userData.whatsapp_notifications,
-      phone: userData.phone_number,
     })
 
     // Get notification preferences
@@ -88,7 +84,7 @@ export async function POST(request: Request) {
         user_id: userId,
         message_id: messageId,
         notification_type: type,
-        channel: "pending",
+        channel: "telegram",
         status: "pending",
         created_at: new Date().toISOString(),
       })
@@ -100,78 +96,57 @@ export async function POST(request: Request) {
       throw new Error(logError.message)
     }
 
-    // Determine notification channel
-    const useWhatsApp =
-      userData.notification_channel === "whatsapp" && userData.whatsapp_notifications && userData.phone_number
-    const useTelegram =
-      userData.notification_channel === "telegram" && userData.telegram_notifications && userData.telegram_id
+    // Periksa apakah pengguna memiliki Telegram ID dan notifikasi Telegram diaktifkan
+    if (!userData.telegram_id || !userData.telegram_notifications) {
+      console.log("User does not have Telegram ID or Telegram notifications are disabled")
+      await supabase
+        .from("notification_logs")
+        .update({
+          status: "skipped",
+          error_message: "Telegram ID not set or notifications disabled",
+        })
+        .eq("id", notificationLog.id)
 
-    console.log("Selected notification channel:", { useWhatsApp, useTelegram })
+      return NextResponse.json({
+        success: true,
+        message: "Notification skipped: Telegram ID not set or notifications disabled",
+      })
+    }
 
     // Generate profile URL
     const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${userData.username || userData.numeric_id}`
     console.log("Profile URL for notification:", profileUrl)
 
-    // Update notification channel
-    await supabase
-      .from("notification_logs")
-      .update({
-        channel: useWhatsApp ? "whatsapp" : useTelegram ? "telegram" : "email",
+    // Send Telegram notification
+    try {
+      console.log("Sending Telegram notification to:", userData.telegram_id)
+      const telegramResult = await sendTelegramNotification({
+        telegramId: userData.telegram_id,
+        name: userData.name,
+        messagePreview: message.content,
+        profileUrl,
       })
-      .eq("id", notificationLog.id)
-
-    // Send notification based on channel
-    if (useWhatsApp) {
-      // Send WhatsApp notification
-      try {
-        console.log("Sending WhatsApp notification to:", userData.phone_number)
-        const whatsappResult = await sendWhatsAppNotification({
-          phone: userData.phone_number,
-          name: userData.name,
-          messagePreview: message.content,
-          profileUrl,
-        })
-        console.log("WhatsApp notification result:", whatsappResult)
-
-        // Update status to sent
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-      } catch (error) {
-        console.error("Error sending WhatsApp notification:", error)
-        await supabase
-          .from("notification_logs")
-          .update({ status: "failed", error_message: error.message })
-          .eq("id", notificationLog.id)
-      }
-    } else if (useTelegram) {
-      // Send Telegram notification
-      try {
-        console.log("Sending Telegram notification to:", userData.telegram_id)
-        const telegramResult = await sendTelegramNotification({
-          telegramId: userData.telegram_id,
-          name: userData.name,
-          messagePreview: message.content,
-          profileUrl,
-        })
-        console.log("Telegram notification result:", telegramResult)
-
-        // Update status to sent
-        await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-      } catch (error) {
-        console.error("Error sending Telegram notification:", error)
-        await supabase
-          .from("notification_logs")
-          .update({ status: "failed", error_message: error.message })
-          .eq("id", notificationLog.id)
-      }
-    } else {
-      // Fallback to email notification (existing logic)
-      console.log(`Email notification sent to ${userData.email} about message ${messageId}`)
+      console.log("Telegram notification result:", telegramResult)
 
       // Update status to sent
       await supabase.from("notification_logs").update({ status: "sent" }).eq("id", notificationLog.id)
-    }
 
-    return NextResponse.json({ success: true })
+      return NextResponse.json({
+        success: true,
+        message: "Telegram notification sent successfully",
+      })
+    } catch (error) {
+      console.error("Error sending Telegram notification:", error)
+      await supabase
+        .from("notification_logs")
+        .update({ status: "failed", error_message: error.message })
+        .eq("id", notificationLog.id)
+
+      return NextResponse.json(
+        { success: false, error: error.message || "Failed to send Telegram notification" },
+        { status: 500 },
+      )
+    }
   } catch (error) {
     console.error("Error triggering notification:", error)
     return NextResponse.json(
