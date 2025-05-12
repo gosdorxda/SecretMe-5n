@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, LinkIcon, Upload, X, ImageIcon } from "lucide-react"
+import Image from "next/image"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface AvatarUploadProps {
   userId: string
@@ -22,6 +24,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const { toast } = useToast()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     if (avatarUrl) {
@@ -244,7 +247,19 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4">
+    <div className="flex flex-col gap-4">
+      {/* Preview Avatar */}
+      {avatar && (
+        <div className="relative w-24 h-24 mx-auto mb-2">
+          <Image
+            src={avatar || "/placeholder.svg"}
+            alt="Avatar Preview"
+            className="rounded-full object-cover border-2 border-amber-200"
+            fill
+          />
+        </div>
+      )}
+
       {/* Upload Method Selector */}
       <div className="flex gap-2 mb-1">
         <Button
