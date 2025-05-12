@@ -83,7 +83,7 @@ export function WhatsAppForm({ userId }: WhatsAppFormProps) {
         </div>
       </CardContent>
 
-      <CardFooter className="flex justify-between pt-5 mt-2 border-t">
+      <CardFooter className="flex justify-between">
         <Button variant="outline" size="sm" disabled className="text-green-500">
           <svg
             xmlns="http://www.w3.org/2000/svg"
