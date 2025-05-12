@@ -30,14 +30,19 @@ function recordAuthRequestTimestamp() {
   authRequestTimestamps.push(Date.now())
 }
 
-// Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
+// Perbaiki fungsi repairSessionIfNeeded untuk menangani error dengan lebih baik
 async function repairSessionIfNeeded(client: ReturnType<typeof createClientComponentClient<Database>>) {
   try {
-    // Periksa apakah ada sesi yang valid
-    const { data: sessionData, error: sessionError } = await client.auth.getSession()
+    // Prioritaskan getUser untuk verifikasi yang lebih aman
+    const { data: userData, error: userError } = await client.auth.getUser()
 
-    // Jika tidak ada sesi valid tetapi ada token di localStorage
-    if ((!sessionData?.session || sessionError) && typeof window !== "undefined") {
+    // Jika user terverifikasi, tidak perlu perbaikan
+    if (userData?.user && !userError) {
+      return true
+    }
+
+    // Jika ada error atau tidak ada user, coba perbaiki dari localStorage
+    if ((userError || !userData?.user) && typeof window !== "undefined") {
       console.log("🔄 Mencoba memperbaiki sesi dari localStorage...")
 
       // Coba ambil token dari localStorage
@@ -57,6 +62,8 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
             if (setSessionError) {
               console.error("❌ Gagal memperbaiki sesi:", setSessionError.message)
+              // Jika gagal, bersihkan localStorage untuk mencegah error berulang
+              localStorage.removeItem("supabase.auth.token")
               return false
             }
 
@@ -65,6 +72,8 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
           }
         } catch (e) {
           console.error("❌ Error parsing localStorage data:", e)
+          // Bersihkan localStorage yang rusak
+          localStorage.removeItem("supabase.auth.token")
         }
       }
     }
