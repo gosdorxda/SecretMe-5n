@@ -30,7 +30,7 @@ export default function GiveawayPage() {
             <span>Giveaway SecretMe</span>
           </h1>
           <p className="text-body-large mb-6">
-            Total hadiah <span className="font-bold text-[var(--main)]">Rp 500.000</span> untuk 10 orang pemenang
+            Total hadiah <span className="font-bold text-[var(--main)]">Rp 550.000</span> untuk 10 orang pemenang
             beruntung!
           </p>
         </div>
@@ -53,23 +53,23 @@ export default function GiveawayPage() {
                   <Award className="h-6 w-6 text-[var(--main)] mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-bold">Juara 1</h3>
-                    <p>Rp 100.000 tunai</p>
+                    <p>Rp 100.0</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Award className="h-6 w-6 text-[var(--main)] mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-bold">Juara 2-10</h3>
-                    <p>Rp 50.000 tunai (9 orang)</p>
+                    <p>Rp 50.000 (9 orang)</p>
                   </div>
                 </div>
               </div>
               <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-[var(--border-radius)]">
                 <p className="text-sm">
-                  <span className="font-bold">Periode Giveaway:</span> 1 - 30 Juni 2025
+                  <span className="font-bold">Periode Giveaway:</span> 15 - 20 Mei 2025
                 </p>
                 <p className="text-sm mt-2">
-                  <span className="font-bold">Pengumuman Pemenang:</span> 5 Juli 2025
+                  <span className="font-bold">Pengumuman Pemenang:</span> 25 Mei 2025
                 </p>
               </div>
             </div>
@@ -110,10 +110,6 @@ export default function GiveawayPage() {
                     <p className="text-sm mt-1">
                       Bagikan link profil SecretMe Anda ke platform X (Twitter) dengan hashtag #SecretMeGiveaway
                     </p>
-                    <Button className="mt-2 neo-btn-outline" size="sm">
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Bagikan ke X
-                    </Button>
                   </div>
                 </div>
 
@@ -143,7 +139,7 @@ export default function GiveawayPage() {
               <Trophy className="h-5 w-5 text-[var(--main)]" />
               Daftar Pemenang
             </CardTitle>
-            <CardDescription>Pemenang akan diumumkan pada 5 Juli 2025</CardDescription>
+            <CardDescription>Pemenang akan diumumkan pada 25 Mei 2025</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative overflow-hidden">
@@ -152,7 +148,7 @@ export default function GiveawayPage() {
                 <div className="text-center p-6 bg-white/80 dark:bg-black/80 rounded-lg shadow-lg">
                   <Lock className="h-10 w-10 mx-auto mb-2 text-[var(--main)]" />
                   <h3 className="text-lg font-bold mb-1">Pemenang Belum Diumumkan</h3>
-                  <p>Pengumuman pemenang akan dilakukan pada 5 Juli 2025</p>
+                  <p>Pengumuman pemenang akan dilakukan pada 25 Mei 2025</p>
                 </div>
               </div>
 
@@ -189,15 +185,15 @@ export default function GiveawayPage() {
           <CardContent className="space-y-4">
             <div>
               <h3 className="font-bold">Bagaimana cara menentukan pemenang?</h3>
-              <p className="text-sm">Pemenang akan dipilih secara acak dari semua peserta yang memenuhi syarat.</p>
+              <p className="text-sm">Pemenang akan dipilih secara acak dari semua pengguna yang memenuhi syarat.</p>
             </div>
             <div>
               <h3 className="font-bold">Kapan hadiah akan dikirimkan?</h3>
-              <p className="text-sm">Hadiah akan ditransfer dalam waktu 7 hari kerja setelah pengumuman pemenang.</p>
+              <p className="text-sm">Hadiah akan ditransfer dalam waktu 2 hari kerja setelah pengumuman pemenang.</p>
             </div>
             <div>
-              <h3 className="font-bold">Apakah giveaway ini terbuka untuk semua negara?</h3>
-              <p className="text-sm">Ya, giveaway ini terbuka untuk semua pengguna SecretMe di seluruh dunia.</p>
+              <h3 className="font-bold">Apa bisa hadiah giveaway dikirim dalam bentuk saldo ShopeePay?</h3>
+              <p className="text-sm">Kami menerima semua metode pembayaran E-wallet maupun rekening Bank.</p>
             </div>
             <div>
               <h3 className="font-bold">Bagaimana jika saya sudah memiliki akun SecretMe?</h3>
