@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Crown, User, FileText, Link2, CheckCircle, Lock } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { ProfilePreview } from "@/components/profile-preview"
 import { UsernameForm } from "@/components/username-form"
 import { NameForm } from "@/components/name-form"
@@ -78,27 +77,8 @@ export function ProfileTab({ user }: ProfileTabProps) {
                 <span>Foto Profil</span>
               </h3>
 
-              <div className="flex flex-col md:flex-row gap-4 sm:gap-5 items-center md:items-start">
-                <div className="relative h-28 w-28 sm:h-36 sm:w-36 overflow-hidden rounded-lg border-2 border-amber-200 flex-shrink-0 bg-white">
-                  {user.avatar_url ? (
-                    <Image
-                      src={user.avatar_url || "/placeholder.svg"}
-                      alt={user.name}
-                      className="h-full w-full object-cover"
-                      width={144}
-                      height={144}
-                      priority
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-amber-50">
-                      <User className="h-12 w-12 sm:h-16 sm:w-16 text-amber-300" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 w-full">
-                  <AvatarUpload userId={user.id} avatarUrl={user.avatar_url} />
-                </div>
+              <div className="w-full">
+                <AvatarUpload userId={user.id} avatarUrl={user.avatar_url} />
               </div>
             </div>
 
