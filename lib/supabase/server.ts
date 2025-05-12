@@ -140,184 +140,45 @@ export const createClient = () => {
   })
 }
 
-// Fungsi helper untuk mendapatkan user terverifikasi
-export const getVerifiedUser = async () => {
-  const supabase = createClient()
+// Tambahkan logging untuk fungsi getVerifiedUser
+export async function getVerifiedUser() {
+  const start = performance.now()
+  let success = false
+  let error = null
 
   try {
-    // Log getVerifiedUser start
-    logAuthRequest({
-      endpoint: "getVerifiedUser",
-      method: "INTERNAL",
-      source: "server",
-      success: true,
-      duration: 0,
-      cached: false,
-      details: { action: "start" },
-    })
-
-    const startTime = performance.now()
-
-    // Cek session
+    const supabase = createServerComponentClient()
     const {
       data: { session },
       error: sessionError,
     } = await supabase.auth.getSession()
 
-    const sessionEndTime = performance.now()
-    const sessionDuration = sessionEndTime - startTime
-
     if (sessionError) {
-      // Log session error
-      logAuthRequest({
-        endpoint: "getVerifiedUser",
-        method: "INTERNAL",
-        source: "server",
-        success: false,
-        duration: sessionDuration,
-        cached: false,
-        error: sessionError.message,
-        details: { error: sessionError, step: "getSession" },
-      })
-
-      // Jangan log error jika hanya "Auth session missing"
-      if (sessionError.message !== "Auth session missing!") {
-        console.error("Error getting session:", sessionError)
-      }
+      error = sessionError
       return { user: null, error: sessionError }
     }
 
-    if (!session) {
-      // Log no session
-      logAuthRequest({
-        endpoint: "getVerifiedUser",
-        method: "INTERNAL",
-        source: "server",
-        success: false,
-        duration: sessionDuration,
-        cached: false,
-        error: "No session",
-        details: { step: "getSession" },
-      })
-
-      return { user: null, error: "No session" }
+    if (!session?.user) {
+      return { user: null, error: new Error("No user found in session") }
     }
 
-    // Tambahkan pemeriksaan token
-    if (!session.access_token) {
-      // Log invalid token
-      logAuthRequest({
-        endpoint: "getVerifiedUser",
-        method: "INTERNAL",
-        source: "server",
-        success: false,
-        duration: sessionDuration,
-        cached: false,
-        error: "Invalid session: no access token",
-        details: { step: "validateToken" },
-      })
-
-      return { user: null, error: "Invalid session: no access token" }
-    }
-
-    try {
-      // Verifikasi user dengan getUser()
-      const getUserStartTime = performance.now()
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-      const getUserEndTime = performance.now()
-      const getUserDuration = getUserEndTime - getUserStartTime
-      const totalDuration = getUserEndTime - startTime
-
-      if (userError) {
-        // Log user error
-        logAuthRequest({
-          endpoint: "getVerifiedUser",
-          method: "INTERNAL",
-          source: "server",
-          success: false,
-          duration: totalDuration,
-          cached: false,
-          error: userError.message,
-          details: { error: userError, step: "getUser" },
-        })
-
-        // Jangan log error jika hanya "Auth session missing"
-        if (userError.message !== "Auth session missing!") {
-          console.error("Error verifying user:", userError)
-        }
-        return { user: null, error: userError }
-      }
-
-      if (!user) {
-        // Log no user
-        logAuthRequest({
-          endpoint: "getVerifiedUser",
-          method: "INTERNAL",
-          source: "server",
-          success: false,
-          duration: totalDuration,
-          cached: false,
-          error: "User verification failed",
-          details: { step: "getUser" },
-        })
-
-        return { user: null, error: "User verification failed" }
-      }
-
-      // Log success
-      logAuthRequest({
-        endpoint: "getVerifiedUser",
-        method: "INTERNAL",
-        source: "server",
-        success: true,
-        duration: totalDuration,
-        cached: false,
-        userId: user.id,
-        details: { userId: user.id },
-      })
-
-      return { user, error: null }
-    } catch (userError) {
-      const endTime = performance.now()
-      const duration = endTime - startTime
-
-      // Log error
-      logAuthRequest({
-        endpoint: "getVerifiedUser",
-        method: "INTERNAL",
-        source: "server",
-        success: false,
-        duration,
-        cached: false,
-        error: userError instanceof Error ? userError.message : "Unknown error",
-        details: { error: userError, step: "getUser" },
-      })
-
-      // Tangani error dengan lebih baik
-      if (userError instanceof Error && userError.message.includes("Auth session missing")) {
-        return { user: null, error: "Auth session missing" }
-      }
-      console.error("Unexpected error in getUser:", userError)
-      return { user: null, error: "Unexpected error occurred" }
-    }
-  } catch (error) {
-    // Log unexpected error
+    success = true
+    return { user: session.user, error: null }
+  } catch (err) {
+    error = err
+    return { user: null, error: err }
+  } finally {
+    // Log permintaan
     logAuthRequest({
       endpoint: "getVerifiedUser",
-      method: "INTERNAL",
+      method: "GET",
       source: "server",
-      success: false,
-      duration: 0,
+      success,
+      duration: performance.now() - start,
       cached: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { error },
+      userId: success ? (await createServerComponentClient().auth.getSession()).data.session?.user?.id : undefined,
+      error: error ? String(error) : undefined,
     })
-
-    console.error("Unexpected error in getVerifiedUser:", error)
-    return { user: null, error: "Unexpected error occurred" }
   }
 }
 

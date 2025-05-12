@@ -26,9 +26,9 @@ const AUTH_CACHE_TTL = 300000 // 5 menit (dari 1 menit)
 let lastMiddlewareAuthCheck = 0
 const MIN_AUTH_CHECK_INTERVAL = 5000 // 5 detik
 
-export async function middleware(req: NextRequest) {
+export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
-  const path = req.nextUrl.pathname
+  const path = request.nextUrl.pathname
 
   // Log middleware start
   logAuthRequest({
@@ -41,8 +41,8 @@ export async function middleware(req: NextRequest) {
     details: {
       path,
       action: "start",
-      userAgent: req.headers.get("user-agent") || undefined,
-      ip: req.ip || req.headers.get("x-forwarded-for") || undefined,
+      userAgent: request.headers.get("user-agent") || undefined,
+      ip: request.ip || request.headers.get("x-forwarded-for") || undefined,
     },
   })
 
@@ -51,12 +51,12 @@ export async function middleware(req: NextRequest) {
   // Periksa apakah ini adalah rute yang memerlukan autentikasi
   const protectedRoutes = ["/dashboard", "/premium", "/admin"]
   const isProtectedRoute = protectedRoutes.some(
-    (route) => req.nextUrl.pathname === route || req.nextUrl.pathname.startsWith(`${route}/`),
+    (route) => request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(`${route}/`),
   )
 
   if (isProtectedRoute) {
     // Cek cache untuk path ini
-    const cacheKey = req.nextUrl.pathname
+    const cacheKey = request.nextUrl.pathname
     const cachedAuth = authCheckCache.get(cacheKey)
     const now = Date.now()
 
@@ -84,15 +84,15 @@ export async function middleware(req: NextRequest) {
 
       // Jika tidak terotentikasi, redirect ke login
       if (!cachedAuth.isAuthenticated) {
-        const redirectUrl = req.nextUrl.clone()
+        const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = "/login"
-        redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
+        redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname)
         return NextResponse.redirect(redirectUrl)
       }
 
       // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
-      if (req.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
-        const redirectUrl = req.nextUrl.clone()
+      if (request.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
+        const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = "/dashboard"
         return NextResponse.redirect(redirectUrl)
       }
@@ -125,14 +125,14 @@ export async function middleware(req: NextRequest) {
       if (cachedAuth) {
         // Gunakan hasil cache terakhir meskipun sudah kedaluwarsa
         if (!cachedAuth.isAuthenticated) {
-          const redirectUrl = req.nextUrl.clone()
+          const redirectUrl = request.nextUrl.clone()
           redirectUrl.pathname = "/login"
-          redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
+          redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname)
           return NextResponse.redirect(redirectUrl)
         }
 
-        if (req.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
-          const redirectUrl = req.nextUrl.clone()
+        if (request.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
+          const redirectUrl = request.nextUrl.clone()
           redirectUrl.pathname = "/dashboard"
           return NextResponse.redirect(redirectUrl)
         }
@@ -148,7 +148,7 @@ export async function middleware(req: NextRequest) {
     lastMiddlewareAuthCheck = now
 
     try {
-      const supabase = createMiddlewareClient({ req, res })
+      const supabase = createMiddlewareClient({ req: request, res })
 
       // Log getSession start
       logAuthRequest({
@@ -215,14 +215,14 @@ export async function middleware(req: NextRequest) {
           },
         })
 
-        const redirectUrl = req.nextUrl.clone()
+        const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = "/login"
-        redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
+        redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname)
         return NextResponse.redirect(redirectUrl)
       }
 
       // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
-      if (req.nextUrl.pathname.startsWith("/admin")) {
+      if (request.nextUrl.pathname.startsWith("/admin")) {
         // Dapatkan email pengguna dari sesi
         const email = session.user?.email
 
@@ -259,7 +259,7 @@ export async function middleware(req: NextRequest) {
             },
           })
 
-          const redirectUrl = req.nextUrl.clone()
+          const redirectUrl = request.nextUrl.clone()
           redirectUrl.pathname = "/dashboard"
           return NextResponse.redirect(redirectUrl)
         }
@@ -335,14 +335,14 @@ export async function middleware(req: NextRequest) {
 
         // Gunakan hasil cache
         if (!cachedAuth.isAuthenticated) {
-          const redirectUrl = req.nextUrl.clone()
+          const redirectUrl = request.nextUrl.clone()
           redirectUrl.pathname = "/login"
-          redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname)
+          redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname)
           return NextResponse.redirect(redirectUrl)
         }
 
-        if (req.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
-          const redirectUrl = req.nextUrl.clone()
+        if (request.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
+          const redirectUrl = request.nextUrl.clone()
           redirectUrl.pathname = "/dashboard"
           return NextResponse.redirect(redirectUrl)
         }

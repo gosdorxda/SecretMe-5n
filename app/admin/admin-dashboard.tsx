@@ -4,11 +4,12 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText } from "lucide-react"
+import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Activity } from "lucide-react"
 
 // Import komponen dari folder components
 import {
   AdminStats,
+  AuthLogs,
   AuthMonitoring,
   IPSettings,
   NotificationLogs,
@@ -92,6 +93,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
             <Key className="h-4 w-4 mr-2" />
             Auth Monitoring
           </TabsTrigger>
+          <TabsTrigger value="auth-logs">
+            <Activity className="h-4 w-4 mr-2" />
+            Auth Logs
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="h-4 w-4 mr-2" />
             Notifikasi
@@ -124,6 +129,10 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
 
         <TabsContent value="auth-monitoring">
           <AuthMonitoring />
+        </TabsContent>
+
+        <TabsContent value="auth-logs">
+          <AuthLogs />
         </TabsContent>
 
         <TabsContent value="notifications">

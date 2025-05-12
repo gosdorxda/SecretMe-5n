@@ -1,4 +1,5 @@
 import AdminStats from "./admin-stats"
+import AuthLogs from "./auth-logs"
 import AuthMonitoring from "./auth-monitoring"
 import BlockedIPs from "./blocked-ips"
 import IPSettings from "./ip-settings"
@@ -12,6 +13,7 @@ import UsersManagement from "./users-management"
 
 export {
   AdminStats,
+  AuthLogs,
   AuthMonitoring,
   BlockedIPs,
   IPSettings,

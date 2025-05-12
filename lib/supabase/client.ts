@@ -28,6 +28,23 @@ let hasHitRateLimit = false
 let rateLimitResetTime = 0
 const RATE_LIMIT_BACKOFF = 600000 // 10 menit
 
+// Simple session cache
+const sessionCache = {
+  cache: null as any,
+  set: (data: any) => {
+    sessionCache.cache = data
+  },
+  get: () => {
+    return sessionCache.cache
+  },
+  has: () => {
+    return !!sessionCache.cache
+  },
+  clear: () => {
+    sessionCache.cache = null
+  },
+}
+
 // Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
 function shouldThrottleAuthRequest(): boolean {
   const now = Date.now()
@@ -1038,4 +1055,159 @@ export const handleInvalidRefreshToken = () => {
     localStorage.removeItem("supabase.auth.token")
   }
   resetClient()
+}
+
+// Tambahkan logging untuk fungsi getSession
+export async function getSessionWithLogging() {
+  const start = performance.now()
+  let success = false
+  let error = null
+  let cached = false
+
+  try {
+    // Cek apakah ada sesi yang di-cache
+    if (sessionCache.has()) {
+      const cachedSession = sessionCache.get()
+      success = true
+      cached = true
+
+      // Log permintaan yang di-cache
+      logAuthRequest({
+        endpoint: "getSession",
+        method: "GET",
+        source: "client",
+        success: true,
+        duration: performance.now() - start,
+        cached: true,
+        userId: cachedSession?.user?.id,
+      })
+
+      return cachedSession
+    }
+
+    const supabase = createClient()
+    const { data, error: sessionError } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      error = sessionError
+      throw sessionError
+    }
+
+    // Cache sesi jika valid
+    if (data?.session) {
+      sessionCache.set(data)
+    }
+
+    success = true
+    return data
+  } catch (err) {
+    error = err
+    throw err
+  } finally {
+    // Log permintaan
+    logAuthRequest({
+      endpoint: "getSession",
+      method: "GET",
+      source: "client",
+      success,
+      duration: performance.now() - start,
+      cached,
+      userId: success ? sessionCache.get()?.session?.user?.id : undefined,
+      error: error ? String(error) : undefined,
+    })
+  }
+}
+
+// Tambahkan logging untuk fungsi getUser
+export async function getUserWithLogging() {
+  const start = performance.now()
+  let success = false
+  let error = null
+  let cached = false
+
+  try {
+    // Cek apakah ada sesi yang di-cache
+    if (sessionCache.has()) {
+      const cachedSession = sessionCache.get()
+      if (cachedSession?.session?.user) {
+        success = true
+        cached = true
+
+        // Log permintaan yang di-cache
+        logAuthRequest({
+          endpoint: "getUser",
+          method: "GET",
+          source: "client",
+          success: true,
+          duration: performance.now() - start,
+          cached: true,
+          userId: cachedSession.session.user.id,
+        })
+
+        return { user: cachedSession.session.user, error: null }
+      }
+    }
+
+    const { session, error: sessionError } = await getSessionWithLogging()
+
+    if (sessionError) {
+      error = sessionError
+      return { user: null, error: sessionError }
+    }
+
+    success = true
+    return { user: session?.user || null, error: null }
+  } catch (err) {
+    error = err
+    return { user: null, error: err }
+  } finally {
+    // Log permintaan
+    logAuthRequest({
+      endpoint: "getUser",
+      method: "GET",
+      source: "client",
+      success,
+      duration: performance.now() - start,
+      cached,
+      userId: success ? sessionCache.get()?.session?.user?.id : undefined,
+      error: error ? String(error) : undefined,
+    })
+  }
+}
+
+// Tambahkan logging untuk fungsi signOut
+export async function signOutWithLogging() {
+  const start = performance.now()
+  let success = false
+  let error = null
+
+  try {
+    const supabase = createClient()
+    const { error: signOutError } = await supabase.auth.signOut()
+
+    if (signOutError) {
+      error = signOutError
+      throw signOutError
+    }
+
+    // Bersihkan cache
+    sessionCache.clear()
+
+    success = true
+    return { error: null }
+  } catch (err) {
+    error = err
+    return { error: err }
+  } finally {
+    // Log permintaan
+    logAuthRequest({
+      endpoint: "signOut",
+      method: "POST",
+      source: "client",
+      success,
+      duration: performance.now() - start,
+      cached: false,
+      error: error ? String(error) : undefined,
+    })
+  }
 }
