@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { TelegramForm } from "@/components/telegram-form"
+import { WhatsAppForm } from "@/components/whatsapp-form"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -136,14 +137,17 @@ export function SettingsTab({ user }: SettingsTabProps) {
               </div>
             </div>
 
-            {/* Telegram Notification Settings */}
+            {/* Notification Settings */}
             <div className="rounded-lg border border-gray-200 p-4">
               <h3 className="font-medium mb-3 text-sm sm:text-base">Notifikasi</h3>
-              <TelegramForm
-                userId={user.id}
-                initialTelegramId={user.telegram_id}
-                initialTelegramNotifications={user.telegram_notifications || false}
-              />
+              <div className="space-y-6">
+                <TelegramForm
+                  userId={user.id}
+                  initialTelegramId={user.telegram_id}
+                  initialTelegramNotifications={user.telegram_notifications || false}
+                />
+                <WhatsAppForm />
+              </div>
             </div>
 
             <div className="rounded-lg border border-gray-200 p-4">
