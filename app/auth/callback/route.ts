@@ -73,11 +73,29 @@ export async function GET(request: Request) {
 
     if (sessionError) {
       console.error("❌ AUTH CALLBACK: Error getting session:", sessionError)
-      // Tetap lanjutkan, karena kita sudah menambahkan cookie secara manual
+      return NextResponse.redirect(
+        new URL(`/login?error=session_verification_error&message=${encodeURIComponent(sessionError.message)}`, appUrl),
+      )
     }
 
     if (!session) {
       console.warn("⚠️ AUTH CALLBACK: No session after verification, but continuing with manual cookie")
+
+      // Tambahan: Verifikasi user dengan getUser() untuk keamanan ekstra
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        console.error("❌ AUTH CALLBACK: User verification failed:", userError)
+        return NextResponse.redirect(
+          new URL(
+            `/login?error=user_verification_error&message=${encodeURIComponent(userError?.message || "User verification failed")}`,
+            appUrl,
+          ),
+        )
+      }
     } else {
       console.log("✅ AUTH CALLBACK: Session verified successfully")
     }

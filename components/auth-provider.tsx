@@ -43,21 +43,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Throttle auth checks to prevent too many requests
   const THROTTLE_INTERVAL = 10000 // 10 seconds
 
-  // Custom sign out function to handle redirects and state cleanup
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut()
+      clearAuthCache()
       setSession(null)
       setUser(null)
-      clearAuthCache() // Clear auth cache on sign out
-
-      if (pathname?.startsWith("/dashboard")) {
-        router.push("/login")
-      }
+      router.push("/login") // Redirect to login page after sign out
     } catch (error) {
       console.error("Error signing out:", error)
     }
-  }
+  }, [supabase, router])
 
   // Fungsi untuk refresh session data
   const refreshSession = useCallback(async () => {
@@ -89,15 +85,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Selalu verifikasi user dengan getUser() bahkan jika menggunakan cache
         if (cachedSession) {
-          // Verifikasi user dengan server auth
-          const { data: userData, error: userError } = await supabase.auth.getUser()
-          if (!userError && userData.user) {
+          try {
+            // Verifikasi user dengan server auth
+            const { data: userData, error: userError } = await supabase.auth.getUser()
+
+            if (userError) {
+              // Jika verifikasi gagal, sign out
+              console.error("Error verifying user:", userError)
+              await signOut()
+              refreshingRef.current = false
+              return
+            }
+
+            if (!userData.user) {
+              console.error("No user data returned from getUser")
+              await signOut()
+              refreshingRef.current = false
+              return
+            }
+
             // Update user dengan data yang terverifikasi
             setUser(userData.user)
-          } else if (userError) {
-            // Jika verifikasi gagal, sign out
-            console.error("Error verifying user:", userError)
+          } catch (verifyError) {
+            console.error("Error during user verification:", verifyError)
             await signOut()
+            refreshingRef.current = false
+            return
           }
         } else {
           setUser(null)
@@ -110,52 +123,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // No valid cache, fetch from Supabase
       console.log("🔄 Fetching fresh auth session from Supabase")
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-      if (sessionError) {
-        console.error("Error getting session:", sessionError)
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-        // Handle refresh token errors by signing out
-        if (sessionError.message?.includes("refresh_token_already_used") || sessionError.name === "AuthApiError") {
-          console.log("🔄 Auth token error detected, signing out and resetting state")
-          await signOut()
-        }
+        if (sessionError) {
+          console.error("Error getting session:", sessionError)
 
-        refreshingRef.current = false
-        return
-      }
+          // Handle refresh token errors by signing out
+          if (sessionError.message?.includes("refresh_token_already_used") || sessionError.name === "AuthApiError") {
+            console.log("🔄 Auth token error detected, signing out and resetting state")
+            await signOut()
+          }
 
-      // Jika ada session, SELALU verifikasi dengan getUser()
-      let verifiedUser = null
-
-      if (sessionData?.session) {
-        // Verifikasi user dengan server auth
-        const { data: userData, error: userError } = await supabase.auth.getUser()
-        if (!userError && userData.user) {
-          // Gunakan user yang terverifikasi
-          verifiedUser = userData.user
-        } else if (userError) {
-          // Jika verifikasi gagal, sign out
-          console.error("Error verifying user:", userError)
-          await signOut()
           refreshingRef.current = false
           return
         }
+
+        // Jika ada session, SELALU verifikasi dengan getUser()
+        let verifiedUser = null
+
+        if (sessionData?.session) {
+          try {
+            // Verifikasi user dengan server auth
+            const { data: userData, error: userError } = await supabase.auth.getUser()
+
+            if (userError) {
+              // Jika verifikasi gagal, sign out
+              console.error("Error verifying user:", userError)
+              await signOut()
+              refreshingRef.current = false
+              return
+            }
+
+            if (!userData.user) {
+              console.error("No user data returned from getUser")
+              await signOut()
+              refreshingRef.current = false
+              return
+            }
+
+            // Gunakan user yang terverifikasi
+            verifiedUser = userData.user
+          } catch (verifyError) {
+            console.error("Error during user verification:", verifyError)
+            await signOut()
+            refreshingRef.current = false
+            return
+          }
+        }
+
+        // Cache the session data
+        cacheAuthSession(sessionData?.session ?? null)
+
+        setSession(sessionData?.session ?? null)
+        setUser(verifiedUser)
+        setLoading(false)
+      } catch (sessionError) {
+        console.error("Error fetching session:", sessionError)
+        setLoading(false)
       }
-
-      // Cache the session data
-      cacheAuthSession(sessionData?.session ?? null)
-
-      setSession(sessionData?.session ?? null)
-      setUser(verifiedUser)
-      setLoading(false)
     } catch (error) {
       console.error("Unexpected error refreshing session:", error)
       setLoading(false)
     } finally {
       refreshingRef.current = false
     }
-  }, [supabase])
+  }, [supabase, signOut, router])
 
   // Fetch session and set up auth listener
   useEffect(() => {

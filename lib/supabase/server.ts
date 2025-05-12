@@ -29,27 +29,38 @@ export const createClient = () => {
 export const getVerifiedUser = async () => {
   const supabase = createClient()
 
-  // Cek session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  try {
+    // Cek session
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-  if (!session) {
-    return { user: null, error: "No session" }
+    if (sessionError) {
+      console.error("Error getting session:", sessionError)
+      return { user: null, error: sessionError }
+    }
+
+    if (!session) {
+      return { user: null, error: "No session" }
+    }
+
+    // Verifikasi user dengan getUser()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      return { user: null, error: userError || "User verification failed" }
+    }
+
+    return { user, error: null }
+  } catch (error) {
+    console.error("Unexpected error in getVerifiedUser:", error)
+    return { user: null, error: "Unexpected error occurred" }
   }
-
-  // Verifikasi user dengan getUser()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    console.error("Error verifying user:", userError)
-    return { user: null, error: userError || "User verification failed" }
-  }
-
-  return { user, error: null }
 }
 
 // Fungsi helper untuk memeriksa apakah user adalah admin

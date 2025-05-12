@@ -86,21 +86,49 @@ export async function middleware(req: NextRequest) {
     const endTime = performance.now()
     const duration = endTime - startTime
 
+    if (sessionError) {
+      console.error("❌ MIDDLEWARE: Error getting session:", sessionError)
+
+      // Catat error
+      storeAuthRequestLog({
+        timestamp: now,
+        path: req.nextUrl.pathname,
+        success: false,
+        duration,
+        cached: false,
+      })
+
+      // For protected routes, redirect to login on session error
+      if (isProtectedRoute) {
+        const redirectUrl = new URL("/login", req.url)
+        redirectUrl.searchParams.set("redirect", req.nextUrl.pathname)
+        redirectUrl.searchParams.set("error", "session_error")
+
+        const redirectResponse = NextResponse.redirect(redirectUrl)
+        // Cache respons redirect
+        middlewareCache.set(cacheKey, { result: redirectResponse, timestamp: now })
+        return redirectResponse
+      }
+
+      return res
+    }
+
     // Jika ada sesi, verifikasi dengan getUser untuk keamanan
     let userData = null
-    let error = sessionError
+    let userError = null
 
     if (sessionData.session) {
-      const { data: verifiedData, error: userError } = await supabase.auth.getUser()
+      const { data: verifiedData, error: verifyError } = await supabase.auth.getUser()
       userData = verifiedData
-      if (userError) {
-        error = userError
-        console.error("❌ MIDDLEWARE: Error verifying user:", userError)
+      userError = verifyError
+
+      if (verifyError) {
+        console.error("❌ MIDDLEWARE: Error verifying user:", verifyError)
       }
     }
 
-    if (error) {
-      console.error("❌ MIDDLEWARE: Error getting session:", error)
+    if (userError) {
+      console.error("❌ MIDDLEWARE: Error verifying user:", userError)
 
       // Catat error
       storeAuthRequestLog({
@@ -114,7 +142,7 @@ export async function middleware(req: NextRequest) {
       // If token refresh error, redirect to login for protected routes
       if (
         isProtectedRoute &&
-        (error.message?.includes("refresh_token_already_used") || error.name === "AuthApiError")
+        (userError.message?.includes("refresh_token_already_used") || userError.name === "AuthApiError")
       ) {
         console.log("❌ MIDDLEWARE: Auth token error, redirecting to login")
         const redirectUrl = new URL("/login", req.url)

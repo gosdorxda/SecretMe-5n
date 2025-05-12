@@ -71,8 +71,28 @@ export async function POST(request: NextRequest) {
     // Dapatkan session user jika ada
     const {
       data: { session },
+      error: sessionError,
     } = await supabase.auth.getSession()
-    const userId = session?.user?.id
+
+    let userId = null
+
+    if (sessionError) {
+      console.error("Error getting session:", sessionError)
+      // Continue without user ID
+    } else if (session) {
+      // Verifikasi user dengan getUser() untuk keamanan ekstra
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.error("Error verifying user:", userError)
+        // Continue without user ID
+      } else if (user) {
+        userId = user.id
+      }
+    }
 
     // Periksa rate limit berdasarkan IP dan penerima
     const { data: rateLimitData, error: rateLimitError } = await supabase

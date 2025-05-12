@@ -27,13 +27,34 @@ export default function ResetPasswordForm() {
   // Check if we have a valid reset token
   useEffect(() => {
     const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession()
+      try {
+        const { data, error } = await supabase.auth.getSession()
 
-      // If no session and no code parameter, redirect to forgot-password
-      if (!data.session && !searchParams.get("code")) {
+        if (error) {
+          console.error("Error checking session:", error)
+          toast({
+            title: "Error saat memeriksa sesi",
+            description: "Terjadi kesalahan saat memeriksa sesi Anda",
+            variant: "destructive",
+          })
+          router.push("/forgot-password")
+          return
+        }
+
+        // If no session and no code parameter, redirect to forgot-password
+        if (!data.session && !searchParams.get("code")) {
+          toast({
+            title: "Link tidak valid",
+            description: "Link reset password tidak valid atau telah kedaluwarsa",
+            variant: "destructive",
+          })
+          router.push("/forgot-password")
+        }
+      } catch (error) {
+        console.error("Unexpected error checking session:", error)
         toast({
-          title: "Link tidak valid",
-          description: "Link reset password tidak valid atau telah kedaluwarsa",
+          title: "Error tidak terduga",
+          description: "Terjadi kesalahan saat memeriksa sesi Anda",
           variant: "destructive",
         })
         router.push("/forgot-password")

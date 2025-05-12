@@ -4,6 +4,7 @@ import { cookies } from "next/headers"
 import { isValidTelegramId } from "@/lib/telegram/config"
 
 export async function POST(request: Request) {
+  let user // Declare user variable
   try {
     const { telegramId, enableNotifications } = await request.json()
 
@@ -14,21 +15,39 @@ export async function POST(request: Request) {
 
     // Get user session
     const supabase = createClient(cookies())
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-    if (!session) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
+      if (sessionError) {
+        console.error("Error getting session:", sessionError)
+        return NextResponse.json({ success: false, error: "Authentication error" }, { status: 401 })
+      }
 
-    // Verifikasi user dengan getUser() yang lebih aman
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+      if (!session) {
+        return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+      }
 
-    if (userError || !user) {
+      // Verifikasi user dengan getUser() yang lebih aman
+      const {
+        data: { user: fetchedUser },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) {
+        console.error("Error verifying user:", userError)
+        return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
+      }
+
+      if (!fetchedUser) {
+        return NextResponse.json({ success: false, error: "User not found" }, { status: 401 })
+      }
+
+      user = fetchedUser // Assign fetchedUser to the user variable
+    } catch (error: any) {
+      console.error("Error during authentication:", error)
       return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 401 })
     }
 

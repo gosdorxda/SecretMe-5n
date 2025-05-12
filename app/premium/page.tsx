@@ -8,19 +8,6 @@ export default async function PremiumPage({
 }) {
   const supabase = createClient()
 
-  // Get user session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // Check if user is logged in
-  const isLoggedIn = !!session
-
-  // Get user data if logged in
-  let isPremium = false
-  let userName = ""
-  let transaction = null
-
   // Get URL parameters for status
   const urlStatus = searchParams.status as string | undefined
   const urlOrderId = searchParams.order_id as string | undefined
@@ -47,14 +34,47 @@ export default async function PremiumPage({
     }
   }
 
+  // Get user session
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  if (sessionError) {
+    console.error("Error getting session:", sessionError)
+    // Handle session error gracefully - continue as not logged in
+    return (
+      <PremiumClient
+        isLoggedIn={false}
+        isPremium={false}
+        userName=""
+        premiumPrice={premiumPrice}
+        urlStatus={urlStatus}
+        urlOrderId={urlOrderId}
+        transaction={null}
+        activeGateway={activeGateway}
+      />
+    )
+  }
+
+  // Check if user is logged in
+  const isLoggedIn = !!session
+
+  // Get user data if logged in
+  let isPremium = false
+  let userName = ""
+  let transaction = null
+
   if (isLoggedIn) {
     // Get authenticated user data
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
 
-    if (!user) {
-      // If no authenticated user, treat as not logged in
+    if (userError || !user) {
+      console.error("Error verifying user:", userError)
+      // If user verification fails, treat as not logged in
       return (
         <PremiumClient
           isLoggedIn={false}

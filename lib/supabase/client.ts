@@ -36,8 +36,13 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
     // Periksa apakah ada sesi yang valid
     const { data: sessionData, error: sessionError } = await client.auth.getSession()
 
+    if (sessionError) {
+      console.error("❌ Error saat memeriksa sesi:", sessionError)
+      return false
+    }
+
     // Jika tidak ada sesi valid tetapi ada token di localStorage
-    if ((!sessionData?.session || sessionError) && typeof window !== "undefined") {
+    if (!sessionData?.session && typeof window !== "undefined") {
       console.log("🔄 Mencoba memperbaiki sesi dari localStorage...")
 
       // Coba ambil token dari localStorage
@@ -57,6 +62,14 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
             if (setSessionError) {
               console.error("❌ Gagal memperbaiki sesi:", setSessionError.message)
+              return false
+            }
+
+            // Verifikasi bahwa session berhasil diperbaiki
+            const { data: verifyData, error: verifyError } = await client.auth.getUser()
+
+            if (verifyError || !verifyData.user) {
+              console.error("❌ Sesi diperbaiki tetapi verifikasi user gagal:", verifyError)
               return false
             }
 

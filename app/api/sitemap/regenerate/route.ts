@@ -8,7 +8,13 @@ export async function POST(request: Request) {
   // Cek session dan verifikasi user dengan cara yang lebih aman
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession()
+
+  if (sessionError) {
+    console.error("Error getting session:", sessionError)
+    return NextResponse.json({ error: "Authentication error" }, { status: 401 })
+  }
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -20,9 +26,13 @@ export async function POST(request: Request) {
     error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError || !user) {
+  if (userError) {
     console.error("Error verifying user:", userError)
     return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 401 })
   }
 
   // Verifikasi apakah user adalah admin
