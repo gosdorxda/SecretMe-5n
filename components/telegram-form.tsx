@@ -366,7 +366,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           </CardHeader>
 
           <CardContent className="relative">
-            <div className="p-3 bg-gray-50 rounded-lg border mb-4">
+            <div className="p-3 bg-gray-50 rounded-lg border">
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
                   <Label htmlFor="telegram-notifications" className="text-base font-medium">
