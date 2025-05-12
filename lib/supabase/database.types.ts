@@ -28,12 +28,7 @@ export interface Database {
           notification_channel: string | null
           role: string | null
           last_ip: string | null
-          // Kolom WhatsApp dan email tetap ada untuk kompatibilitas database
-          // tapi tidak digunakan dalam kode aplikasi
-          whatsapp_number: string | null
-          whatsapp_notifications_enabled: boolean | null
-          email_notifications_enabled: boolean | null
-          email_notification_preferences: Json | null
+          // Kolom WhatsApp dan email telah dihapus dari database
         }
         Insert: {
           id?: string
@@ -59,10 +54,7 @@ export interface Database {
           notification_channel?: string | null
           role?: string | null
           last_ip?: string | null
-          whatsapp_number?: string | null
-          whatsapp_notifications_enabled?: boolean | null
-          email_notifications_enabled?: boolean | null
-          email_notification_preferences?: Json | null
+          // Kolom WhatsApp dan email telah dihapus dari database
         }
         Update: {
           id?: string
@@ -88,10 +80,7 @@ export interface Database {
           notification_channel?: string | null
           role?: string | null
           last_ip?: string | null
-          whatsapp_number?: string | null
-          whatsapp_notifications_enabled?: boolean | null
-          email_notifications_enabled?: boolean | null
-          email_notification_preferences?: Json | null
+          // Kolom WhatsApp dan email telah dihapus dari database
         }
       }
       messages: {

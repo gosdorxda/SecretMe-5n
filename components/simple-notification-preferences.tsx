@@ -1,54 +1,101 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { toast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { toast } from "@/hooks/use-toast"
 import { Bell } from "lucide-react"
 
 interface SimpleNotificationPreferencesProps {
   userId: string
-  initialEnabled: boolean
 }
 
-export function SimpleNotificationPreferences({ userId, initialEnabled }: SimpleNotificationPreferencesProps) {
-  const [newMessagesEnabled, setNewMessagesEnabled] = useState(initialEnabled)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function SimpleNotificationPreferences({ userId }: SimpleNotificationPreferencesProps) {
+  const [newMessagesEnabled, setNewMessagesEnabled] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
-  const handleSavePreferences = async () => {
-    setIsSubmitting(true)
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        const { data, error } = await supabase
+          .from("notification_preferences")
+          .select("new_messages")
+          .eq("user_id", userId)
+          .single()
+
+        if (error && error.code !== "PGRST116") {
+          throw error
+        }
+
+        if (data) {
+          setNewMessagesEnabled(data.new_messages)
+        } else {
+          // Jika tidak ada preferensi, buat default
+          await createDefaultPreferences()
+        }
+      } catch (error: any) {
+        console.error("Error loading preferences:", error)
+        toast({
+          title: "Gagal memuat preferensi",
+          description: error.message || "Terjadi kesalahan saat memuat preferensi notifikasi.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadPreferences()
+  }, [supabase, userId])
+
+  async function createDefaultPreferences() {
+    try {
+      const { error } = await supabase.from("notification_preferences").insert({
+        user_id: userId,
+        new_messages: true,
+        // Tetap menyimpan nilai default untuk kolom lain
+        message_replies: true,
+        system_updates: true,
+      })
+
+      if (error) throw error
+    } catch (error: any) {
+      console.error("Error creating default preferences:", error)
+    }
+  }
+
+  async function updatePreference(value: boolean) {
+    setIsLoading(true)
 
     try {
       const { error } = await supabase
         .from("notification_preferences")
-        .upsert({
-          user_id: userId,
-          new_messages: newMessagesEnabled,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
+        .update({ new_messages: value })
+        .eq("user_id", userId)
 
-      if (error) {
-        throw new Error(error.message)
-      }
+      if (error) throw error
 
+      setNewMessagesEnabled(value)
       toast({
-        title: "Berhasil",
-        description: "Preferensi notifikasi berhasil disimpan",
+        title: "Preferensi diperbarui",
+        description: "Pengaturan notifikasi Anda telah diperbarui.",
       })
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Gagal menyimpan preferensi notifikasi",
+        title: "Gagal memperbarui preferensi",
+        description: error.message || "Terjadi kesalahan saat memperbarui preferensi.",
         variant: "destructive",
       })
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
+  }
+
+  if (isLoading) {
+    return <div className="py-2">Memuat preferensi notifikasi...</div>
   }
 
   return (
@@ -61,27 +108,19 @@ export function SimpleNotificationPreferences({ userId, initialEnabled }: Simple
         <CardDescription>Aktifkan atau nonaktifkan notifikasi pesan masuk</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between space-x-2">
-            <div className="space-y-0.5">
-              <Label htmlFor="new-messages" className="text-base">
-                Notifikasi Pesan Baru
-              </Label>
-              <p className="text-sm text-muted-foreground">Dapatkan notifikasi saat ada pesan baru masuk</p>
-            </div>
-            <Switch id="new-messages" checked={newMessagesEnabled} onCheckedChange={setNewMessagesEnabled} />
+        <div className="flex items-center justify-between space-x-2">
+          <div className="space-y-0.5">
+            <Label htmlFor="new-messages" className="text-base">
+              Notifikasi Pesan Baru
+            </Label>
+            <p className="text-sm text-muted-foreground">Dapatkan notifikasi saat ada pesan baru masuk</p>
           </div>
-
-          <Button onClick={handleSavePreferences} disabled={isSubmitting} className="w-full sm:w-auto mt-4">
-            {isSubmitting ? (
-              <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
-                Menyimpan...
-              </>
-            ) : (
-              "Simpan"
-            )}
-          </Button>
+          <Switch
+            id="new-messages"
+            checked={newMessagesEnabled}
+            onCheckedChange={updatePreference}
+            disabled={isLoading}
+          />
         </div>
       </CardContent>
     </Card>

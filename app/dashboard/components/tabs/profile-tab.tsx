@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Crown, User, FileText, Link2, CheckCircle, Phone, Lock } from "lucide-react"
+import { Crown, User, FileText, Link2, CheckCircle, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ProfilePreview } from "@/components/profile-preview"
@@ -11,7 +11,6 @@ import { NameForm } from "@/components/name-form"
 import { BioForm } from "@/components/bio-form"
 import { SocialMediaForm } from "@/components/social-media-form"
 import { AvatarUpload } from "@/components/avatar-upload"
-import { WhatsAppForm } from "@/components/whatsapp-form"
 import { TelegramForm } from "@/components/telegram-form"
 import type { Database } from "@/lib/supabase/database.types"
 
@@ -386,46 +385,6 @@ export function ProfileTab({ user }: ProfileTabProps) {
                   userId={user.id}
                   initialTelegramId={user.telegram_id}
                   initialTelegramNotifications={user.telegram_notifications || false}
-                />
-              </div>
-
-              {/* WhatsApp Notification Card */}
-              <div className="relative rounded-lg border border-green-200 p-4 overflow-hidden text-left bg-gradient-to-br from-green-50/40 to-green-100/30">
-                {/* Premium badge */}
-                <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
-                  <Crown className="h-2.5 w-2.5" />
-                  <span>Premium</span>
-                </div>
-
-                {/* Decorative elements */}
-                <div className="absolute -right-12 -top-12 w-24 h-24 rounded-full bg-green-500/10"></div>
-                <div className="absolute -left-6 -bottom-6 w-16 h-16 rounded-full bg-teal-500/10"></div>
-
-                <h3 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base flex items-center gap-2 text-gray-800">
-                  <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg shadow-sm">
-                    <Phone className="h-4 w-4" />
-                  </div>
-                  <span>Notifikasi WhatsApp</span>
-                </h3>
-
-                <div className="mb-4 p-3 bg-white/50 rounded-lg border border-green-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs text-gray-500">Status:</span>
-                      <span className="text-sm text-green-700">
-                        {user.phone_number ? (user.whatsapp_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
-                      </span>
-                    </div>
-                    <div className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
-                      {user.phone_number ? (user.whatsapp_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
-                    </div>
-                  </div>
-                </div>
-
-                <WhatsAppForm
-                  userId={user.id}
-                  initialPhoneNumber={user.phone_number}
-                  initialWhatsAppNotifications={user.whatsapp_notifications || false}
                 />
               </div>
             </div>

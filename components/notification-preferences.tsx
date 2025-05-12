@@ -5,42 +5,39 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/hooks/use-toast"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Bell } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { TelegramForm } from "@/components/telegram-form"
+import { Bell, MessageCircle } from "lucide-react"
 
 interface NotificationPreferencesProps {
   userId: string
-  initialPreferences: {
-    newMessages: boolean
-    messageReplies: boolean
-    systemUpdates: boolean
-  }
+  initialTelegramId: string | null
+  initialTelegramNotifications: boolean
+  initialNotificationChannel: string | null
 }
 
-export function NotificationPreferences({ userId, initialPreferences }: NotificationPreferencesProps) {
-  const [preferences, setPreferences] = useState({
-    newMessages: initialPreferences.newMessages,
-    messageReplies: initialPreferences.messageReplies,
-    systemUpdates: initialPreferences.systemUpdates,
-  })
+export function NotificationPreferences({
+  userId,
+  initialTelegramId,
+  initialTelegramNotifications,
+  initialNotificationChannel,
+}: NotificationPreferencesProps) {
+  const [notificationChannel, setNotificationChannel] = useState<string>(initialNotificationChannel || "telegram")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const supabase = createClient()
 
-  const handleSavePreferences = async () => {
+  const handleSaveChannel = async () => {
     setIsSubmitting(true)
 
     try {
       const { error } = await supabase
-        .from("notification_preferences")
-        .upsert({
-          user_id: userId,
-          new_messages: preferences.newMessages,
-          message_replies: preferences.messageReplies,
-          system_updates: preferences.systemUpdates,
+        .from("users")
+        .update({
+          notification_channel: notificationChannel,
           updated_at: new Date().toISOString(),
         })
-        .select()
+        .eq("id", userId)
 
       if (error) {
         throw new Error(error.message)
@@ -48,12 +45,12 @@ export function NotificationPreferences({ userId, initialPreferences }: Notifica
 
       toast({
         title: "Berhasil",
-        description: "Preferensi notifikasi berhasil disimpan",
+        description: "Saluran notifikasi berhasil disimpan",
       })
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Gagal menyimpan preferensi notifikasi",
+        description: error.message || "Gagal menyimpan saluran notifikasi",
         variant: "destructive",
       })
     } finally {
@@ -62,81 +59,67 @@ export function NotificationPreferences({ userId, initialPreferences }: Notifica
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Bell className="h-5 w-5 text-purple-500" />
-          Preferensi Notifikasi
-        </CardTitle>
-        <CardDescription>Pilih jenis notifikasi yang ingin Anda terima</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-start space-x-3 space-y-0">
-            <Checkbox
-              id="new-messages"
-              checked={preferences.newMessages}
-              onCheckedChange={(checked) => setPreferences({ ...preferences, newMessages: checked === true })}
-            />
-            <div className="grid gap-1.5 leading-none">
-              <Label
-                htmlFor="new-messages"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Pesan Baru
-              </Label>
-              <p className="text-sm text-muted-foreground">Dapatkan notifikasi saat ada pesan baru masuk</p>
-            </div>
-          </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bell className="h-5 w-5 text-blue-500" />
+            Saluran Notifikasi
+          </CardTitle>
+          <CardDescription>Pilih saluran notifikasi yang Anda inginkan</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <RadioGroup
+              value={notificationChannel}
+              onValueChange={setNotificationChannel}
+              className="flex flex-col space-y-3"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="telegram" id="telegram" />
+                <Label htmlFor="telegram" className="font-normal">
+                  Telegram
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="none" id="none" />
+                <Label htmlFor="none" className="font-normal">
+                  Tidak ada notifikasi
+                </Label>
+              </div>
+            </RadioGroup>
 
-          <div className="flex items-start space-x-3 space-y-0">
-            <Checkbox
-              id="message-replies"
-              checked={preferences.messageReplies}
-              onCheckedChange={(checked) => setPreferences({ ...preferences, messageReplies: checked === true })}
-            />
-            <div className="grid gap-1.5 leading-none">
-              <Label
-                htmlFor="message-replies"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Balasan Pesan
-              </Label>
-              <p className="text-sm text-muted-foreground">Dapatkan notifikasi saat ada balasan baru pada pesan Anda</p>
-            </div>
+            <Button onClick={handleSaveChannel} disabled={isSubmitting} className="w-full sm:w-auto mt-2">
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                  Menyimpan...
+                </>
+              ) : (
+                "Simpan Saluran"
+              )}
+            </Button>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="flex items-start space-x-3 space-y-0">
-            <Checkbox
-              id="system-updates"
-              checked={preferences.systemUpdates}
-              onCheckedChange={(checked) => setPreferences({ ...preferences, systemUpdates: checked === true })}
-            />
-            <div className="grid gap-1.5 leading-none">
-              <Label
-                htmlFor="system-updates"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Update Sistem
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Dapatkan notifikasi tentang fitur baru dan pembaruan sistem
-              </p>
-            </div>
-          </div>
-
-          <Button onClick={handleSavePreferences} disabled={isSubmitting} className="mt-4 w-full sm:w-auto">
-            {isSubmitting ? (
-              <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
-                Menyimpan...
-              </>
-            ) : (
-              "Simpan Preferensi"
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Telegram Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-blue-500" />
+            Pengaturan Telegram
+          </CardTitle>
+          <CardDescription>Hubungkan akun Telegram Anda untuk menerima notifikasi</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TelegramForm
+            userId={userId}
+            initialTelegramId={initialTelegramId}
+            initialTelegramNotifications={initialTelegramNotifications}
+          />
+        </CardContent>
+      </Card>
+    </div>
   )
 }

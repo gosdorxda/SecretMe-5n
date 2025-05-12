@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Get notification preferences
     const { data: preferences, error: preferencesError } = await supabase
       .from("notification_preferences")
-      .select("*")
+      .select("new_messages")
       .eq("user_id", userId)
       .single()
 
