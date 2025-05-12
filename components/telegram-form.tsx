@@ -386,7 +386,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between pt-5 mt-2 border-t">
+          <CardFooter className="flex justify-between">
             <Button
               variant="outline"
               size="sm"
