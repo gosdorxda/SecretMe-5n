@@ -4,49 +4,70 @@ import type { NextRequest } from "next/server"
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
 
-  // Refresh session untuk semua rute yang cocok dengan matcher
-  // Ini akan menyimpan session dalam cookie dan mengurangi kebutuhan
-  // untuk memanggil getSession() berulang kali
-  await supabase.auth.getSession()
+  try {
+    const supabase = createMiddlewareClient({ req, res })
 
-  // Untuk rute admin, verifikasi akses
-  if (req.nextUrl.pathname.startsWith("/admin")) {
+    // Refresh session untuk semua rute yang cocok dengan matcher
+    // Ini akan menyimpan session dalam cookie dan mengurangi kebutuhan
+    // untuk memanggil getSession() berulang kali
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
-    if (!session) {
-      // Redirect ke halaman login jika tidak ada sesi
-      return NextResponse.redirect(new URL("/login?redirect=/admin", req.url))
+    // Untuk dashboard dan rute yang dilindungi, verifikasi session
+    if ((req.nextUrl.pathname.startsWith("/dashboard") || req.nextUrl.pathname.startsWith("/premium")) && !session) {
+      // Redirect ke halaman login dengan URL asli sebagai parameter redirect
+      const redirectUrl = req.nextUrl.pathname + req.nextUrl.search
+      return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(redirectUrl)}`, req.url))
     }
 
-    try {
-      // Periksa apakah pengguna adalah admin
-      // Catatan: Ini masih melakukan query database, tapi hanya untuk rute admin
-      // yang seharusnya jarang diakses dibandingkan rute lain
-      const { data: userData, error } = await supabase.from("users").select("email").eq("id", session.user.id).single()
+    // Untuk rute admin, verifikasi akses admin
+    if (req.nextUrl.pathname.startsWith("/admin")) {
+      if (!session) {
+        // Redirect ke halaman login jika tidak ada sesi
+        return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(req.nextUrl.pathname)}`, req.url))
+      }
 
-      if (error) {
-        console.error("Error checking admin status:", error)
+      try {
+        // Periksa apakah pengguna adalah admin
+        const { data: userData, error } = await supabase
+          .from("users")
+          .select("email")
+          .eq("id", session.user.id)
+          .single()
+
+        if (error) {
+          console.error("Error checking admin status:", error)
+          return NextResponse.redirect(new URL("/", req.url))
+        }
+
+        const adminEmails = ["gosdorxda@gmail.com"] // Email admin
+        const isAdminUser = adminEmails.includes(userData?.email || "")
+
+        if (!isAdminUser) {
+          // Redirect ke dashboard jika bukan admin
+          return NextResponse.redirect(new URL("/dashboard?error=unauthorized", req.url))
+        }
+      } catch (error) {
+        console.error("Error in middleware:", error)
         return NextResponse.redirect(new URL("/", req.url))
       }
+    }
 
-      const adminEmails = ["gosdorxda@gmail.com"] // Email admin
-      const isAdminUser = adminEmails.includes(userData?.email || "")
-
-      if (!isAdminUser) {
-        // Redirect ke halaman utama jika bukan admin
-        return NextResponse.redirect(new URL("/dashboard?error=unauthorized", req.url))
-      }
-    } catch (error) {
-      console.error("Error in middleware:", error)
+    return res
+  } catch (error) {
+    console.error("Middleware error:", error)
+    // Untuk error kritis, redirect ke halaman utama
+    if (
+      req.nextUrl.pathname.startsWith("/dashboard") ||
+      req.nextUrl.pathname.startsWith("/admin") ||
+      req.nextUrl.pathname.startsWith("/premium")
+    ) {
       return NextResponse.redirect(new URL("/", req.url))
     }
+    return res
   }
-
-  return res
 }
 
 export const config = {

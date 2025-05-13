@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient, signOutWithLogging } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/lib/supabase/database.types"
-import { FileText, Link2, User, ImageIcon, Trash2 } from "lucide-react"
+import { FileText, Link2, User, ImageIcon, Trash2, LogOut } from "lucide-react"
 import { DashboardHeader } from "./components/dashboard-header"
 import { PremiumBanner } from "./components/premium-banner"
 import { ProfileQuickView } from "./components/profile-quick-view"
 import { StatisticsCards } from "./components/statistics-cards"
 import { DashboardTabs } from "./components/dashboard-tabs"
+import { Button } from "@/components/ui/button"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 type Message = Database["public"]["Tables"]["messages"]["Row"]
@@ -77,6 +78,11 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
     try {
       // Gunakan fungsi signOutWithLogging yang sudah dioptimasi
       await signOutWithLogging()
+
+      toast({
+        title: "Logout berhasil",
+        description: "Anda telah keluar dari akun",
+      })
 
       // Redirect dan refresh
       router.push("/")
@@ -237,6 +243,18 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
 
   return (
     <div className="w-full max-w-[56rem] mx-auto px-4 sm:px-6">
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          className="text-gray-600 hover:text-gray-900"
+          disabled={isLoading}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
+      </div>
       <DashboardHeader user={user} />
       <ProfileQuickView user={user} />
       <PremiumBanner user={user} />

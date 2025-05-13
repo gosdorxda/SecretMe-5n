@@ -7,7 +7,7 @@ import { useAuth } from "./auth-provider"
 import { signOutWithLogging } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { MessageSquare } from "lucide-react"
+import { MessageSquare, LogOut } from "lucide-react"
 
 export function SiteHeader() {
   const pathname = usePathname()
@@ -63,9 +63,15 @@ export function SiteHeader() {
               <Link href="/register">Mulai Sekarang</Link>
             </Button>
           ) : (
-            <Button className="rounded-full" size="sm" asChild>
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
+            <>
+              <Button className="rounded-full" size="sm" asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </>
           )}
         </div>
       </div>
