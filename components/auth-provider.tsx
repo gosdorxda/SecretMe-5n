@@ -48,6 +48,10 @@ const isMobileDevice = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 
+// Tambahkan di bagian atas file, di luar komponen
+let lastAuthStateChangeLog = 0
+const AUTH_STATE_CHANGE_LOG_THROTTLE = 5000 // 5 detik
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -75,6 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Tambahkan counter untuk retry
   const authRetryCountRef = useRef(0)
   const MAX_AUTH_RETRIES = 3
+
+  // Tambahkan ref untuk melacak subscription
+  const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
 
   const signOut = useCallback(async () => {
     try {
@@ -981,7 +988,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch session dan setup auth listener dengan optimasi
   useEffect(() => {
     let mounted = true
-    let authSubscription: { unsubscribe: () => void } | undefined = undefined
+
+    // Jika sudah ada subscription, jangan buat lagi
+    if (authSubscriptionRef.current) {
+      console.log("Auth subscription already exists, skipping")
+      return () => {}
+    }
 
     // Initial session check
     const initializeAuth = async () => {
@@ -1080,20 +1092,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Update cache when auth state changes
           cacheAuthSession(newSession)
 
-          // Log auth state change
-          logAuthRequest({
-            endpoint: "authStateChange",
-            method: "INTERNAL",
-            source: "client",
-            success: true,
-            duration: 0,
-            cached: false,
-            userId: newSession?.user?.id,
-            details: {
-              event,
-              hasSession: !!newSession,
-            },
-          })
+          const now = Date.now()
+          if (now - lastAuthStateChangeLog > AUTH_STATE_CHANGE_LOG_THROTTLE) {
+            // Log auth state change
+            logAuthRequest({
+              endpoint: "authStateChange",
+              method: "INTERNAL",
+              source: "client",
+              success: true,
+              duration: 0,
+              cached: false,
+              userId: newSession?.user?.id,
+              details: {
+                event,
+                hasSession: !!newSession,
+              },
+            })
+            lastAuthStateChangeLog = now
+          }
         }
 
         // If token was refreshed, update the session
@@ -1144,7 +1160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Safely store the subscription for cleanup
       if (data && data.subscription && typeof data.subscription.unsubscribe === "function") {
-        authSubscription = data.subscription
+        authSubscriptionRef.current = data.subscription
       }
     } catch (error) {
       console.error("Error setting up auth listener:", error)
@@ -1167,10 +1183,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false
-      // Safely unsubscribe only if the subscription exists and has the unsubscribe method
-      if (authSubscription && typeof authSubscription.unsubscribe === "function") {
+      // Safely unsubscribe only if the subscription exists
+      if (authSubscriptionRef.current) {
         try {
-          authSubscription.unsubscribe()
+          authSubscriptionRef.current.unsubscribe()
+          authSubscriptionRef.current = null
         } catch (error) {
           console.error("Error unsubscribing from auth listener:", error)
         }

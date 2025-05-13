@@ -53,9 +53,24 @@ export default async function DashboardPage() {
     .from("profile_views")
     .select("count")
     .eq("user_id", session.user.id)
-    .single()
+    .maybeSingle() // Gunakan maybeSingle() alih-alih single()
 
-  const viewCount = viewsError ? 0 : profileViews?.count || 0
+  // Jika tidak ada data atau error, buat record baru dengan count 0
+  if (viewsError || !profileViews) {
+    console.log("Tidak ada data profile views, membuat record baru")
+
+    // Coba buat record baru
+    try {
+      await supabase.from("profile_views").insert({
+        user_id: session.user.id,
+        count: 0,
+      })
+    } catch (insertError) {
+      console.error("Error saat membuat profile views:", insertError)
+    }
+  }
+
+  const viewCount = profileViews?.count || 0
 
   return <DashboardClient user={userData} messages={messages || []} viewCount={viewCount} />
 }
