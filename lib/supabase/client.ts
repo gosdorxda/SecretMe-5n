@@ -76,9 +76,9 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       return false
     }
 
-    // Hindari refresh yang terlalu sering
+    // Kurangi throttling untuk mobile
     const now = Date.now()
-    if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+    if (now - lastRefreshTime < MIN_REFRESH_INTERVAL / 2) {
       return false
     }
 
@@ -95,7 +95,14 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       success: true,
       duration: 0,
       cached: false,
-      details: { action: "start" },
+      details: {
+        action: "start",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+        isMobile:
+          typeof navigator !== "undefined"
+            ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            : false,
+      },
     })
 
     // Periksa apakah ada sesi yang valid
@@ -114,7 +121,11 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
         duration,
         cached: false,
         error: sessionError.message,
-        details: { error: sessionError },
+        details: {
+          error: sessionError,
+          errorCode: sessionError.code,
+          errorStatus: sessionError.status,
+        },
       })
 
       console.error("❌ Error saat memeriksa sesi:", sessionError)
@@ -139,7 +150,12 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       duration,
       cached: false,
       userId: sessionData?.session?.user?.id,
-      details: { hasSession: !!sessionData?.session },
+      details: {
+        hasSession: !!sessionData?.session,
+        sessionExpiry: sessionData?.session?.expires_at
+          ? new Date(sessionData.session.expires_at * 1000).toISOString()
+          : null,
+      },
     })
 
     // Jika tidak ada sesi valid tetapi ada token di localStorage
@@ -284,7 +300,7 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
     }
 
     isRefreshingToken = false
-    return false
+    return !!sessionData?.session
   } catch (e) {
     // Log error
     logAuthRequest({
@@ -380,11 +396,11 @@ export const createClient = () => {
           storageKey: "supabase.auth.token",
           cookieOptions: {
             name: "sb-auth-token",
-            lifetime: 60 * 60 * 8,
-            domain: "",
+            lifetime: 60 * 60 * 24 * 7, // Perpanjang lifetime menjadi 7 hari
+            domain: process.env.COOKIE_DOMAIN || "",
             path: "/",
-            sameSite: "lax", // Ubah ke "none" jika menggunakan domain yang berbeda
-            secure: true, // Harus true untuk produksi dan jika sameSite adalah "none"
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
           },
           // Add error handling for token refresh
           onAuthStateChange: (event, session) => {

@@ -19,16 +19,29 @@ if (typeof console !== "undefined" && console.warn) {
 }
 
 // Cache untuk menyimpan hasil auth checks
-const authCheckCache = new Map<string, { isAuthenticated: boolean; timestamp: number; isAdmin?: boolean }>()
+const authCheckCache = new Map<
+  string,
+  { isAuthenticated: boolean; timestamp: number; isAdmin?: boolean; userAgent?: string }
+>()
 const AUTH_CACHE_TTL = 300000 // 5 menit (dari 1 menit)
+const MOBILE_AUTH_CACHE_TTL = 180000 // 3 menit untuk mobile
 
 // Throttling untuk middleware auth checks
 let lastMiddlewareAuthCheck = 0
 const MIN_AUTH_CHECK_INTERVAL = 5000 // 5 detik
+const MOBILE_MIN_AUTH_CHECK_INTERVAL = 3000 // 3 detik untuk mobile
+
+// Fungsi untuk mendeteksi perangkat mobile
+function isMobileUserAgent(userAgent: string | null): boolean {
+  if (!userAgent) return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+}
 
 export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
   const path = request.nextUrl.pathname
+  const userAgent = request.headers.get("user-agent")
+  const isMobile = isMobileUserAgent(userAgent)
 
   // Log middleware start
   logAuthRequest({
@@ -41,8 +54,9 @@ export async function middleware(request: NextRequest) {
     details: {
       path,
       action: "start",
-      userAgent: request.headers.get("user-agent") || undefined,
+      userAgent: userAgent || undefined,
       ip: request.ip || request.headers.get("x-forwarded-for") || undefined,
+      isMobile,
     },
   })
 
@@ -60,48 +74,76 @@ export async function middleware(request: NextRequest) {
     const cachedAuth = authCheckCache.get(cacheKey)
     const now = Date.now()
 
-    // Gunakan cache jika masih valid
-    if (cachedAuth && now - cachedAuth.timestamp < AUTH_CACHE_TTL) {
-      const endTime = performance.now()
-      const duration = endTime - startTime
+    // Gunakan cache jika masih valid, dengan TTL yang berbeda untuk mobile
+    const cacheTTL = isMobile ? MOBILE_AUTH_CACHE_TTL : AUTH_CACHE_TTL
+    if (cachedAuth && now - cachedAuth.timestamp < cacheTTL) {
+      // Periksa apakah user agent cocok untuk mencegah penggunaan cache yang salah
+      const cachedUserAgent = cachedAuth.userAgent || ""
+      const currentIsMobile = isMobile
+      const cachedIsMobile = isMobileUserAgent(cachedUserAgent)
 
-      // Log cache hit
-      logAuthRequest({
-        endpoint: "middleware",
-        method: "INTERNAL",
-        source: "middleware",
-        success: true,
-        duration,
-        cached: true,
-        details: {
-          path,
-          cacheHit: true,
-          isAuthenticated: cachedAuth.isAuthenticated,
-          isAdmin: cachedAuth.isAdmin,
-          cacheAge: now - cachedAuth.timestamp,
-        },
-      })
+      // Jika tipe perangkat berbeda, jangan gunakan cache
+      if (currentIsMobile !== cachedIsMobile) {
+        // Log cache mismatch
+        logAuthRequest({
+          endpoint: "middleware",
+          method: "INTERNAL",
+          source: "middleware",
+          success: true,
+          duration: 0,
+          cached: true,
+          details: {
+            path,
+            cacheMismatch: true,
+            currentIsMobile,
+            cachedIsMobile,
+            action: "skip_cache",
+          },
+        })
+      } else {
+        const endTime = performance.now()
+        const duration = endTime - startTime
 
-      // Jika tidak terotentikasi, redirect ke login
-      if (!cachedAuth.isAuthenticated) {
-        const redirectUrl = request.nextUrl.clone()
-        redirectUrl.pathname = "/login"
-        redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname)
-        return NextResponse.redirect(redirectUrl)
+        // Log cache hit
+        logAuthRequest({
+          endpoint: "middleware",
+          method: "INTERNAL",
+          source: "middleware",
+          success: true,
+          duration,
+          cached: true,
+          details: {
+            path,
+            cacheHit: true,
+            isAuthenticated: cachedAuth.isAuthenticated,
+            isAdmin: cachedAuth.isAdmin,
+            cacheAge: now - cachedAuth.timestamp,
+            isMobile,
+          },
+        })
+
+        // Jika tidak terotentikasi, redirect ke login
+        if (!cachedAuth.isAuthenticated) {
+          const redirectUrl = request.nextUrl.clone()
+          redirectUrl.pathname = "/login"
+          redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname)
+          return NextResponse.redirect(redirectUrl)
+        }
+
+        // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
+        if (request.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
+          const redirectUrl = request.nextUrl.clone()
+          redirectUrl.pathname = "/dashboard"
+          return NextResponse.redirect(redirectUrl)
+        }
+
+        return res
       }
-
-      // Jika ini adalah rute admin, periksa apakah pengguna adalah admin
-      if (request.nextUrl.pathname.startsWith("/admin") && !cachedAuth.isAdmin) {
-        const redirectUrl = request.nextUrl.clone()
-        redirectUrl.pathname = "/dashboard"
-        return NextResponse.redirect(redirectUrl)
-      }
-
-      return res
     }
 
-    // Throttle auth checks untuk mencegah rate limiting
-    if (now - lastMiddlewareAuthCheck < MIN_AUTH_CHECK_INTERVAL) {
+    // Throttle auth checks untuk mencegah rate limiting, dengan interval yang berbeda untuk mobile
+    const minInterval = isMobile ? MOBILE_MIN_AUTH_CHECK_INTERVAL : MIN_AUTH_CHECK_INTERVAL
+    if (now - lastMiddlewareAuthCheck < minInterval) {
       const endTime = performance.now()
       const duration = endTime - startTime
 
@@ -117,7 +159,8 @@ export async function middleware(request: NextRequest) {
           path,
           throttled: true,
           timeSinceLastCheck: now - lastMiddlewareAuthCheck,
-          minInterval: MIN_AUTH_CHECK_INTERVAL,
+          minInterval,
+          isMobile,
         },
       })
 
@@ -161,6 +204,7 @@ export async function middleware(request: NextRequest) {
         details: {
           path,
           action: "start",
+          isMobile,
         },
       })
 
@@ -185,6 +229,7 @@ export async function middleware(request: NextRequest) {
         details: {
           path,
           hasSession: !!session,
+          isMobile,
         },
       })
 
@@ -194,6 +239,7 @@ export async function middleware(request: NextRequest) {
         authCheckCache.set(cacheKey, {
           isAuthenticated: false,
           timestamp: now,
+          userAgent: userAgent || undefined,
         })
 
         const endTime = performance.now()
@@ -212,6 +258,7 @@ export async function middleware(request: NextRequest) {
             action: "redirect",
             reason: "no_session",
             redirectTo: "/login",
+            isMobile,
           },
         })
 
@@ -235,6 +282,7 @@ export async function middleware(request: NextRequest) {
           isAuthenticated: true,
           isAdmin,
           timestamp: now,
+          userAgent: userAgent || undefined,
         })
 
         const endTime = performance.now()
@@ -256,6 +304,7 @@ export async function middleware(request: NextRequest) {
               reason: "not_admin",
               email,
               redirectTo: "/dashboard",
+              isMobile,
             },
           })
 
@@ -278,6 +327,7 @@ export async function middleware(request: NextRequest) {
             action: "allow",
             isAdmin: true,
             email,
+            isMobile,
           },
         })
       } else {
@@ -285,6 +335,7 @@ export async function middleware(request: NextRequest) {
         authCheckCache.set(cacheKey, {
           isAuthenticated: true,
           timestamp: now,
+          userAgent: userAgent || undefined,
         })
 
         const endTime = performance.now()
@@ -302,6 +353,7 @@ export async function middleware(request: NextRequest) {
           details: {
             path,
             action: "allow",
+            isMobile,
           },
         })
       }
@@ -322,6 +374,7 @@ export async function middleware(request: NextRequest) {
           path,
           error,
           action: "error",
+          isMobile,
         },
       })
 
@@ -368,6 +421,7 @@ export async function middleware(request: NextRequest) {
         path,
         action: "allow",
         reason: "public_route",
+        isMobile,
       },
     })
   }

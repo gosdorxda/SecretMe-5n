@@ -30,6 +30,17 @@ const AuthContext = createContext<AuthContextType>({
   refreshSession: async () => {},
 })
 
+// Meningkatkan interval throttle untuk mengurangi auth requests
+const THROTTLE_INTERVAL = 600000 // 10 menit (dari 5 menit)
+// Interval throttle yang lebih pendek untuk mobile
+const MOBILE_THROTTLE_INTERVAL = 300000 // 5 menit untuk mobile
+
+// Tambahkan fungsi untuk mendeteksi mobile
+const isMobileDevice = () => {
+  if (typeof navigator === "undefined") return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -39,9 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const refreshingRef = useRef(false)
   const lastAuthCheckRef = useRef<number>(0)
-
-  // Meningkatkan interval throttle untuk mengurangi auth requests
-  const THROTTLE_INTERVAL = 600000 // 10 menit (dari 5 menit)
 
   // Tambahkan flag untuk mencegah multiple auth checks pada initial load
   const initialAuthCheckDoneRef = useRef(false)
@@ -128,7 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [signOut],
   )
 
-  // Fungsi untuk refresh session data dengan optimasi
   const refreshSession = useCallback(async () => {
     // Hindari multiple refresh
     if (refreshingRef.current || isRefreshingTokenRef.current) return
@@ -139,9 +146,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Hindari refresh yang terlalu sering
+    // Deteksi apakah ini perangkat mobile
+    const isMobile =
+      typeof navigator !== "undefined"
+        ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        : false
+
+    // Kurangi throttling untuk mobile
     const now = Date.now()
-    if (now - lastRefreshTimeRef.current < MIN_REFRESH_INTERVAL) {
+    if (!isMobile && now - lastRefreshTimeRef.current < MIN_REFRESH_INTERVAL) {
+      return
+    } else if (isMobile && now - lastRefreshTimeRef.current < MIN_REFRESH_INTERVAL / 2) {
       return
     }
 
@@ -153,8 +168,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check if we should use the cache
       const timeSinceLastCheck = now - lastAuthCheckRef.current
 
-      // Gunakan cache lebih agresif
-      if (timeSinceLastCheck < THROTTLE_INTERVAL && isAuthCacheValid()) {
+      // Gunakan cache lebih agresif untuk desktop, kurang agresif untuk mobile
+      if (!isMobile && timeSinceLastCheck < THROTTLE_INTERVAL && isAuthCacheValid()) {
+        extendAuthCacheExpiry() // Extend cache expiry
+        refreshingRef.current = false
+        isRefreshingTokenRef.current = false
+        return
+      } else if (isMobile && timeSinceLastCheck < THROTTLE_INTERVAL / 2 && isAuthCacheValid()) {
         extendAuthCacheExpiry() // Extend cache expiry
         refreshingRef.current = false
         isRefreshingTokenRef.current = false
@@ -162,6 +182,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       lastAuthCheckRef.current = now
+
+      // Log refresh attempt
+      // recordAuthRequest({
+      //   endpoint: "refreshSession",
+      //   success: true,
+      //   duration: 0,
+      //   source: "client",
+      //   cached: false,
+      //   details: {
+      //     isMobile,
+      //     action: "start"
+      //   }
+      // })
 
       // Try to get session from cache first
       const cachedSession = getCachedAuthSession()
@@ -211,6 +244,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 refreshingRef.current = false
                 isRefreshingTokenRef.current = false
                 return
+              }
+
+              // Untuk mobile, coba sekali lagi dengan getSession sebelum sign out
+              if (isMobile) {
+                try {
+                  const { data: sessionData } = await supabase.auth.getSession()
+                  if (sessionData?.session) {
+                    console.log("Session recovered for mobile device")
+                    setSession(sessionData.session)
+                    setUser(sessionData.session.user)
+                    cacheAuthSession(sessionData.session)
+                    refreshingRef.current = false
+                    isRefreshingTokenRef.current = false
+                    return
+                  }
+                } catch (retryError) {
+                  console.error("Error during mobile session retry:", retryError)
+                }
               }
 
               await signOut()
@@ -340,6 +391,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return
               }
 
+              // Untuk mobile, coba sekali lagi dengan getSession sebelum sign out
+              if (isMobile) {
+                try {
+                  const { data: retrySessionData } = await supabase.auth.getSession()
+                  if (retrySessionData?.session) {
+                    console.log("Session recovered for mobile device")
+                    setSession(retrySessionData.session)
+                    setUser(retrySessionData.session.user)
+                    cacheAuthSession(retrySessionData.session)
+                    refreshingRef.current = false
+                    isRefreshingTokenRef.current = false
+                    return
+                  }
+                } catch (retryError) {
+                  console.error("Error during mobile session retry:", retryError)
+                }
+              }
+
               await signOut()
               refreshingRef.current = false
               isRefreshingTokenRef.current = false
@@ -426,6 +495,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       initialAuthCheckDoneRef.current = true
 
       try {
+        // Deteksi apakah ini perangkat mobile
+        const isMobile = isMobileDevice()
+
+        // Log initial auth check
+        // recordAuthRequest({
+        //   endpoint: "initializeAuth",
+        //   success: true,
+        //   duration: 0,
+        //   source: "client",
+        //   cached: false,
+        //   details: {
+        //     isMobile,
+        //     action: "start"
+        //   }
+        // })
+
         // Try to get from cache first on initial load
         const cachedSession = getCachedAuthSession()
 
@@ -437,9 +522,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Refresh in background hanya jika ada session tapi tidak ada user
           if (cachedSession && !cachedSession.user) {
             // Delay refresh untuk menghindari multiple requests
-            setTimeout(() => {
-              refreshSession()
-            }, 5000) // Increase delay to 5 seconds
+            // Kurangi delay untuk mobile
+            setTimeout(
+              () => {
+                refreshSession()
+              },
+              isMobile ? 2000 : 5000,
+            ) // 2 detik untuk mobile, 5 detik untuk desktop
           }
           return
         }
@@ -470,6 +559,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Update cache when auth state changes
           cacheAuthSession(newSession)
+
+          // Log auth state change
+          // recordAuthRequest({
+          //   endpoint: "authStateChange",
+          //   success: true,
+          //   duration: 0,
+          //   source: "client",
+          //   cached: false,
+          //   details: {
+          //     event,
+          //     hasSession: !!newSession
+          //   }
+          // })
         }
 
         // If token was refreshed, update the session
@@ -477,6 +579,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           cacheAuthSession(newSession)
           // Update last refresh time to prevent multiple refreshes
           lastRefreshTimeRef.current = Date.now()
+
+          // Log token refresh
+          // recordAuthRequest({
+          //   endpoint: "tokenRefreshed",
+          //   success: true,
+          //   duration: 0,
+          //   source: "client",
+          //   cached: false,
+          //   details: {
+          //     event,
+          //     hasSession: !!newSession
+          //   }
+          // })
         }
 
         // Handle sign out
@@ -486,6 +601,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           refreshingRef.current = false
           isRefreshingTokenRef.current = false
           hasHitRateLimitRef.current = false
+
+          // Log sign out
+          // recordAuthRequest({
+          //   endpoint: "signedOut",
+          //   success: true,
+          //   duration: 0,
+          //   source: "client",
+          //   cached: false,
+          //   details: {
+          //     event
+          //   }
+          // })
         }
       })
 

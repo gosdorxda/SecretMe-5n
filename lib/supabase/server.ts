@@ -31,8 +31,8 @@ export const createClient = () => {
           autoRefreshToken: true,
           cookieOptions: {
             name: "sb-auth-token",
-            lifetime: 60 * 60 * 8,
-            domain: "",
+            lifetime: 60 * 60 * 24 * 7, // Perpanjang lifetime menjadi 7 hari
+            domain: process.env.COOKIE_DOMAIN || "",
             path: "/",
             sameSite: "lax",
             secure: process.env.NODE_ENV === "production",
@@ -187,6 +187,7 @@ export async function getVerifiedUser() {
   let success = false
   let error = null
   let userId = null
+  let sessionData = null
 
   try {
     let supabase
@@ -206,28 +207,125 @@ export async function getVerifiedUser() {
       return { user: null, error: err }
     }
 
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
+    // Log permintaan getSession
+    logAuthRequest({
+      endpoint: "getVerifiedUser/getSession",
+      method: "GET",
+      source: "server",
+      success: true,
+      duration: 0,
+      cached: false,
+      details: { action: "start" },
+    })
+
+    const sessionStart = performance.now()
+    const { data, error: sessionError } = await supabase.auth.getSession()
+    const sessionDuration = performance.now() - sessionStart
+
+    sessionData = data
+
+    // Log hasil getSession
+    logAuthRequest({
+      endpoint: "getVerifiedUser/getSession",
+      method: "GET",
+      source: "server",
+      success: !sessionError,
+      duration: sessionDuration,
+      cached: false,
+      userId: data?.session?.user?.id,
+      error: sessionError ? sessionError.message : undefined,
+      details: {
+        hasSession: !!data?.session,
+        sessionError: sessionError ? true : false,
+        sessionErrorMessage: sessionError?.message,
+      },
+    })
 
     if (sessionError) {
       error = sessionError
       return { user: null, error: sessionError }
     }
 
-    if (!session?.user) {
-      return { user: null, error: new Error("No user found in session") }
+    if (!data?.session?.user) {
+      error = new Error("No user found in session")
+
+      // Log error detail
+      logAuthRequest({
+        endpoint: "getVerifiedUser/noUser",
+        method: "GET",
+        source: "server",
+        success: false,
+        duration: performance.now() - start,
+        cached: false,
+        error: "No user found in session",
+        details: {
+          sessionExists: !!data?.session,
+          sessionData: data?.session ? JSON.stringify(data.session).substring(0, 100) + "..." : null,
+        },
+      })
+
+      return { user: null, error }
     }
 
-    userId = session.user.id
+    // Jika kita sampai di sini, kita memiliki user
+    userId = data.session.user.id
     success = true
-    return { user: session.user, error: null }
+
+    // Verifikasi user dengan getUser untuk memastikan token valid
+    try {
+      const userStart = performance.now()
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      const userDuration = performance.now() - userStart
+
+      // Log hasil getUser
+      logAuthRequest({
+        endpoint: "getVerifiedUser/getUser",
+        method: "GET",
+        source: "server",
+        success: !userError,
+        duration: userDuration,
+        cached: false,
+        userId: userData?.user?.id,
+        error: userError ? userError.message : undefined,
+        details: {
+          hasUser: !!userData?.user,
+          userMatchesSession: userData?.user?.id === userId,
+        },
+      })
+
+      if (userError || !userData.user) {
+        return { user: null, error: userError || new Error("User verification failed") }
+      }
+
+      // Pastikan user dari getUser cocok dengan user dari getSession
+      if (userData.user.id !== userId) {
+        return { user: null, error: new Error("User ID mismatch between session and verification") }
+      }
+
+      // User terverifikasi, gunakan data dari getUser
+      return { user: userData.user, error: null }
+    } catch (verifyError) {
+      // Log error verifikasi
+      logAuthRequest({
+        endpoint: "getVerifiedUser/verifyError",
+        method: "GET",
+        source: "server",
+        success: false,
+        duration: performance.now() - start,
+        cached: false,
+        userId,
+        error: verifyError instanceof Error ? verifyError.message : "Unknown verification error",
+        details: { verifyError },
+      })
+
+      // Fallback ke user dari session jika verifikasi gagal
+      return { user: data.session.user, error: null }
+    }
   } catch (err) {
     error = err
     return { user: null, error: err }
   } finally {
-    // Log permintaan
+    // Log permintaan keseluruhan
     logAuthRequest({
       endpoint: "getVerifiedUser",
       method: "GET",
@@ -237,6 +335,10 @@ export async function getVerifiedUser() {
       cached: false,
       userId,
       error: error ? String(error) : undefined,
+      details: {
+        sessionData: sessionData ? true : false,
+        finalSuccess: success,
+      },
     })
   }
 }
