@@ -1,127 +1,55 @@
-"use server"
+import { cache } from "react"
 import { createClient } from "@/lib/supabase/server"
-import { logAuthRequest } from "@/lib/auth-logger"
 import type { Session } from "@supabase/supabase-js"
 
-// Menambahkan kembali fungsi isMobileDevice dengan pendekatan universal
-// Fungsi ini selalu mengembalikan false karena kita menggunakan pendekatan universal
-export async function isMobileDevice(): Promise<boolean> {
-  // Implementasi universal - tidak lagi membedakan perangkat
-  return false
+// Fungsi untuk mendeteksi perangkat mobile
+export function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 
-// Fungsi untuk mendapatkan session dengan caching
-export async function getSessionCache() {
-  const start = performance.now()
-  let success = false
-  let error = null
+// Cache untuk getSession menggunakan React server cache
+export const getSessionCache = cache(async () => {
+  const supabase = createClient()
+  const { data, error } = await supabase.auth.getSession()
 
-  try {
-    const supabase = createClient()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return { session: null, user: null, error: null }
-    }
-
-    success = true
-    return { session, user: session.user, error: null }
-  } catch (err) {
-    error = err
-    console.error("Error in getSessionCache:", err)
-    return { session: null, user: null, error: err }
-  } finally {
-    // Log permintaan
-    logAuthRequest({
-      endpoint: "getSessionCache",
-      method: "GET",
-      source: "server",
-      success,
-      duration: performance.now() - start,
-      cached: false,
-      error: error ? String(error) : undefined,
-    })
+  if (error) {
+    console.error("Error getting session:", error)
+    return { session: null, user: null, error }
   }
-}
 
-// Fungsi untuk mendapatkan user dengan caching
-export async function getUserCache() {
-  const start = performance.now()
-  let success = false
-  let error = null
-
-  try {
-    const { session, user, error: sessionError } = await getSessionCache()
-
-    if (sessionError) {
-      error = sessionError
-      return { user: null, error: sessionError }
-    }
-
-    success = true
-    return { user, error: null }
-  } catch (err) {
-    error = err
-    console.error("Error in getUserCache:", err)
-    return { user: null, error: err }
-  } finally {
-    // Log permintaan
-    logAuthRequest({
-      endpoint: "getUserCache",
-      method: "GET",
-      source: "server",
-      success,
-      duration: performance.now() - start,
-      cached: false,
-      error: error ? String(error) : undefined,
-    })
+  return {
+    session: data.session,
+    user: data.session?.user || null,
+    error: null,
   }
-}
+})
 
-// Fungsi untuk memeriksa apakah user adalah admin
-export async function isAdminCache(userId: string) {
+// Cache untuk isAdmin menggunakan React server cache
+export const isAdminCache = cache(async (userId: string) => {
   if (!userId) return false
 
-  const start = performance.now()
-  let success = false
-  let error = null
+  const supabase = createClient()
 
   try {
-    const supabase = createClient()
-    const { data: userData, error: userError } = await supabase.from("users").select("email").eq("id", userId).single()
+    const { data: userData, error } = await supabase.from("users").select("email").eq("id", userId).single()
 
-    if (userError) {
-      error = userError
-      console.error("Error checking admin status:", userError)
+    if (error) {
+      console.error("Error checking admin status:", error)
       return false
     }
 
-    // Daftar email admin
-    const adminEmails = ["gosdorxda@gmail.com"]
-    success = true
+    const adminEmails = ["gosdorxda@gmail.com"] // Email admin
     return adminEmails.includes(userData?.email || "")
-  } catch (err) {
-    error = err
-    console.error("Error in isAdminCache:", err)
+  } catch (error) {
+    console.error("Error checking admin status:", error)
     return false
-  } finally {
-    // Log permintaan
-    logAuthRequest({
-      endpoint: "isAdminCache",
-      method: "GET",
-      source: "server",
-      success,
-      duration: performance.now() - start,
-      cached: false,
-      error: error ? String(error) : undefined,
-    })
   }
-}
+})
 
 // Fungsi helper untuk verifikasi JWT secara lokal
-export async function verifySessionLocally(session: Session | null): Promise<boolean> {
+// Ini dapat mengurangi permintaan ke Supabase untuk verifikasi token
+export const verifySessionLocally = (session: Session | null) => {
   if (!session) return false
 
   // Periksa apakah token sudah kedaluwarsa

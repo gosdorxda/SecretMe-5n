@@ -1,50 +1,64 @@
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next()
-  const supabase = createMiddlewareClient({ req: request, res: response })
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient({ req, res })
 
-  // Refresh session jika ada
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // Refresh session untuk semua rute yang cocok dengan matcher
+  // Ini akan menyimpan session dalam cookie dan mengurangi kebutuhan
+  // untuk memanggil getSession() berulang kali
+  await supabase.auth.getSession()
 
-  // Jika tidak ada session dan mencoba mengakses halaman yang dilindungi
-  const protectedPaths = ["/dashboard", "/admin", "/premium"]
-  const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+  // Untuk rute admin, verifikasi akses
+  if (req.nextUrl.pathname.startsWith("/admin")) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-  if (!session && isProtectedPath) {
-    // Redirect ke login dengan parameter redirect
-    const redirectUrl = new URL("/login", request.url)
-    redirectUrl.searchParams.set("redirect", request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+    if (!session) {
+      // Redirect ke halaman login jika tidak ada sesi
+      return NextResponse.redirect(new URL("/login?redirect=/admin", req.url))
+    }
+
+    try {
+      // Periksa apakah pengguna adalah admin
+      // Catatan: Ini masih melakukan query database, tapi hanya untuk rute admin
+      // yang seharusnya jarang diakses dibandingkan rute lain
+      const { data: userData, error } = await supabase.from("users").select("email").eq("id", session.user.id).single()
+
+      if (error) {
+        console.error("Error checking admin status:", error)
+        return NextResponse.redirect(new URL("/", req.url))
+      }
+
+      const adminEmails = ["gosdorxda@gmail.com"] // Email admin
+      const isAdminUser = adminEmails.includes(userData?.email || "")
+
+      if (!isAdminUser) {
+        // Redirect ke halaman utama jika bukan admin
+        return NextResponse.redirect(new URL("/dashboard?error=unauthorized", req.url))
+      }
+    } catch (error) {
+      console.error("Error in middleware:", error)
+      return NextResponse.redirect(new URL("/", req.url))
+    }
   }
 
-  // Jika ada session tapi mencoba mengakses halaman login/register
-  const authPaths = ["/login", "/register"]
-  const isAuthPath = authPaths.some((path) => request.nextUrl.pathname === path)
-
-  if (session && isAuthPath) {
-    // Redirect ke dashboard
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  return response
+  return res
 }
 
-// Tentukan path yang akan diproses oleh middleware
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
+     * Match semua request paths kecuali:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
-     * - api routes that don't require authentication
+     * - public files
+     * - api routes yang tidak memerlukan auth
      */
-    "/((?!_next/static|_next/image|favicon.ico|public|api/payment/notification|api/telegram/webhook).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|api/public).*)",
   ],
 }

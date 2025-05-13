@@ -4,12 +4,12 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
-// Client-side Supabase client (singleton pattern)
+// Client-side Supabase client
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
 // Throttling untuk permintaan auth
 const authRequestTimestamps: number[] = []
-const AUTH_REQUEST_LIMIT = 5 // Maksimum 5 permintaan
+const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan
 const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
 
 // Debounce untuk mencegah multiple calls
@@ -376,14 +376,8 @@ function getEndpointName(url: string): string {
   return parts[parts.length - 1] || url
 }
 
-// Singleton pattern untuk client-side Supabase client
 export const createClient = () => {
-  if (supabaseClient) {
-    return supabaseClient
-  }
-
-  supabaseClient = createClientComponentClient<Database>()
-  return supabaseClient
+  return createClientComponentClient<Database>()
 }
 
 // Function to reset the client (useful for handling auth errors)
@@ -564,16 +558,13 @@ export async function getUserWithLogging() {
   }
 }
 
-// Implementasi signOut yang lebih aman
+// Implementasi universal untuk signOut
 export async function signOutWithLogging() {
   const start = performance.now()
   let success = false
   let error = null
 
   try {
-    // Bersihkan cache terlebih dahulu
-    sessionCache.clear()
-
     const supabase = createClient()
 
     // Log attempt
@@ -587,9 +578,10 @@ export async function signOutWithLogging() {
       details: { action: "start" },
     })
 
-    // Standard signOut
+    // 1. Coba signOut standar
     const { error: signOutError } = await supabase.auth.signOut()
 
+    // 2. Jika error, lakukan cleanup manual
     if (signOutError) {
       error = signOutError
       console.error("Error during signOut:", signOutError)
@@ -607,36 +599,37 @@ export async function signOutWithLogging() {
       })
     }
 
-    // Manual cleanup
+    // 3. Selalu lakukan cleanup manual untuk konsistensi
     if (typeof window !== "undefined") {
-      try {
-        // Hapus token dari localStorage
-        localStorage.removeItem("supabase.auth.token")
+      // Hapus token dari localStorage
+      localStorage.removeItem("supabase.auth.token")
 
-        // Hapus semua item localStorage yang terkait Supabase
-        Object.keys(localStorage).forEach((key) => {
-          if (key.startsWith("supabase.")) {
-            localStorage.removeItem(key)
-          }
-        })
+      // Hapus semua item localStorage yang terkait Supabase
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("supabase.")) {
+          localStorage.removeItem(key)
+        }
+      })
 
-        // Log manual cleanup
-        logAuthRequest({
-          endpoint: "signOut",
-          method: "POST",
-          source: "client",
-          success: true,
-          duration: 0,
-          cached: false,
-          details: { action: "manualCleanup" },
-        })
-      } catch (cleanupError) {
-        console.error("Error during manual cleanup:", cleanupError)
-      }
+      // Hapus cookie secara manual
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
+      })
+
+      // Log manual cleanup
+      logAuthRequest({
+        endpoint: "signOut",
+        method: "POST",
+        source: "client",
+        success: true,
+        duration: performance.now() - start,
+        cached: false,
+        details: { action: "manualCleanup" },
+      })
     }
 
-    // Reset client
-    resetClient()
+    // Bersihkan cache
+    sessionCache.clear()
 
     success = true
     return { error: null }

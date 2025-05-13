@@ -4,9 +4,10 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { createClient, signOutWithLogging } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import type { Session, User } from "@supabase/supabase-js"
 import { logAuthRequest } from "@/lib/auth-logger"
+import { isMobileDevice } from "@/lib/auth-cache"
 
 type AuthContextType = {
   session: Session | null
@@ -40,48 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fungsi signOut yang sederhana
   const signOut = useCallback(async () => {
     try {
-      // Log signOut attempt
-      logAuthRequest({
-        endpoint: "signOut",
-        method: "POST",
-        source: "client",
-        success: true,
-        duration: 0,
-        cached: false,
-        userId: user?.id,
-        details: { action: "start", provider: "AuthContext" },
-      })
-
-      // Gunakan fungsi signOut yang sudah diperbaiki
-      await signOutWithLogging()
-
-      // Update state
+      await supabase.auth.signOut()
       setSession(null)
       setUser(null)
       setIsAuthenticated(false)
-
-      // Redirect ke login
       router.push("/login")
     } catch (error) {
       console.error("Error signing out:", error)
-
-      // Log error
-      logAuthRequest({
-        endpoint: "signOut",
-        method: "POST",
-        source: "client",
-        success: false,
-        duration: 0,
-        cached: false,
-        userId: user?.id,
-        error: error instanceof Error ? error.message : String(error),
-        details: { action: "error", provider: "AuthContext" },
-      })
-
       // Jika terjadi error, tetap redirect ke login
       router.push("/login")
     }
-  }, [router, user])
+  }, [supabase, router])
 
   // Fungsi untuk force logout dalam kasus darurat
   const forceLogout = useCallback(async () => {
@@ -97,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: user?.id,
         details: {
           action: "start",
+          isMobile: isMobileDevice(),
         },
       })
 
@@ -173,47 +144,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Ambil session saat komponen dimount
     const getSession = async () => {
-      try {
-        const {
-          data: { session: activeSession },
-        } = await supabase.auth.getSession()
-
-        setSession(activeSession)
-        setUser(activeSession?.user || null)
-        setIsAuthenticated(!!activeSession)
-        setLoading(false)
-
-        // Log session status
-        logAuthRequest({
-          endpoint: "getSession",
-          method: "GET",
-          source: "client",
-          success: true,
-          duration: 0,
-          cached: false,
-          userId: activeSession?.user?.id,
-          details: {
-            action: "init",
-            provider: "AuthContext",
-            hasSession: !!activeSession,
-          },
-        })
-      } catch (error) {
-        console.error("Error getting session:", error)
-        setLoading(false)
-
-        // Log error
-        logAuthRequest({
-          endpoint: "getSession",
-          method: "GET",
-          source: "client",
-          success: false,
-          duration: 0,
-          cached: false,
-          error: error instanceof Error ? error.message : String(error),
-          details: { action: "init", provider: "AuthContext" },
-        })
-      }
+      const {
+        data: { session: activeSession },
+      } = await supabase.auth.getSession()
+      setSession(activeSession)
+      setUser(activeSession?.user || null)
+      setIsAuthenticated(!!activeSession)
+      setLoading(false)
     }
 
     getSession()
@@ -222,22 +159,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      // Log auth state change
-      logAuthRequest({
-        endpoint: "onAuthStateChange",
-        method: "INTERNAL",
-        source: "client",
-        success: true,
-        duration: 0,
-        cached: false,
-        userId: currentSession?.user?.id,
-        details: {
-          event,
-          hasSession: !!currentSession,
-          provider: "AuthContext",
-        },
-      })
-
       setSession(currentSession)
       setUser(currentSession?.user || null)
       setIsAuthenticated(!!currentSession)
@@ -252,22 +173,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Protect routes
   useEffect(() => {
     if (!loading && !isAuthenticated && pathname?.startsWith("/dashboard")) {
-      // Log redirect
-      logAuthRequest({
-        endpoint: "protectRoute",
-        method: "INTERNAL",
-        source: "client",
-        success: true,
-        duration: 0,
-        cached: false,
-        details: {
-          action: "redirect",
-          from: pathname,
-          to: `/login?redirect=${encodeURIComponent(pathname)}`,
-          provider: "AuthContext",
-        },
-      })
-
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
   }, [isAuthenticated, loading, pathname, router])
