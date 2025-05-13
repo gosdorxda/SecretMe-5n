@@ -4,12 +4,12 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
-// Client-side Supabase client
+// Client-side Supabase client (singleton pattern)
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
 // Throttling untuk permintaan auth
 const authRequestTimestamps: number[] = []
-const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan
+const AUTH_REQUEST_LIMIT = 5 // Maksimum 5 permintaan
 const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
 
 // Debounce untuk mencegah multiple calls
@@ -64,6 +64,13 @@ function shouldThrottleAuthRequest(): boolean {
 // Fungsi untuk mencatat permintaan auth baru
 function recordAuthRequestTimestamp() {
   authRequestTimestamps.push(Date.now())
+}
+
+// Fungsi untuk memeriksa apakah device adalah mobile
+export function isMobileDevice(): boolean {
+  return typeof navigator !== "undefined"
+    ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    : false
 }
 
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
@@ -376,8 +383,14 @@ function getEndpointName(url: string): string {
   return parts[parts.length - 1] || url
 }
 
+// Singleton pattern untuk client-side Supabase client
 export const createClient = () => {
-  return createClientComponentClient<Database>()
+  if (supabaseClient) {
+    return supabaseClient
+  }
+
+  supabaseClient = createClientComponentClient<Database>()
+  return supabaseClient
 }
 
 // Function to reset the client (useful for handling auth errors)
@@ -558,13 +571,16 @@ export async function getUserWithLogging() {
   }
 }
 
-// Implementasi universal untuk signOut
+// Implementasi signOut yang lebih aman
 export async function signOutWithLogging() {
   const start = performance.now()
   let success = false
   let error = null
 
   try {
+    // Bersihkan cache terlebih dahulu
+    sessionCache.clear()
+
     const supabase = createClient()
 
     // Log attempt
@@ -578,10 +594,9 @@ export async function signOutWithLogging() {
       details: { action: "start" },
     })
 
-    // 1. Coba signOut standar
+    // Standard signOut
     const { error: signOutError } = await supabase.auth.signOut()
 
-    // 2. Jika error, lakukan cleanup manual
     if (signOutError) {
       error = signOutError
       console.error("Error during signOut:", signOutError)
@@ -599,37 +614,36 @@ export async function signOutWithLogging() {
       })
     }
 
-    // 3. Selalu lakukan cleanup manual untuk konsistensi
+    // Manual cleanup
     if (typeof window !== "undefined") {
-      // Hapus token dari localStorage
-      localStorage.removeItem("supabase.auth.token")
+      try {
+        // Hapus token dari localStorage
+        localStorage.removeItem("supabase.auth.token")
 
-      // Hapus semua item localStorage yang terkait Supabase
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("supabase.")) {
-          localStorage.removeItem(key)
-        }
-      })
+        // Hapus semua item localStorage yang terkait Supabase
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith("supabase.")) {
+            localStorage.removeItem(key)
+          }
+        })
 
-      // Hapus cookie secara manual
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
-      })
-
-      // Log manual cleanup
-      logAuthRequest({
-        endpoint: "signOut",
-        method: "POST",
-        source: "client",
-        success: true,
-        duration: performance.now() - start,
-        cached: false,
-        details: { action: "manualCleanup" },
-      })
+        // Log manual cleanup
+        logAuthRequest({
+          endpoint: "signOut",
+          method: "POST",
+          source: "client",
+          success: true,
+          duration: 0,
+          cached: false,
+          details: { action: "manualCleanup" },
+        })
+      } catch (cleanupError) {
+        console.error("Error during manual cleanup:", cleanupError)
+      }
     }
 
-    // Bersihkan cache
-    sessionCache.clear()
+    // Reset client
+    resetClient()
 
     success = true
     return { error: null }

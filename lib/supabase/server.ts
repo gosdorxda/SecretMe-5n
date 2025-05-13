@@ -1,119 +1,24 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
-// Server-side Supabase client
+// Fungsi untuk membuat Supabase client untuk server components
 export const createClient = () => {
-  try {
-    // Check if we're in a browser environment
-    const isBrowser = typeof window !== "undefined"
+  const cookieStore = cookies()
 
-    if (isBrowser) {
-      // For client-side, we'll use a different approach
-      // This is a placeholder that should be replaced with proper client-side auth
-      console.warn("Server client being called from browser context - this may not work as expected")
-      return {
-        auth: {
-          getSession: async () => ({ data: { session: null }, error: null }),
-          getUser: async () => ({ data: { user: null }, error: null }),
-        },
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              single: async () => ({ data: null, error: null }),
-              maybeSingle: async () => ({ data: null, error: null }),
-            }),
-            order: () => ({
-              data: [],
-              error: null,
-            }),
-          }),
-          order: () => ({
-            data: [],
-            error: null,
-          }),
-        }),
-      } as any
-    }
+  // Log creation
+  logAuthRequest({
+    endpoint: "createServerClient",
+    method: "INTERNAL",
+    source: "server",
+    success: true,
+    duration: 0,
+    cached: false,
+    details: { action: "create" },
+  })
 
-    // Only import cookies() in server context
-    const { cookies } = require("next/headers")
-
-    let cookieStore
-    try {
-      cookieStore = cookies()
-    } catch (cookieError) {
-      // Jika cookies() gagal (misalnya saat static rendering), log error
-      console.warn("Cookies not available, possibly during static rendering:", cookieError)
-
-      // Return dummy client untuk static rendering
-      return {
-        auth: {
-          getSession: async () => ({ data: { session: null }, error: null }),
-          getUser: async () => ({ data: { user: null }, error: null }),
-        },
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              single: async () => ({ data: null, error: null }),
-              maybeSingle: async () => ({ data: null, error: null }),
-            }),
-            order: () => ({
-              data: [],
-              error: null,
-            }),
-          }),
-          order: () => ({
-            data: [],
-            error: null,
-          }),
-        }),
-      } as any
-    }
-
-    return createServerComponentClient<Database>({
-      cookies: () => cookieStore,
-    })
-  } catch (error) {
-    // Log error saat membuat client
-    logAuthRequest({
-      endpoint: "createClient",
-      method: "INTERNAL",
-      source: "server",
-      success: false,
-      duration: 0,
-      cached: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { error },
-    })
-
-    // Fallback ke client tanpa cookies untuk mencegah crash
-    console.error("Error creating Supabase client:", error)
-
-    // Return dummy client
-    return {
-      auth: {
-        getSession: async () => ({ data: { session: null }, error: null }),
-        getUser: async () => ({ data: { user: null }, error: null }),
-      },
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            single: async () => ({ data: null, error: null }),
-            maybeSingle: async () => ({ data: null, error: null }),
-          }),
-          order: () => ({
-            data: [],
-            error: null,
-          }),
-        }),
-        order: () => ({
-          data: [],
-          error: null,
-        }),
-      }),
-    } as any
-  }
+  return createServerComponentClient<Database>({ cookies: () => cookieStore })
 }
 
 // Fungsi getVerifiedUser yang dioptimasi - hanya menggunakan getSession()
