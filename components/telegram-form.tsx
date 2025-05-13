@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "@/hooks/use-toast"
 import { AlertCircle, Check, Copy, ExternalLink, Loader2, RefreshCw, CheckCircle2, ArrowRight } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 
 interface TelegramFormProps {
@@ -18,6 +18,7 @@ interface TelegramFormProps {
   initialTelegramNotifications: boolean
 }
 
+// Update the TelegramForm component with a cleaner UI
 export function TelegramForm({ userId, initialTelegramId, initialTelegramNotifications }: TelegramFormProps) {
   const [telegramId, setTelegramId] = useState(initialTelegramId || "")
   const [telegramNotifications, setTelegramNotifications] = useState(initialTelegramNotifications)
@@ -332,17 +333,11 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
         </Alert>
       )}
 
-      {isConnected ? (
-        // Tampilan jika sudah terhubung
-        <Card className="mt-4">
-          <CardHeader className="pb-4 pt-4 relative">
-            <div className="absolute top-3 right-3 bg-green-50 text-green-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 border border-green-100">
-              <CheckCircle2 className="h-3 w-3" />
-              <span>Aktif</span>
-            </div>
-
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <div className="flex items-center justify-center bg-blue-50 text-blue-500 p-1.5 rounded-lg">
+      <Card className="neo-card overflow-hidden border-2 border-black">
+        <CardHeader className="pb-3 pt-4 border-b">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center bg-main text-black p-1.5 rounded-lg">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="18"
@@ -358,22 +353,36 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   <path d="M22 2 11 13" />
                 </svg>
               </div>
-              <span>Notifikasi Telegram</span>
-            </CardTitle>
-            <CardDescription>
-              Akun Telegram Anda telah terhubung dan siap menerima notifikasi pesan baru.
-            </CardDescription>
-          </CardHeader>
+              <CardTitle className="text-lg font-medium">Notifikasi Telegram</CardTitle>
+            </div>
 
-          <CardContent className="relative">
-            <div className="p-4 bg-gray-50 rounded-lg border mb-4">
-              <div className="flex items-center justify-between space-x-2">
+            {isConnected && (
+              <div className="bg-green-50 text-green-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 border border-green-100">
+                <CheckCircle2 className="h-3 w-3" />
+                <span>Terhubung</span>
+              </div>
+            )}
+          </div>
+          <CardDescription className="mt-1">
+            {isConnected
+              ? "Terima notifikasi pesan baru langsung ke akun Telegram Anda."
+              : "Hubungkan Telegram untuk menerima notifikasi pesan baru secara instan."}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="p-4">
+          {isConnected ? (
+            // Connected state UI
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                 <div className="space-y-0.5">
-                  <Label htmlFor="telegram-notifications" className="text-base font-medium">
+                  <Label htmlFor="telegram-notifications" className="text-sm font-medium">
                     Notifikasi Telegram
                   </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Aktifkan untuk menerima notifikasi pesan baru melalui Telegram
+                  <p className="text-xs text-muted-foreground">
+                    {telegramNotifications
+                      ? "Anda akan menerima notifikasi pesan baru via Telegram"
+                      : "Notifikasi Telegram saat ini dinonaktifkan"}
                   </p>
                 </div>
                 <Switch
@@ -384,46 +393,14 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                   }}
                 />
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between pt-4 mt-4 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={sendTestMessage}
-              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-1.5 text-blue-500"
-              >
-                <path d="m3 3 3 9-3 9 19-9Z" />
-                <path d="M6 12h16" />
-              </svg>
-              Kirim Pesan Uji
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={disconnectTelegram}
-              disabled={isDisconnecting}
-              className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-            >
-              {isDisconnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  Memutuskan...
-                </>
-              ) : (
-                <>
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={sendTestMessage}
+                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
@@ -434,138 +411,208 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="mr-1.5 text-red-500"
+                    className="mr-1.5 text-blue-500"
                   >
-                    <path d="M18 6 6 18" />
-                    <path d="m6 6 12 12" />
+                    <path d="m3 3 3 9-3 9 19-9Z" />
+                    <path d="M6 12h16" />
                   </svg>
-                  Putuskan Koneksi
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : (
-        // Tampilan jika belum terhubung
-        <Card className="mt-4">
-          <CardHeader className="pb-4 pt-4">
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <div className="flex items-center justify-center bg-blue-50 text-blue-500 p-1.5 rounded-lg">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m22 2-7 20-4-9-9-4Z" />
-                  <path d="M22 2 11 13" />
-                </svg>
-              </div>
-              <span>Notifikasi Telegram</span>
-            </CardTitle>
-            <CardDescription>Terima notifikasi pesan baru langsung ke akun Telegram Anda.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {renderConnectionStatus()}
-
-            {connectionStep === 0 && (
-              <div className="flex items-center gap-2">
+                  Kirim Pesan Uji
+                </Button>
                 <Button
-                  variant="default"
-                  onClick={generateConnectionCode}
-                  disabled={isGeneratingCode}
-                  className="w-full bg-blue-500 hover:bg-blue-600"
+                  variant="outline"
+                  size="sm"
+                  onClick={disconnectTelegram}
+                  disabled={isDisconnecting}
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  {isGeneratingCode ? (
+                  {isDisconnecting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Membuat Kode...
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Memutuskan...
                     </>
                   ) : (
                     <>
-                      Hubungkan Telegram
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-1.5 text-red-500"
+                      >
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                      </svg>
+                      Putuskan Koneksi
                     </>
                   )}
                 </Button>
               </div>
-            )}
-
-            {connectionStep === 2 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="connection-code">Kode Koneksi</Label>
-                    {codeExpiry && (
-                      <span className="text-xs text-muted-foreground">
-                        Berlaku hingga:{" "}
-                        {codeExpiry.toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    )}
+            </div>
+          ) : (
+            // Not connected state UI
+            <div className="space-y-4">
+              {connectionStep === 0 ? (
+                // Initial connection step
+                <div className="flex flex-col items-center py-4">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-main"
+                    >
+                      <path d="m22 2-7 20-4-9-9-4Z" />
+                      <path d="M22 2 11 13" />
+                    </svg>
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="connection-code"
-                      value={connectionCode}
-                      readOnly
-                      className="font-mono text-center text-lg tracking-wider"
-                    />
-                    <Button variant="outline" size="icon" onClick={copyConnectionCode} className="shrink-0">
-                      {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
+                  <p className="text-sm text-center mb-4">
+                    Hubungkan akun Telegram Anda untuk menerima notifikasi pesan baru secara instan.
+                  </p>
+                  <Button
+                    variant="default"
+                    onClick={generateConnectionCode}
+                    disabled={isGeneratingCode}
+                    className="neo-btn"
+                  >
+                    {isGeneratingCode ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Membuat Kode...
+                      </>
+                    ) : (
+                      <>
+                        Hubungkan Telegram
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : connectionStep === 1 ? (
+                // Loading state
+                <div className="flex flex-col items-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-main mb-3" />
+                  <p className="text-sm">Membuat kode koneksi...</p>
+                </div>
+              ) : connectionStep === 2 ? (
+                // Connection code step
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                    <h3 className="text-sm font-medium text-blue-800 mb-1 flex items-center gap-1.5">
+                      <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
+                      Menunggu Koneksi
+                    </h3>
+                    <p className="text-xs text-blue-700">Silakan kirim kode ke bot Telegram dan tunggu konfirmasi.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="connection-code" className="text-sm">
+                        Kode Koneksi
+                      </Label>
+                      {codeExpiry && (
+                        <span className="text-xs text-muted-foreground">
+                          Berlaku hingga:{" "}
+                          {codeExpiry.toLocaleTimeString("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        id="connection-code"
+                        value={connectionCode}
+                        readOnly
+                        className="font-mono text-center text-lg tracking-wider"
+                      />
+                      <Button variant="outline" size="icon" onClick={copyConnectionCode} className="shrink-0">
+                        {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span>Status Koneksi</span>
+                      <span>{Math.min(progress, 100)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-1.5" />
+                  </div>
+
+                  <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
+                    <h4 className="text-xs font-medium flex items-center gap-1.5">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                        <path d="m9 12 2 2 4-4" />
+                      </svg>
+                      Langkah-langkah Koneksi:
+                    </h4>
+                    <ol className="text-xs text-muted-foreground space-y-2 list-decimal pl-4">
+                      <li className="pb-1">
+                        <span className="font-medium">Buka bot Telegram kami</span>
+                        <div className="mt-1">
+                          <a
+                            href="https://t.me/SecretMeNotifBot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            t.me/SecretMeNotifBot
+                          </a>
+                        </div>
+                      </li>
+                      <li className="pb-1">
+                        <span className="font-medium">Kirim pesan</span>{" "}
+                        <code className="bg-gray-100 px-1 rounded">/start</code> ke bot
+                      </li>
+                      <li className="pb-1">
+                        <span className="font-medium">Kirim kode koneksi</span> di atas ke bot
+                      </li>
+                      <li>
+                        <span className="font-medium">Tunggu konfirmasi</span> - status akan otomatis diperbarui
+                      </li>
+                    </ol>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Status Koneksi</Label>
-                  <Progress value={progress} className="h-2" />
-                  <p className="text-xs text-center text-muted-foreground">
-                    {isPolling ? "Menunggu koneksi dari Telegram..." : "Siap terhubung"}
+              ) : connectionStep === 3 ? (
+                // Success state
+                <div className="flex flex-col items-center py-6">
+                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-3">
+                    <CheckCircle2 className="h-8 w-8 text-green-500" />
+                  </div>
+                  <h3 className="text-lg font-medium text-green-700 mb-1">Berhasil Terhubung!</h3>
+                  <p className="text-sm text-center text-green-600 mb-4">
+                    Akun Telegram Anda telah berhasil terhubung dan siap menerima notifikasi.
                   </p>
                 </div>
-
-                <div className="rounded-lg border bg-card p-4 space-y-2">
-                  <h4 className="text-sm font-medium">Langkah-langkah Koneksi:</h4>
-                  <ol className="text-xs text-muted-foreground space-y-2 list-decimal pl-4">
-                    <li className="pb-1">
-                      <span className="font-medium">Buka bot Telegram kami</span>
-                      <div className="mt-1">
-                        <a
-                          href="https://t.me/SecretMeNotifBot"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          t.me/SecretMeNotifBot
-                        </a>
-                      </div>
-                    </li>
-                    <li className="pb-1">
-                      <span className="font-medium">Kirim pesan</span>{" "}
-                      <code className="bg-gray-100 px-1 rounded">/start</code> ke bot
-                    </li>
-                    <li className="pb-1">
-                      <span className="font-medium">Kirim kode koneksi</span> di atas ke bot
-                    </li>
-                    <li>
-                      <span className="font-medium">Tunggu konfirmasi</span> - status akan otomatis diperbarui
-                    </li>
-                  </ol>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

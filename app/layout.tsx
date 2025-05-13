@@ -28,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <head>
+        <link rel="icon" href="/favicon.ico" />
         <SeoMeta />
       </head>
       <body className={inter.className}>
