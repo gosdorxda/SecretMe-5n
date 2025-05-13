@@ -16,7 +16,12 @@ export default async function AdminPage() {
   }
 
   // Ambil data pengguna
-  const { data: userData } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+  const { data: userData, error } = await supabase.from("users").select("*").eq("id", session.user.id).single()
+
+  if (error) {
+    console.error("Error fetching user data:", error)
+    redirect("/")
+  }
 
   // Periksa apakah pengguna memiliki role admin
   if (!userData || userData.role !== "admin") {

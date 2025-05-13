@@ -123,6 +123,7 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
+  // Periksa apakah pengguna memiliki sesi
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -134,11 +135,21 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login", req.url))
     }
 
-    // Periksa apakah pengguna adalah admin
-    const { data: userData } = await supabase.from("profiles").select("role").eq("id", session.user.id).single()
+    try {
+      // Periksa apakah pengguna adalah admin
+      const { data: userData, error } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-    if (!userData || userData.role !== "admin") {
-      // Redirect ke halaman utama jika bukan admin
+      if (error) {
+        console.error("Error checking admin status:", error)
+        return NextResponse.redirect(new URL("/", req.url))
+      }
+
+      if (!userData || userData.role !== "admin") {
+        // Redirect ke halaman utama jika bukan admin
+        return NextResponse.redirect(new URL("/", req.url))
+      }
+    } catch (error) {
+      console.error("Error in middleware:", error)
       return NextResponse.redirect(new URL("/", req.url))
     }
   }

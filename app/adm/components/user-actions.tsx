@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { MoreHorizontal, Edit, Trash, Shield, Eye, Ban, CheckCircle, Crown, UserMinus } from "lucide-react"
+import { MoreHorizontal, Edit, Trash, Shield, Eye, Crown, UserMinus } from "lucide-react"
 
 interface UserActionsProps {
   user: any
@@ -31,7 +31,6 @@ interface UserActionsProps {
 
 export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false)
   const [isPremiumDialogOpen, setIsPremiumDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -44,13 +43,13 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
 
     try {
       // Hapus pengguna dari database
-      const { error } = await supabase.from("profiles").delete().eq("id", user.id)
+      const { error } = await supabase.from("users").delete().eq("id", user.id)
 
       if (error) throw error
 
       toast({
         title: "Pengguna berhasil dihapus",
-        description: `Pengguna ${user.username} telah dihapus dari sistem.`,
+        description: `Pengguna ${user.email} telah dihapus dari sistem.`,
       })
 
       onUserUpdated()
@@ -66,45 +65,17 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
     }
   }
 
-  const toggleUserStatus = async () => {
-    setLoading(true)
-
-    try {
-      const newStatus = !user.is_active
-
-      const { error } = await supabase.from("profiles").update({ is_active: newStatus }).eq("id", user.id)
-
-      if (error) throw error
-
-      toast({
-        title: `Pengguna berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}`,
-        description: `Status pengguna ${user.username} telah diperbarui.`,
-      })
-
-      onUserUpdated()
-    } catch (error: any) {
-      toast({
-        title: "Gagal memperbarui status pengguna",
-        description: error.message,
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-      setIsStatusDialogOpen(false)
-    }
-  }
-
   const updateUserRole = async (newRole: string) => {
     setLoading(true)
 
     try {
-      const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", user.id)
+      const { error } = await supabase.from("users").update({ role: newRole }).eq("id", user.id)
 
       if (error) throw error
 
       toast({
         title: "Role pengguna berhasil diperbarui",
-        description: `Pengguna ${user.username} sekarang memiliki role ${newRole}.`,
+        description: `Pengguna ${user.email} sekarang memiliki role ${newRole}.`,
       })
 
       onUserUpdated()
@@ -126,13 +97,13 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
     try {
       const newStatus = !user.is_premium
 
-      const { error } = await supabase.from("profiles").update({ is_premium: newStatus }).eq("id", user.id)
+      const { error } = await supabase.from("users").update({ is_premium: newStatus }).eq("id", user.id)
 
       if (error) throw error
 
       toast({
         title: `Status premium berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}`,
-        description: `Pengguna ${user.username} sekarang ${newStatus ? "memiliki" : "tidak memiliki"} akses premium.`,
+        description: `Pengguna ${user.email} sekarang ${newStatus ? "memiliki" : "tidak memiliki"} akses premium.`,
       })
 
       onUserUpdated()
@@ -161,12 +132,14 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
           <DropdownMenuLabel>Aksi</DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem asChild>
-            <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer">
-              <Eye className="h-4 w-4 mr-2" />
-              Lihat Profil
-            </a>
-          </DropdownMenuItem>
+          {user.username && (
+            <DropdownMenuItem asChild>
+              <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer">
+                <Eye className="h-4 w-4 mr-2" />
+                Lihat Profil
+              </a>
+            </DropdownMenuItem>
+          )}
 
           <DropdownMenuItem>
             <Edit className="h-4 w-4 mr-2" />
@@ -174,20 +147,6 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={() => setIsStatusDialogOpen(true)}>
-            {user.is_active ? (
-              <>
-                <Ban className="h-4 w-4 mr-2" />
-                Nonaktifkan
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Aktifkan
-              </>
-            )}
-          </DropdownMenuItem>
 
           <DropdownMenuItem onClick={() => setIsRoleDialogOpen(true)}>
             <Shield className="h-4 w-4 mr-2" />
@@ -214,7 +173,7 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Pengguna</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus pengguna <strong>{user.username}</strong>? Tindakan ini tidak dapat
+              Apakah Anda yakin ingin menghapus pengguna <strong>{user.email}</strong>? Tindakan ini tidak dapat
               dibatalkan dan semua data pengguna akan dihapus.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -227,33 +186,13 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog konfirmasi ubah status pengguna */}
-      <AlertDialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{user.is_active ? "Nonaktifkan Pengguna" : "Aktifkan Pengguna"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {user.is_active
-                ? `Apakah Anda yakin ingin menonaktifkan pengguna ${user.username}? Pengguna tidak akan dapat masuk ke akun mereka.`
-                : `Apakah Anda yakin ingin mengaktifkan kembali pengguna ${user.username}?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={toggleUserStatus} disabled={loading}>
-              {loading ? "Memproses..." : user.is_active ? "Nonaktifkan" : "Aktifkan"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Dialog ubah role pengguna */}
       <AlertDialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Ubah Role Pengguna</AlertDialogTitle>
             <AlertDialogDescription>
-              Pilih role baru untuk pengguna <strong>{user.username}</strong>
+              Pilih role baru untuk pengguna <strong>{user.email}</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid grid-cols-1 gap-2 py-4">
@@ -296,8 +235,8 @@ export default function UserActions({ user, onUserUpdated }: UserActionsProps) {
             <AlertDialogTitle>{user.is_premium ? "Hapus Status Premium" : "Jadikan Premium"}</AlertDialogTitle>
             <AlertDialogDescription>
               {user.is_premium
-                ? `Apakah Anda yakin ingin menghapus status premium dari pengguna ${user.username}?`
-                : `Apakah Anda yakin ingin menjadikan ${user.username} sebagai pengguna premium?`}
+                ? `Apakah Anda yakin ingin menghapus status premium dari pengguna ${user.email}?`
+                : `Apakah Anda yakin ingin menjadikan ${user.email} sebagai pengguna premium?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

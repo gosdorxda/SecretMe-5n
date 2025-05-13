@@ -18,10 +18,10 @@ export default function AdminHeader({ userId }: AdminHeaderProps) {
 
   useEffect(() => {
     async function loadAdminData() {
-      const { data } = await supabase.from("profiles").select("full_name, avatar_url").eq("id", userId).single()
+      const { data } = await supabase.from("users").select("name, avatar_url").eq("id", userId).single()
 
       if (data) {
-        setAdminName(data.full_name || "Admin")
+        setAdminName(data.name || "Admin")
         setAvatarUrl(data.avatar_url || "")
       }
     }

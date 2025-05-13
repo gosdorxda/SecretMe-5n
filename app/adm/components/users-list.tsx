@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, UserPlus, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import UserActions from "./user-actions"
-import UserStatusBadge from "./user-status-badge"
 import UserRoleBadge from "./user-role-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -29,28 +28,27 @@ export default function UsersList() {
 
     // Hitung total pengguna untuk pagination
     const { count } = await supabase
-      .from("profiles")
+      .from("users")
       .select("*", { count: "exact", head: true })
-      .ilike("username", `%${searchQuery}%`)
+      .ilike("email", `%${searchQuery}%`)
 
     setTotalUsers(count || 0)
     setTotalPages(Math.ceil((count || 0) / usersPerPage))
 
     // Ambil data pengguna dengan pagination
     const { data, error } = await supabase
-      .from("profiles")
+      .from("users")
       .select(`
         id,
         username,
-        full_name,
+        name,
         email,
         created_at,
-        last_sign_in_at,
         is_premium,
         role,
-        is_active
+        avatar_url
       `)
-      .ilike("username", `%${searchQuery}%`)
+      .ilike("email", `%${searchQuery}%`)
       .order("created_at", { ascending: false })
       .range((currentPage - 1) * usersPerPage, currentPage * usersPerPage - 1)
 
@@ -83,7 +81,7 @@ export default function UsersList() {
         <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
           <Input
             type="search"
-            placeholder="Cari username..."
+            placeholder="Cari email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -112,7 +110,6 @@ export default function UsersList() {
               <TableHead>Nama</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Tanggal Daftar</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Premium</TableHead>
               <TableHead className="text-right">Aksi</TableHead>
@@ -122,7 +119,7 @@ export default function UsersList() {
             {loading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
-                  {Array.from({ length: 8 }).map((_, cellIndex) => (
+                  {Array.from({ length: 7 }).map((_, cellIndex) => (
                     <TableCell key={cellIndex}>
                       <Skeleton className="h-6 w-full" />
                     </TableCell>
@@ -131,22 +128,19 @@ export default function UsersList() {
               ))
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                   Tidak ada pengguna yang ditemukan
                 </TableCell>
               </TableRow>
             ) : (
               users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{user.full_name || "-"}</TableCell>
+                  <TableCell className="font-medium">{user.username || "-"}</TableCell>
+                  <TableCell>{user.name || "-"}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{new Date(user.created_at).toLocaleDateString("id-ID")}</TableCell>
                   <TableCell>
-                    <UserStatusBadge isActive={user.is_active} />
-                  </TableCell>
-                  <TableCell>
-                    <UserRoleBadge role={user.role} />
+                    <UserRoleBadge role={user.role || "user"} />
                   </TableCell>
                   <TableCell>{user.is_premium ? "Ya" : "Tidak"}</TableCell>
                   <TableCell className="text-right">

@@ -6,15 +6,11 @@ interface UserStatusBadgeProps {
 
 export default function UserStatusBadge({ isActive }: UserStatusBadgeProps) {
   if (isActive) {
-    return (
-      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-        Aktif
-      </Badge>
-    )
+    return <Badge className="bg-green-500 hover:bg-green-600">Aktif</Badge>
   }
 
   return (
-    <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+    <Badge variant="outline" className="text-red-500 border-red-500">
       Nonaktif
     </Badge>
   )
