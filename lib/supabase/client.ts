@@ -66,13 +66,6 @@ function recordAuthRequestTimestamp() {
   authRequestTimestamps.push(Date.now())
 }
 
-// Fungsi untuk memeriksa apakah device adalah mobile
-export function isMobileDevice(): boolean {
-  return typeof navigator !== "undefined"
-    ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    : false
-}
-
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
 async function repairSessionIfNeeded(client: ReturnType<typeof createClientComponentClient<Database>>) {
   try {

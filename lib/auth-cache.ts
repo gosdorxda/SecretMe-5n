@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server"
 import { logAuthRequest } from "@/lib/auth-logger"
 import type { Session } from "@supabase/supabase-js"
 
-// Fungsi untuk memeriksa apakah device adalah mobile
-// Diubah menjadi async function
+// Menambahkan kembali fungsi isMobileDevice dengan pendekatan universal
+// Fungsi ini selalu mengembalikan false karena kita menggunakan pendekatan universal
 export async function isMobileDevice(): Promise<boolean> {
-  return false // Selalu false di server
+  // Implementasi universal - tidak lagi membedakan perangkat
+  return false
 }
 
 // Fungsi untuk mendapatkan session dengan caching
@@ -120,7 +121,6 @@ export async function isAdminCache(userId: string) {
 }
 
 // Fungsi helper untuk verifikasi JWT secara lokal
-// Diubah menjadi async function
 export async function verifySessionLocally(session: Session | null): Promise<boolean> {
   if (!session) return false
 
