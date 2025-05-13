@@ -574,13 +574,13 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                         <span className="font-medium">Buka bot Telegram kami</span>
                         <div className="mt-1">
                           <a
-                            href="https://t.me/SecretMeNotifBot"
+                            href="https://t.me/SecretMe_Alert_bot"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
                           >
                             <ExternalLink className="h-3 w-3" />
-                            t.me/SecretMeNotifBot
+                            t.me/SecretMe_Alert_bot
                           </a>
                         </div>
                       </li>
