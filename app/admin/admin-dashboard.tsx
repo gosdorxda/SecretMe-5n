@@ -4,7 +4,10 @@ import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Bell, Crown, Globe, Shield, Users, Key, Trash2, FileText, Activity } from "lucide-react"
+// Tambahkan import untuk Home icon
+import { Users, CreditCard, Settings, Shield, AlertTriangle, BarChart, Bell, Home } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 // Import komponen dari folder components
 import {
@@ -75,45 +78,65 @@ export default function AdminDashboard({ initialUsers }: AdminDashboardProps) {
       {/* Komponen statistik admin */}
       <AdminStats users={users} onRefresh={refreshUsers} isLoading={isLoading} />
 
-      <Tabs defaultValue="users">
-        <TabsList className="mb-4">
-          <TabsTrigger value="users">
-            <Users className="h-4 w-4 mr-2" />
-            Pengguna
+      <Tabs defaultValue="rumah">
+        {/* Tambahkan tab "Rumah" di TabsList */}
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="rumah" className="flex items-center gap-2">
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Rumah</span>
           </TabsTrigger>
-          <TabsTrigger value="ip-settings">
-            <Shield className="h-4 w-4 mr-2" />
-            Pengaturan IP
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Users</span>
           </TabsTrigger>
-          <TabsTrigger value="seo">
-            <Globe className="h-4 w-4 mr-2" />
-            SEO
+          <TabsTrigger value="premium" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            <span className="hidden sm:inline">Premium</span>
           </TabsTrigger>
-          <TabsTrigger value="auth-monitoring">
-            <Key className="h-4 w-4 mr-2" />
-            Auth Monitoring
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
-          <TabsTrigger value="auth-logs">
-            <Activity className="h-4 w-4 mr-2" />
-            Auth Logs
+          <TabsTrigger value="monitoring" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="hidden sm:inline">Monitoring</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <Bell className="h-4 w-4 mr-2" />
-            Notifikasi
+          <TabsTrigger value="stats" className="flex items-center gap-2">
+            <BarChart className="h-4 w-4" />
+            <span className="hidden sm:inline">Stats</span>
           </TabsTrigger>
-          <TabsTrigger value="user-cleanup">
-            <Trash2 className="h-4 w-4 mr-2" />
-            User Cleanup
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            <span className="hidden sm:inline">Notifikasi</span>
           </TabsTrigger>
-          <TabsTrigger value="premium">
-            <Crown className="h-4 w-4 mr-2" />
-            Premium
-          </TabsTrigger>
-          <TabsTrigger value="notification-logs">
-            <FileText className="h-4 w-4 mr-2" />
-            Log Notifikasi
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Tambahkan TabsContent untuk tab "Rumah" */}
+        <TabsContent value="rumah" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Rumah Monitoring</CardTitle>
+              <CardDescription>Dashboard monitoring autentikasi dan keamanan aplikasi SecretMe</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p>
+                  Halaman Rumah Monitoring menyediakan dashboard lengkap untuk memantau aktivitas autentikasi dan
+                  keamanan aplikasi.
+                </p>
+                <div className="flex justify-center">
+                  <Button asChild>
+                    <a href="/admin/rumah">Buka Rumah Monitoring</a>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="users">
           <UsersManagement initialUsers={initialUsers} />
