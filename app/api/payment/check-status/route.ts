@@ -18,17 +18,18 @@ export async function GET(request: NextRequest) {
 
     console.log(`[${requestId}] 🔍 Checking status for order_id: ${orderId}`)
 
-    // Verifikasi user
+    // Verifikasi user - gunakan getSession() alih-alih getUser()
     const supabase = createClient()
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (!user) {
+    if (!session?.user) {
       console.log(`[${requestId}] ❌ Unauthorized - No user found`)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const user = session.user
     console.log(`[${requestId}] 👤 User authenticated: ${user.id}`)
 
     // Cari transaksi di database

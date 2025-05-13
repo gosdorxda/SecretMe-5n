@@ -6,14 +6,49 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
-  // Refresh session jika ada
+  // Refresh session untuk semua rute yang cocok dengan matcher
+  // Ini akan menyimpan session dalam cookie dan mengurangi kebutuhan
+  // untuk memanggil getSession() berulang kali
   await supabase.auth.getSession()
+
+  // Untuk rute admin, verifikasi akses
+  if (req.nextUrl.pathname.startsWith("/admin")) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
+      // Redirect ke halaman login jika tidak ada sesi
+      return NextResponse.redirect(new URL("/login?redirect=/admin", req.url))
+    }
+
+    try {
+      // Periksa apakah pengguna adalah admin
+      // Catatan: Ini masih melakukan query database, tapi hanya untuk rute admin
+      // yang seharusnya jarang diakses dibandingkan rute lain
+      const { data: userData, error } = await supabase.from("users").select("email").eq("id", session.user.id).single()
+
+      if (error) {
+        console.error("Error checking admin status:", error)
+        return NextResponse.redirect(new URL("/", req.url))
+      }
+
+      const adminEmails = ["gosdorxda@gmail.com"] // Email admin
+      const isAdminUser = adminEmails.includes(userData?.email || "")
+
+      if (!isAdminUser) {
+        // Redirect ke halaman utama jika bukan admin
+        return NextResponse.redirect(new URL("/dashboard?error=unauthorized", req.url))
+      }
+    } catch (error) {
+      console.error("Error in middleware:", error)
+      return NextResponse.redirect(new URL("/", req.url))
+    }
+  }
 
   return res
 }
 
-// Jalankan middleware pada semua routes
-// Anda bisa membatasi ini hanya ke routes tertentu jika diperlukan
 export const config = {
   matcher: [
     /*
@@ -21,9 +56,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - images (folder images jika ada)
      * - public files
+     * - api routes yang tidak memerlukan auth
      */
-    "/((?!_next/static|_next/image|favicon.ico|images|.*\\.png$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|api/public).*)",
   ],
 }

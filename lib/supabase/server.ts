@@ -3,21 +3,6 @@ import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
-// Menekan peringatan Supabase tentang getSession
-const originalConsoleWarn = console.warn
-if (typeof console !== "undefined" && console.warn) {
-  console.warn = function (message, ...args) {
-    // Menekan peringatan spesifik dari Supabase
-    if (
-      typeof message === "string" &&
-      message.includes("Using the user object as returned from supabase.auth.getSession()")
-    ) {
-      return
-    }
-    originalConsoleWarn.apply(this, [message, ...args])
-  }
-}
-
 // Server-side Supabase client
 export const createClient = () => {
   try {
@@ -99,13 +84,12 @@ export const createClient = () => {
   }
 }
 
-// Tambahkan logging untuk fungsi getVerifiedUser
+// Fungsi getVerifiedUser yang dioptimasi - hanya menggunakan getSession()
 export async function getVerifiedUser() {
   const start = performance.now()
   let success = false
   let error = null
   let userId = null
-  let sessionData = null
 
   try {
     let supabase
@@ -139,8 +123,6 @@ export async function getVerifiedUser() {
     const sessionStart = performance.now()
     const { data, error: sessionError } = await supabase.auth.getSession()
     const sessionDuration = performance.now() - sessionStart
-
-    sessionData = data
 
     // Log hasil getSession
     logAuthRequest({
@@ -185,60 +167,12 @@ export async function getVerifiedUser() {
       return { user: null, error }
     }
 
-    // Jika kita sampai di sini, kita memiliki user
+    // Jika kita sampai di sini, kita memiliki user dari session
     userId = data.session.user.id
     success = true
 
-    // Verifikasi user dengan getUser untuk memastikan token valid
-    try {
-      const userStart = performance.now()
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      const userDuration = performance.now() - userStart
-
-      // Log hasil getUser
-      logAuthRequest({
-        endpoint: "getVerifiedUser/getUser",
-        method: "GET",
-        source: "server",
-        success: !userError,
-        duration: userDuration,
-        cached: false,
-        userId: userData?.user?.id,
-        error: userError ? userError.message : undefined,
-        details: {
-          hasUser: !!userData?.user,
-          userMatchesSession: userData?.user?.id === userId,
-        },
-      })
-
-      if (userError || !userData.user) {
-        return { user: null, error: userError || new Error("User verification failed") }
-      }
-
-      // Pastikan user dari getUser cocok dengan user dari getSession
-      if (userData.user.id !== userId) {
-        return { user: null, error: new Error("User ID mismatch between session and verification") }
-      }
-
-      // User terverifikasi, gunakan data dari getUser
-      return { user: userData.user, error: null }
-    } catch (verifyError) {
-      // Log error verifikasi
-      logAuthRequest({
-        endpoint: "getVerifiedUser/verifyError",
-        method: "GET",
-        source: "server",
-        success: false,
-        duration: performance.now() - start,
-        cached: false,
-        userId,
-        error: verifyError instanceof Error ? verifyError.message : "Unknown verification error",
-        details: { verifyError },
-      })
-
-      // Fallback ke user dari session jika verifikasi gagal
-      return { user: data.session.user, error: null }
-    }
+    // Gunakan user dari session tanpa memanggil getUser()
+    return { user: data.session.user, error: null }
   } catch (err) {
     error = err
     return { user: null, error: err }
@@ -254,7 +188,6 @@ export async function getVerifiedUser() {
       userId,
       error: error ? String(error) : undefined,
       details: {
-        sessionData: sessionData ? true : false,
         finalSuccess: success,
       },
     })
@@ -263,6 +196,8 @@ export async function getVerifiedUser() {
 
 // Fungsi helper untuk memeriksa apakah user adalah admin
 export const isAdmin = async (userId: string) => {
+  if (!userId) return false
+
   let supabase
   try {
     supabase = createClient()

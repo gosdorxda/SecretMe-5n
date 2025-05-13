@@ -1,28 +1,25 @@
+import { getSessionCache } from "@/lib/auth-cache"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { DashboardClient } from "./client"
 
-// Tambahkan konfigurasi ini untuk memaksa dynamic rendering
+// Paksa dynamic rendering untuk halaman yang memerlukan auth
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  // Gunakan cache untuk mendapatkan session
+  const { session, user, error } = await getSessionCache()
 
-  // Periksa apakah pengguna sudah login
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) {
-    redirect("/login")
+  // Redirect ke login jika tidak ada session
+  if (!session || !user) {
+    redirect("/login?redirect=/dashboard")
   }
 
-  // Ambil data pengguna dari database
-  const { data: userData, error: userDataError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", session.user.id)
-    .single()
+  // Gunakan user dari session tanpa memanggil getUser()
+  const supabase = createClient()
+
+  // Ambil data pengguna
+  const { data: userData, error: userDataError } = await supabase.from("users").select("*").eq("id", user.id).single()
 
   if (userDataError || !userData) {
     console.error("Error fetching user data:", userDataError)
@@ -33,7 +30,7 @@ export default async function DashboardPage() {
   const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   if (messagesError) {
@@ -44,7 +41,7 @@ export default async function DashboardPage() {
   const { data: profileViews, error: viewsError } = await supabase
     .from("profile_views")
     .select("count")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .maybeSingle()
 
   const viewCount = profileViews?.count || 0
