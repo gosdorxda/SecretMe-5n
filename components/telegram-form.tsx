@@ -11,6 +11,7 @@ import { AlertCircle, Check, Copy, ExternalLink, Loader2, RefreshCw, CheckCircle
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { useMobile } from "@/hooks/use-mobile"
 
 interface TelegramFormProps {
   userId: string
@@ -35,6 +36,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
+  const isMobile = useMobile()
 
   // Efek untuk menetapkan status koneksi Telegram berdasarkan initialTelegramId
   useEffect(() => {
@@ -45,7 +47,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
   useEffect(() => {
     return () => {
       if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
+        clearTimeout(pollingIntervalRef.current)
       }
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
@@ -105,61 +107,117 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
     setIsPolling(true)
     setProgress(0)
 
-    // Mulai progress bar animation
+    // Initial polling delay (start with 5 seconds instead of 3)
+    let pollDelay = 5000
+    // Maximum polling delay (cap at 30 seconds)
+    const maxPollDelay = 30000
+    // Backoff factor (multiply delay by this value each time)
+    const backoffFactor = 1.5
+    // Maximum number of retries before giving up
+    const maxRetries = 12
+    // Current retry count
+    let retryCount = 0
+    // Track consecutive errors
+    let consecutiveErrors = 0
+
+    // Mulai progress bar animation - slower to match longer polling
     progressIntervalRef.current = setInterval(() => {
       setProgress((prev) => {
         // Jika sudah mencapai 95%, jangan tambah lagi sampai koneksi berhasil
         if (prev >= 95) return 95
-        return prev + 1
+        // Slower progress increment
+        return prev + 0.5
       })
     }, 1000)
 
-    // Mulai polling untuk memeriksa status koneksi
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const response = await fetch("/api/telegram/poll-connection", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ code }),
+    // Function to schedule the next poll with exponential backoff
+    const schedulePoll = () => {
+      if (retryCount >= maxRetries) {
+        // Stop polling after max retries
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+        }
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current)
+        }
+        setIsPolling(false)
+        setError("Batas waktu koneksi terlampaui. Silakan coba lagi.")
+        toast({
+          title: "Timeout",
+          description: "Batas waktu koneksi terlampaui. Silakan coba lagi.",
+          variant: "destructive",
         })
-
-        if (!response.ok) {
-          throw new Error("Gagal memeriksa status koneksi")
-        }
-
-        const data = await response.json()
-
-        if (data.success && data.connected) {
-          // Koneksi berhasil
-          setTelegramId(data.telegramId)
-          setIsConnected(true)
-          setConnectionCode("")
-          setCodeExpiry(null)
-          setTelegramNotifications(data.telegramNotifications)
-          setConnectionStep(3)
-          setProgress(100)
-
-          // Hentikan polling
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current)
-          }
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current)
-          }
-
-          setIsPolling(false)
-
-          toast({
-            title: "Berhasil",
-            description: "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
-          })
-        }
-      } catch (error) {
-        console.error("Polling error:", error)
+        return
       }
-    }, 3000) // Periksa setiap 3 detik
+
+      pollingIntervalRef.current = setTimeout(async () => {
+        try {
+          const response = await fetch("/api/telegram/poll-connection", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ code }),
+          })
+
+          if (!response.ok) {
+            throw new Error("Gagal memeriksa status koneksi")
+          }
+
+          const data = await response.json()
+
+          if (data.success && data.connected) {
+            // Koneksi berhasil
+            setTelegramId(data.telegramId)
+            setIsConnected(true)
+            setConnectionCode("")
+            setCodeExpiry(null)
+            setTelegramNotifications(data.telegramNotifications)
+            setConnectionStep(3)
+            setProgress(100)
+
+            // Hentikan polling
+            if (pollingIntervalRef.current) {
+              clearTimeout(pollingIntervalRef.current)
+            }
+            if (progressIntervalRef.current) {
+              clearInterval(progressIntervalRef.current)
+            }
+
+            setIsPolling(false)
+
+            toast({
+              title: "Berhasil",
+              description: "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
+            })
+          } else {
+            // Reset consecutive errors on successful response
+            consecutiveErrors = 0
+            // Schedule next poll
+            retryCount++
+            // Apply exponential backoff
+            pollDelay = Math.min(pollDelay * backoffFactor, maxPollDelay)
+            schedulePoll()
+          }
+        } catch (error) {
+          console.error("Polling error:", error)
+          // Increment consecutive errors
+          consecutiveErrors++
+
+          // If we have multiple consecutive errors, increase backoff more aggressively
+          if (consecutiveErrors > 2) {
+            pollDelay = Math.min(pollDelay * 2, maxPollDelay)
+          }
+
+          retryCount++
+          // Schedule next poll even after error, with backoff
+          schedulePoll()
+        }
+      }, pollDelay)
+    }
+
+    // Start the polling process
+    schedulePoll()
   }
 
   // Fungsi untuk memutuskan koneksi Telegram
@@ -308,7 +366,7 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
           <RefreshCw className="h-4 w-4 text-blue-600 animate-spin" />
           <AlertTitle className="text-blue-800">Menunggu Koneksi</AlertTitle>
           <AlertDescription className="text-blue-700">
-            Silakan kirim kode ke bot Telegram dan tunggu konfirmasi.
+            Silakan kirim kode ke bot Telegram. Sistem akan memeriksa koneksi secara berkala.
           </AlertDescription>
         </Alert>
       )
@@ -394,12 +452,12 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                 />
               </div>
 
-              <div className="flex gap-2 justify-end">
+              <div className={`flex ${isMobile ? "flex-col" : "justify-end"} gap-2`}>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size={isMobile ? "default" : "sm"}
                   onClick={sendTestMessage}
-                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors w-full md:w-auto"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -420,10 +478,10 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size={isMobile ? "default" : "sm"}
                   onClick={disconnectTelegram}
                   disabled={isDisconnecting}
-                  className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors w-full md:w-auto"
                 >
                   {isDisconnecting ? (
                     <>
@@ -483,17 +541,17 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                     variant="default"
                     onClick={generateConnectionCode}
                     disabled={isGeneratingCode}
-                    className="neo-btn"
+                    className="neo-btn w-full md:w-auto text-base py-6 px-6"
                   >
                     {isGeneratingCode ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         Membuat Kode...
                       </>
                     ) : (
                       <>
                         Hubungkan Telegram
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight className="ml-2 h-5 w-5" />
                       </>
                     )}
                   </Button>
@@ -549,14 +607,19 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                       <span>{Math.min(progress, 100)}%</span>
                     </div>
                     <Progress value={progress} className="h-1.5" />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Koneksi akan timeout setelah{" "}
+                      {Math.round((12 * 5 * Math.pow(1.5, Math.min(11, Math.floor(progress / 10)))) / 60)} menit jika
+                      tidak ada respons
+                    </p>
                   </div>
 
-                  <div className="rounded-lg border bg-gray-50 p-3 space-y-2">
-                    <h4 className="text-xs font-medium flex items-center gap-1.5">
+                  <div className="rounded-lg border bg-gray-50 p-4 space-y-3">
+                    <h4 className="text-base font-medium flex items-center gap-1.5">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
+                        width="16"
+                        height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -569,30 +632,51 @@ export function TelegramForm({ userId, initialTelegramId, initialTelegramNotific
                       </svg>
                       Langkah-langkah Koneksi:
                     </h4>
-                    <ol className="text-xs text-muted-foreground space-y-2 list-decimal pl-4">
-                      <li className="pb-1">
-                        <span className="font-medium">Buka bot Telegram kami</span>
-                        <div className="mt-1">
-                          <a
-                            href="https://t.me/SecretMe_Alert_bot"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            t.me/SecretMe_Alert_bot
-                          </a>
+                    <ol className="text-sm text-muted-foreground space-y-3 list-none pl-0">
+                      <li className="pb-2 flex items-start">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 mt-0.5">
+                          1
+                        </div>
+                        <div>
+                          <span className="font-medium block text-black">Buka bot Telegram kami</span>
+                          <div className="mt-1.5">
+                            <a
+                              href="https://t.me/SecretMe_Alert_bot"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              t.me/SecretMe_Alert_bot
+                            </a>
+                          </div>
                         </div>
                       </li>
-                      <li className="pb-1">
-                        <span className="font-medium">Kirim pesan</span>{" "}
-                        <code className="bg-gray-100 px-1 rounded">/start</code> ke bot
+                      <li className="pb-2 flex items-start">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 mt-0.5">
+                          2
+                        </div>
+                        <div>
+                          <span className="font-medium block text-black">Kirim pesan</span>
+                          <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">/start</code> ke bot
+                        </div>
                       </li>
-                      <li className="pb-1">
-                        <span className="font-medium">Kirim kode koneksi</span> di atas ke bot
+                      <li className="pb-2 flex items-start">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 mt-0.5">
+                          3
+                        </div>
+                        <div>
+                          <span className="font-medium block text-black">Kirim kode koneksi</span> di atas ke bot
+                        </div>
                       </li>
-                      <li>
-                        <span className="font-medium">Tunggu konfirmasi</span> - status akan otomatis diperbarui
+                      <li className="flex items-start">
+                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 mt-0.5">
+                          4
+                        </div>
+                        <div>
+                          <span className="font-medium block text-black">Tunggu konfirmasi</span> - status akan otomatis
+                          diperbarui
+                        </div>
                       </li>
                     </ol>
                   </div>

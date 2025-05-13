@@ -24,3 +24,6 @@ export function useIsMobile() {
 
   return isMobile
 }
+
+// Add the missing export that's being referenced in the code
+export const useMobile = useIsMobile
