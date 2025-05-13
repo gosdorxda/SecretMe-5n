@@ -149,7 +149,38 @@ export async function generateTemplateImage({
         const avatarImg = new Image()
         avatarImg.crossOrigin = "anonymous"
         avatarImg.onload = () => {
-          ctx.drawImage(avatarImg, avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
+          // Implement object-fit: cover behavior manually
+          const imgWidth = avatarImg.width
+          const imgHeight = avatarImg.height
+          let sourceX = 0
+          let sourceY = 0
+          let sourceWidth = imgWidth
+          let sourceHeight = imgHeight
+
+          // Calculate dimensions to maintain aspect ratio (like object-fit: cover)
+          if (imgWidth / imgHeight > 1) {
+            // Image is wider than tall
+            sourceWidth = imgHeight
+            sourceX = (imgWidth - sourceWidth) / 2
+          } else if (imgWidth / imgHeight < 1) {
+            // Image is taller than wide
+            sourceHeight = imgWidth
+            sourceY = (imgHeight - sourceHeight) / 2
+          }
+
+          // Draw the image with proper cropping to maintain aspect ratio
+          ctx.drawImage(
+            avatarImg,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            avatarX - avatarSize / 2,
+            avatarY - avatarSize / 2,
+            avatarSize,
+            avatarSize,
+          )
+
           ctx.restore()
           continueDrawing()
         }
@@ -416,7 +447,38 @@ export async function generateProfileImage({
         const avatarImg = new Image()
         avatarImg.crossOrigin = "anonymous"
         avatarImg.onload = () => {
-          ctx.drawImage(avatarImg, avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize)
+          // Implement object-fit: cover behavior manually
+          const imgWidth = avatarImg.width
+          const imgHeight = avatarImg.height
+          let sourceX = 0
+          let sourceY = 0
+          let sourceWidth = imgWidth
+          let sourceHeight = imgHeight
+
+          // Calculate dimensions to maintain aspect ratio (like object-fit: cover)
+          if (imgWidth / imgHeight > 1) {
+            // Image is wider than tall
+            sourceWidth = imgHeight
+            sourceX = (imgWidth - sourceWidth) / 2
+          } else if (imgWidth / imgHeight < 1) {
+            // Image is taller than wide
+            sourceHeight = imgWidth
+            sourceY = (imgHeight - sourceHeight) / 2
+          }
+
+          // Draw the image with proper cropping to maintain aspect ratio
+          ctx.drawImage(
+            avatarImg,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            avatarX - avatarSize / 2,
+            avatarY - avatarSize / 2,
+            avatarSize,
+            avatarSize,
+          )
+
           ctx.restore()
           continueDrawing()
         }
