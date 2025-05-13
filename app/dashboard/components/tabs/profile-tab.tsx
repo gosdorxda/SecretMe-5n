@@ -467,6 +467,16 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
+                    <span className="font-medium">Username Kustom Permanen</span>
+                    <p className="text-sm text-gray-600">Pilih username unik untuk link profil Anda selamanya</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
                     <span className="font-medium">Foto Profil Kustom</span>
                     <p className="text-sm text-gray-600">Upload foto profil untuk personalisasi halaman Anda</p>
                   </div>
@@ -477,17 +487,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Username Kustom</span>
-                    <p className="text-sm text-gray-600">Pilih username unik yang mudah diingat</p>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <div className="mt-1 text-green-500 flex-shrink-0">
-                    <Check className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="font-medium">Bio Lengkap</span>
+                    <span className="font-medium">Bio Profil Lengkap</span>
                     <p className="text-sm text-gray-600">Tambahkan deskripsi tentang diri Anda</p>
                   </div>
                 </li>
@@ -498,7 +498,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                   </div>
                   <div>
                     <span className="font-medium">Link Sosial Media</span>
-                    <p className="text-sm text-gray-600">Hubungkan profil sosial media Anda</p>
+                    <p className="text-sm text-gray-600">Tambahkan link Instagram, Facebook, LinkedIn, dan TikTok</p>
                   </div>
                 </li>
 
@@ -507,8 +507,8 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Notifikasi Instan</span>
-                    <p className="text-sm text-gray-600">Dapatkan notifikasi langsung via Telegram & WhatsApp</p>
+                    <span className="font-medium">Notifikasi WhatsApp & Telegram</span>
+                    <p className="text-sm text-gray-600">Dapatkan notifikasi langsung saat ada pesan baru</p>
                   </div>
                 </li>
 
@@ -518,7 +518,67 @@ export function ProfileTab({ user }: ProfileTabProps) {
                   </div>
                   <div>
                     <span className="font-medium">Statistik Lengkap</span>
-                    <p className="text-sm text-gray-600">Lihat statistik kunjungan profil Anda</p>
+                    <p className="text-sm text-gray-600">Lihat statistik kunjungan dan pesan profil Anda</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Manajemen Balasan Publik</span>
+                    <p className="text-sm text-gray-600">Aktifkan balasan publik untuk pesan Anda</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Tema Profil Kustom</span>
+                    <p className="text-sm text-gray-600">Personalisasi tampilan profil dan kartu pesan Anda</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Hapus Pesan</span>
+                    <p className="text-sm text-gray-600">Hapus pesan yang tidak diinginkan</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Berbagi Profil dengan QR Code</span>
+                    <p className="text-sm text-gray-600">Bagikan profil Anda dengan mudah menggunakan QR code</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Tanpa Iklan</span>
+                    <p className="text-sm text-gray-600">Pengalaman tanpa iklan dan prioritas dukungan</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Akses Selamanya</span>
+                    <p className="text-sm text-gray-600">Bayar sekali, akses premium selamanya</p>
                   </div>
                 </li>
               </ul>
