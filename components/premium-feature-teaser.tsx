@@ -2,28 +2,142 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Crown, ChevronDown, ChevronUp, Check, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Crown, ChevronDown, ChevronUp, Check, X, Lock, Camera, User, FileText } from "lucide-react"
 import Link from "next/link"
+import { Card, CardContent } from "@/components/ui/card"
 
 export function PremiumFeatureTeaser() {
   const [isExpanded, setIsExpanded] = useState(false)
 
   const features = [
-    { name: "Kirim & terima pesan anonim", free: true, premium: true },
-    { name: "Username kustom", free: false, premium: true },
-    { name: "Foto profil kustom", free: false, premium: true },
-    { name: "Bio profil", free: false, premium: true },
-    { name: "Link media sosial", free: false, premium: true },
-    { name: "Statistik kunjungan & pesan", free: false, premium: true },
-    { name: "Manajemen balasan publik", free: false, premium: true },
-    { name: "Notifikasi WhatsApp/Telegram", free: false, premium: true },
-    { name: "Tema profil kustom", free: false, premium: true },
-    { name: "Prioritas dukungan", free: false, premium: true },
-    { name: "Tanpa iklan", free: false, premium: true },
+    {
+      name: "Kirim & terima pesan anonim",
+      free: true,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Username kustom permanen selamanya",
+      free: false,
+      premium: true,
+      popular: true,
+    },
+    {
+      name: "Foto profil kustom & bio lengkap",
+      free: false,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Link media sosial (Instagram, Twitter, dll)",
+      free: false,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Notifikasi WhatsApp & Telegram tanpa batas",
+      free: false,
+      premium: true,
+      popular: true,
+    },
+    {
+      name: "Statistik lengkap kunjungan & pesan",
+      free: false,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Manajemen balasan publik",
+      free: false,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Tema profil kustom & kartu pesan",
+      free: false,
+      premium: true,
+      popular: true,
+    },
+    {
+      name: "Hapus pesan yang tidak diinginkan",
+      free: false,
+      premium: true,
+      popular: true,
+    },
+    {
+      name: "Berbagi gambar profil dengan QR code",
+      free: false,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Tanpa iklan & prioritas dukungan seumur hidup",
+      free: false,
+      premium: true,
+      popular: false,
+    },
+    {
+      name: "Semua update fitur premium di masa depan",
+      free: false,
+      premium: true,
+      popular: false,
+    },
   ]
 
   return (
     <div className="w-full mb-4 mt-2">
+      {/* Locked Premium Features Card */}
+      <Card className="mb-4 overflow-hidden border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100">
+        <CardContent className="p-0">
+          <div className="relative">
+            {/* Locked Overlay */}
+            <div className="absolute inset-0 bg-black/5 backdrop-blur-[1px] flex items-center justify-center z-10">
+              <div className="bg-white/90 rounded-full p-2 shadow-lg">
+                <Lock className="h-6 w-6 text-amber-500" />
+              </div>
+            </div>
+
+            {/* Premium Features Preview */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-amber-800 flex items-center">
+                  <Crown className="h-4 w-4 mr-1.5 text-amber-500" />
+                  Fitur Premium Terkunci
+                </h3>
+                <Badge className="bg-amber-500 hover:bg-amber-600">Upgrade Sekarang</Badge>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
+                  <Camera className="h-5 w-5 text-amber-500 mb-1" />
+                  <span className="text-xs text-center text-amber-800">Foto Profil Kustom</span>
+                </div>
+                <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
+                  <User className="h-5 w-5 text-amber-500 mb-1" />
+                  <span className="text-xs text-center text-amber-800">Username Kustom</span>
+                </div>
+                <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
+                  <FileText className="h-5 w-5 text-amber-500 mb-1" />
+                  <span className="text-xs text-center text-amber-800">Bio Lengkap</span>
+                </div>
+              </div>
+
+              <Button
+                asChild
+                size="sm"
+                className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
+              >
+                <Link href="/premium">
+                  <Crown className="h-3.5 w-3.5 mr-1.5" />
+                  Buka Semua Fitur Premium
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-col">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -52,7 +166,16 @@ export function PremiumFeatureTeaser() {
                 <tbody>
                   {features.map((feature, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="py-2 px-3 border-b">{feature.name}</td>
+                      <td className="py-2 px-3 border-b">
+                        <div className="flex items-center gap-1.5">
+                          {feature.name}
+                          {feature.popular && (
+                            <Badge className="ml-1.5 bg-orange-500 hover:bg-orange-600 text-[10px] px-1.5 py-0">
+                              Populer
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-2 px-3 text-center border-b">
                         {feature.free ? (
                           <Check className="h-4 w-4 text-green-500 mx-auto" />

@@ -427,10 +427,11 @@ export default function Home() {
                   PENAWARAN SPESIAL
                 </div>
                 <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-                  Sekali Bayar, <span className="text-blue-500">Akses Selamanya</span>!
+                  Sekali Bayar, <span className="text-blue-500">Akses Premium Selamanya</span>!
                 </h2>
                 <p className="text-lg">
-                  Dapatkan semua fitur premium Secretme dengan pembayaran satu kali. Tanpa biaya berlangganan bulanan!
+                  Dapatkan akses ke semua fitur premium Secretme dengan pembayaran satu kali. Tanpa biaya berlangganan
+                  bulanan!
                 </p>
                 <div className="bg-white p-4 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]">
                   <div className="flex items-center justify-between">
@@ -451,7 +452,10 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Link dan username kustom selamanya</span>
+                    <span className="font-medium">Username kustom permanen selamanya</span>
+                    <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
+                      Populer
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -459,7 +463,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Notifikasi WhatsApp &amp; Email tanpa batas</span>
+                    <span className="font-medium">Foto profil kustom & bio lengkap</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -467,7 +471,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Statistik lengkap &amp; analitik pesan selamanya</span>
+                    <span className="font-medium">Link media sosial (Instagram, Twitter, dll)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -475,7 +479,64 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Tanpa iklan &amp; prioritas dukungan seumur hidup</span>
+                    <span className="font-medium">Notifikasi WhatsApp & Telegram tanpa batas</span>
+                    <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
+                      Populer
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <span className="font-medium">Statistik lengkap kunjungan & pesan</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <span className="font-medium">Manajemen balasan publik</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <span className="font-medium">Tema profil kustom & kartu pesan</span>
+                    <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
+                      Populer
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <span className="font-medium">Hapus pesan yang tidak diinginkan</span>
+                    <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
+                      Populer
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <span className="font-medium">Berbagi gambar profil dengan QR code</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                    <span className="font-medium">Tanpa iklan & prioritas dukungan seumur hidup</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
