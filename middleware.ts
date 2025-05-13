@@ -24,7 +24,7 @@ const authCheckCache = new Map<
   { isAuthenticated: boolean; timestamp: number; isAdmin?: boolean; userAgent?: string; userId?: string }
 >()
 const AUTH_CACHE_TTL = 300000 // 5 menit (dari 1 menit)
-const MOBILE_AUTH_CACHE_TTL = 180000 // 3 menit untuk mobile
+const MOBILE_AUTH_CACHE_TTL = 120000 // 2 menit untuk mobile (dari 3 menit)
 
 // Throttling untuk middleware auth checks
 let lastMiddlewareAuthCheck = 0
@@ -180,6 +180,25 @@ export async function middleware(request: NextRequest) {
             currentIsMobile,
             cachedIsMobile,
             action: "skip_cache",
+          },
+        })
+      }
+      // Tambahkan pengecekan usia cache untuk mobile
+      else if (isMobile && now - cachedAuth.timestamp > 60000) {
+        // Jika cache > 1 menit untuk mobile
+        // Log cache age check
+        logAuthRequest({
+          endpoint: "middleware",
+          method: "INTERNAL",
+          source: "middleware",
+          success: true,
+          duration: 0,
+          cached: true,
+          details: {
+            path,
+            cacheAgeCheck: true,
+            cacheAge: now - cachedAuth.timestamp,
+            action: "skip_cache_mobile",
           },
         })
       } else {

@@ -18,38 +18,65 @@ export type AuthLogEntry = {
 const inMemoryLogs: AuthLogEntry[] = []
 const MAX_IN_MEMORY_LOGS = 1000
 
+// Fungsi untuk mendeteksi perangkat mobile
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
 // Fungsi untuk mencatat log auth
-export function logAuthRequest(entry: Omit<AuthLogEntry, "timestamp">) {
-  const logEntry: AuthLogEntry = {
-    timestamp: Date.now(),
-    ...entry,
+export function logAuthRequest(data: {
+  endpoint: string
+  method: string
+  source: "client" | "server" | "middleware"
+  success: boolean
+  duration: number
+  cached: boolean
+  userId?: string
+  error?: string
+  details?: Record<string, any>
+}) {
+  // Tambahkan deteksi mobile jika tidak ada di details
+  if (data.details && !("isMobile" in data.details)) {
+    data.details.isMobile = isMobileDevice()
   }
 
-  // Simpan log dalam memori
-  inMemoryLogs.unshift(logEntry)
+  // Tambahkan prefix untuk mobile
+  const mobilePrefix = data.details?.isMobile ? "📱 " : ""
 
-  // Batasi jumlah log dalam memori
-  if (inMemoryLogs.length > MAX_IN_MEMORY_LOGS) {
-    inMemoryLogs.pop()
-  }
+  // Format log message
+  const timestamp = new Date().toISOString()
+  const cachedIndicator = data.cached ? "🔄 [CACHED] " : " "
+  const statusIndicator = data.success ? "✅" : "❌"
+  const durationText = data.duration > 0 ? `${data.duration}ms` : "-"
+  const userIdText = data.userId ? `| User: ${data.userId}` : ""
+  const errorText = data.error ? `| Error: ${data.error}` : ""
 
-  // Log ke console dengan format yang lebih baik
-  const status = logEntry.success ? "✅" : "❌"
-  const cached = logEntry.cached ? "🔄 [CACHED]" : ""
-  const duration = logEntry.duration ? `${Math.round(logEntry.duration)}ms` : "-"
-  const source = `[${logEntry.source.toUpperCase()}]`
-  const date = new Date(logEntry.timestamp).toISOString()
-
+  // Log ke console
   console.log(
-    `🔐 AUTH ${status} ${source} ${cached} ${date} | ${logEntry.method} ${logEntry.endpoint} | ${duration}${
-      logEntry.error ? ` | Error: ${logEntry.error}` : ""
-    }${logEntry.userId ? ` | User: ${logEntry.userId}` : ""}`,
+    `🔐 AUTH ${statusIndicator} [${data.source.toUpperCase()}] ${mobilePrefix}${cachedIndicator}${timestamp} | ${data.method} ${data.endpoint} | ${durationText} ${userIdText} ${errorText}`,
   )
 
-  // Jika dalam production, bisa mengirim log ke server atau layanan monitoring
-  if (process.env.NODE_ENV === "production") {
-    // Implementasi untuk mengirim log ke server atau layanan monitoring
-    // sendLogToServer(logEntry);
+  // Tambahkan ke log history
+  if (typeof window !== "undefined") {
+    try {
+      // Simpan log ke localStorage untuk debugging
+      const logs = JSON.parse(localStorage.getItem("auth_logs") || "[]")
+      logs.push({
+        ...data,
+        timestamp,
+        isMobile: data.details?.isMobile || isMobileDevice(),
+      })
+
+      // Batasi jumlah log
+      if (logs.length > 100) {
+        logs.shift()
+      }
+
+      localStorage.setItem("auth_logs", JSON.stringify(logs))
+    } catch (e) {
+      // Ignore localStorage errors
+    }
   }
 }
 

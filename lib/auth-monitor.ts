@@ -33,37 +33,81 @@ export const RATE_LIMITS = {
   requestsPerDay: 10000,
 }
 
+// Statistik untuk perangkat mobile
+let mobileStats: {
+  total: number
+  success: number
+  error: number
+  cached: number
+} | null = null
+
+// Inisialisasi variabel yang kurang
+let authStats: {
+  [key: string]: {
+    count: number
+    totalDuration: number
+    lastTimestamp: number
+  }
+} = {}
+let totalRequests = 0
+let errorRequests = 0
+
+// Fungsi untuk mendeteksi perangkat mobile
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
 // Fungsi untuk menyimpan statistik permintaan auth
-export function recordAuthRequest(stats: Omit<AuthRequestStats, "timestamp">) {
-  try {
-    const timestamp = Date.now()
-    const newStat: AuthRequestStats = {
-      ...stats,
-      timestamp,
+export function recordAuthRequest(data: {
+  endpoint: string
+  success: boolean
+  duration: number
+  source: "client" | "server" | "middleware"
+  cached?: boolean
+}) {
+  // Tambahkan deteksi mobile
+  const isMobile = isMobileDevice()
+
+  // Tambahkan ke statistik
+  const key = `${data.endpoint}:${data.success ? "success" : "error"}:${data.source}:${data.cached ? "cached" : "fresh"}:${isMobile ? "mobile" : "desktop"}`
+
+  // Simpan statistik
+  if (!authStats[key]) {
+    authStats[key] = {
+      count: 0,
+      totalDuration: 0,
+      lastTimestamp: Date.now(),
+    }
+  }
+
+  authStats[key].count++
+  authStats[key].totalDuration += data.duration
+  authStats[key].lastTimestamp = Date.now()
+
+  // Tambahkan ke total
+  totalRequests++
+
+  // Tambahkan ke error jika gagal
+  if (!data.success) {
+    errorRequests++
+  }
+
+  // Tambahkan ke mobile jika mobile
+  if (isMobile) {
+    if (!mobileStats) {
+      mobileStats = {
+        total: 0,
+        success: 0,
+        error: 0,
+        cached: 0,
+      }
     }
 
-    // Ambil statistik yang ada
-    const existingStatsJson = localStorage.getItem(AUTH_STATS_KEY)
-    let existingStats: AuthRequestStats[] = existingStatsJson ? JSON.parse(existingStatsJson) : []
-
-    // Tambahkan statistik baru
-    existingStats.push(newStat)
-
-    // Batasi jumlah statistik yang disimpan
-    if (existingStats.length > MAX_STORED_REQUESTS) {
-      existingStats = existingStats.slice(-MAX_STORED_REQUESTS)
-    }
-
-    // Simpan kembali ke localStorage
-    localStorage.setItem(AUTH_STATS_KEY, JSON.stringify(existingStats))
-
-    // Periksa apakah mendekati batas rate limit
-    checkRateLimitWarning(existingStats)
-
-    return newStat
-  } catch (error) {
-    console.error("Error recording auth stats:", error)
-    return null
+    mobileStats.total++
+    if (data.success) mobileStats.success++
+    else mobileStats.error++
+    if (data.cached) mobileStats.cached++
   }
 }
 
@@ -76,6 +120,18 @@ export function getAuthStats(): AuthRequestStats[] {
     console.error("Error getting auth stats:", error)
     return []
   }
+}
+
+// Fungsi untuk mendapatkan statistik mobile
+export function getMobileAuthStats() {
+  return (
+    mobileStats || {
+      total: 0,
+      success: 0,
+      error: 0,
+      cached: 0,
+    }
+  )
 }
 
 // Fungsi untuk mendapatkan ringkasan statistik
@@ -211,4 +267,11 @@ export function exportAuthStatsCSV(): string {
   })
 
   return csv
+}
+
+export function resetAuthStats() {
+  authStats = {}
+  totalRequests = 0
+  errorRequests = 0
+  mobileStats = null // Reset mobile stats
 }

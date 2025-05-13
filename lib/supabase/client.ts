@@ -21,7 +21,8 @@ const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
 // Tambahkan flag untuk mencegah multiple refresh
 let isRefreshingToken = false
 let lastRefreshTime = 0
-const MIN_REFRESH_INTERVAL = 600000 // 10 menit
+const MIN_REFRESH_INTERVAL = 600000 // 10 menit (dari 5 menit)
+const MOBILE_MIN_REFRESH_INTERVAL = 300000 // 5 menit untuk mobile
 
 // Tambahkan flag untuk mendeteksi error rate limit
 let hasHitRateLimit = false
@@ -66,6 +67,43 @@ function shouldThrottleAuthRequest(): boolean {
 // Fungsi untuk mencatat permintaan auth baru
 function recordAuthRequestTimestamp() {
   authRequestTimestamps.push(Date.now())
+}
+
+// Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
+function isMobileDevice(): boolean {
+  return typeof navigator !== "undefined"
+    ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    : false
+}
+
+// Fungsi untuk retry refresh token untuk mobile
+const retryRefreshForMobile = async (client: ReturnType<typeof createClientComponentClient<Database>>) => {
+  if (!isMobileDevice()) return
+
+  console.log("Retrying auth refresh for mobile device...")
+  try {
+    // Tunggu sebentar sebelum mencoba lagi
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    // Coba refresh session
+    const { data, error } = await client.auth.refreshSession()
+
+    if (error) {
+      console.error("Mobile refresh retry failed:", error)
+      // Jika masih gagal, coba sekali lagi dengan delay lebih lama
+      setTimeout(async () => {
+        try {
+          await client.auth.refreshSession()
+        } catch (e) {
+          console.error("Second retry failed:", e)
+        }
+      }, 5000)
+    } else if (data.session) {
+      console.log("Mobile refresh retry succeeded")
+    }
+  } catch (e) {
+    console.error("Error during mobile refresh retry:", e)
+  }
 }
 
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
@@ -315,6 +353,16 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
     })
 
     console.error("❌ Error saat memeriksa sesi:", e)
+
+    // Tambahkan retry untuk mobile
+    if (
+      isMobileDevice() &&
+      e instanceof Error &&
+      (e.message.includes("Auth session missing") || e.message.includes("session not found"))
+    ) {
+      retryRefreshForMobile(client)
+    }
+
     isRefreshingToken = false
     return false
   }
@@ -401,6 +449,7 @@ export const createClient = () => {
             path: "/",
             sameSite: "lax",
             secure: process.env.NODE_ENV === "production",
+            partitioned: true, // Tambahkan support untuk partitioned cookies di iOS Safari
           },
           // Add error handling for token refresh
           onAuthStateChange: (event, session) => {

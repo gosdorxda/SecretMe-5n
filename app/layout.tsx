@@ -9,6 +9,8 @@ import { SiteHeader } from "@/components/site-header"
 import { SeoMeta } from "@/components/seo-meta"
 import { StickyNotificationProvider } from "@/components/sticky-notification-provider"
 import { FooterProvider } from "@/components/footer-provider"
+// Impor AuthTroubleshooter
+import { AuthTroubleshooter } from "@/components/auth-troubleshooter"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -32,6 +34,7 @@ export default function RootLayout({
         <AuthProvider>
           <EnvironmentDetector>
             <StickyNotificationProvider>
+              <AuthTroubleshooter /> {/* Tambahkan komponen ini */}
               <FooterProvider>
                 <div className="relative flex min-h-screen flex-col">
                   <SiteHeader />

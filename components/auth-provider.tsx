@@ -24,6 +24,7 @@ type AuthContextType = {
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
   isAuthenticated: boolean
+  forceLogout: () => Promise<void> // Tambahkan forceLogout
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   refreshSession: async () => {},
   isAuthenticated: false,
+  forceLogout: async () => {}, // Tambahkan forceLogout
 })
 
 // Meningkatkan interval throttle untuk mengurangi auth requests
@@ -162,6 +164,102 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, router])
 
+  // Fungsi untuk force logout dalam kasus darurat
+  const forceLogout = useCallback(async () => {
+    try {
+      // Log force logout
+      logAuthRequest({
+        endpoint: "forceLogout",
+        method: "INTERNAL",
+        source: "client",
+        success: true,
+        duration: 0,
+        cached: false,
+        userId: user?.id,
+        details: {
+          action: "start",
+          isMobile: isMobileDevice(),
+        },
+      })
+
+      // Bersihkan state dan cache
+      clearAuthCache()
+      setSession(null)
+      setUser(null)
+      setIsAuthenticated(false)
+
+      // Reset flags
+      refreshingRef.current = false
+      isRefreshingTokenRef.current = false
+      hasHitRateLimitRef.current = false
+      authRetryCountRef.current = 0
+
+      // Hapus token dari localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("supabase.auth.token")
+        // Hapus semua localStorage yang terkait dengan supabase
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith("supabase.")) {
+            localStorage.removeItem(key)
+          }
+        })
+        // Hapus sessionStorage juga
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith("supabase.")) {
+            sessionStorage.removeItem(key)
+          }
+        })
+      }
+
+      // Hapus semua cookie
+      if (typeof document !== "undefined") {
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
+        })
+      }
+
+      // Reset client
+      resetClient()
+
+      // Log force logout success
+      logAuthRequest({
+        endpoint: "forceLogout",
+        method: "INTERNAL",
+        source: "client",
+        success: true,
+        duration: 0,
+        cached: false,
+        details: {
+          action: "complete",
+          isMobile: isMobileDevice(),
+        },
+      })
+
+      // Hard redirect ke login page
+      window.location.href = "/login"
+    } catch (error) {
+      console.error("Error during force logout:", error)
+
+      // Log error
+      logAuthRequest({
+        endpoint: "forceLogout",
+        method: "INTERNAL",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: {
+          error,
+          isMobile: isMobileDevice(),
+        },
+      })
+
+      // Jika terjadi error, tetap redirect ke login dengan hard refresh
+      window.location.href = "/login"
+    }
+  }, [user])
+
   // Fungsi untuk menangani error rate limit
   const handleRateLimitError = useCallback(
     (error: any) => {
@@ -222,6 +320,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [signOut],
   )
+
+  // Fungsi untuk mendeteksi ketidakkonsistenan session
+  const detectSessionInconsistency = useCallback(async () => {
+    // Jika UI menunjukkan login tapi server tidak memiliki token yang valid
+    if (isAuthenticated && (!session || !session.access_token || isTokenExpired(session))) {
+      console.warn("Session inconsistency detected, forcing logout")
+
+      // Log inconsistency
+      logAuthRequest({
+        endpoint: "sessionInconsistency",
+        method: "INTERNAL",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        userId: user?.id,
+        error: "Session inconsistency detected",
+        details: {
+          isAuthenticated,
+          hasSession: !!session,
+          hasAccessToken: !!session?.access_token,
+          isExpired: session ? isTokenExpired(session) : true,
+          isMobile: isMobileDevice(),
+        },
+      })
+
+      // Force logout
+      await signOut()
+      router.push("/login")
+    }
+  }, [isAuthenticated, session, user, signOut, router])
 
   const refreshSession = useCallback(async () => {
     // Hindari multiple refresh
@@ -847,7 +976,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshingRef.current = false
       isRefreshingTokenRef.current = false
     }
-  }, [supabase, signOut, router, user, handleRateLimitError, handleRefreshTokenError])
+  }, [supabase, signOut, router, user, handleRateLimitError, handleRefreshTokenError, detectSessionInconsistency])
 
   // Fetch session dan setup auth listener dengan optimasi
   useEffect(() => {
@@ -1047,7 +1176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [supabase, refreshSession, handleRateLimitError, handleRefreshTokenError])
+  }, [supabase, refreshSession, handleRateLimitError, handleRefreshTokenError, detectSessionInconsistency])
 
   // Protect routes - optimasi dengan mengurangi re-renders
   useEffect(() => {
@@ -1095,8 +1224,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(intervalId)
   }, [session, refreshSession])
 
+  // Deteksi ketidakkonsistenan session secara periodik
+  useEffect(() => {
+    // Jika tidak terautentikasi, tidak perlu melakukan pengecekan
+    if (!isAuthenticated) return
+
+    // Interval yang berbeda untuk mobile dan desktop
+    const checkInterval = isMobileDevice() ? 30 * 1000 : 60 * 1000 // 30 detik untuk mobile, 60 detik untuk desktop
+
+    const intervalId = setInterval(detectSessionInconsistency, checkInterval)
+
+    return () => clearInterval(intervalId)
+  }, [isAuthenticated, detectSessionInconsistency])
+
   return (
-    <AuthContext.Provider value={{ session, user, loading, signOut, refreshSession, isAuthenticated }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        loading,
+        signOut,
+        refreshSession,
+        isAuthenticated,
+        forceLogout, // Tambahkan forceLogout ke context
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

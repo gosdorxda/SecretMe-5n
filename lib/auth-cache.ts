@@ -11,8 +11,11 @@ const CACHE_DURATION = 10 * 60 * 1000
 // Durasi cache yang lebih pendek untuk mobile (5 menit)
 const MOBILE_CACHE_DURATION = 5 * 60 * 1000
 
+export const AUTH_CACHE_TTL = 600000 // 10 menit
+export const MOBILE_AUTH_CACHE_TTL = 300000 // 5 menit untuk mobile
+
 // Fungsi untuk mendeteksi perangkat mobile
-function isMobileDevice(): boolean {
+export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
