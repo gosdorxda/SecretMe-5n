@@ -7,23 +7,21 @@ import { logAuthRequest } from "@/lib/auth-logger"
 // Client-side Supabase client
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
-// Tambahkan throttling untuk permintaan auth
+// Throttling untuk permintaan auth
 const authRequestTimestamps: number[] = []
-// Kurangi batas permintaan secara drastis
-const AUTH_REQUEST_LIMIT = 2 // Maksimum 2 permintaan
+const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan
 const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
 
-// Tambahkan debounce untuk mencegah multiple calls
+// Debounce untuk mencegah multiple calls
 let authDebounceTimer: NodeJS.Timeout | null = null
 const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
 
-// Tambahkan flag untuk mencegah multiple refresh
+// Flag untuk mencegah multiple refresh
 let isRefreshingToken = false
 let lastRefreshTime = 0
-const MIN_REFRESH_INTERVAL = 600000 // 10 menit (dari 5 menit)
-const MOBILE_MIN_REFRESH_INTERVAL = 300000 // 5 menit untuk mobile
+const MIN_REFRESH_INTERVAL = 300000 // 5 menit untuk semua perangkat
 
-// Tambahkan flag untuk mendeteksi error rate limit
+// Flag untuk mendeteksi error rate limit
 let hasHitRateLimit = false
 let rateLimitResetTime = 0
 const RATE_LIMIT_BACKOFF = 600000 // 10 menit
@@ -68,43 +66,6 @@ function recordAuthRequestTimestamp() {
   authRequestTimestamps.push(Date.now())
 }
 
-// Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
-function isMobileDevice(): boolean {
-  return typeof navigator !== "undefined"
-    ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    : false
-}
-
-// Fungsi untuk retry refresh token untuk mobile
-const retryRefreshForMobile = async (client: ReturnType<typeof createClientComponentClient<Database>>) => {
-  if (!isMobileDevice()) return
-
-  console.log("Retrying auth refresh for mobile device...")
-  try {
-    // Tunggu sebentar sebelum mencoba lagi
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Coba refresh session
-    const { data, error } = await client.auth.refreshSession()
-
-    if (error) {
-      console.error("Mobile refresh retry failed:", error)
-      // Jika masih gagal, coba sekali lagi dengan delay lebih lama
-      setTimeout(async () => {
-        try {
-          await client.auth.refreshSession()
-        } catch (e) {
-          console.error("Second retry failed:", e)
-        }
-      }, 5000)
-    } else if (data.session) {
-      console.log("Mobile refresh retry succeeded")
-    }
-  } catch (e) {
-    console.error("Error during mobile refresh retry:", e)
-  }
-}
-
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
 async function repairSessionIfNeeded(client: ReturnType<typeof createClientComponentClient<Database>>) {
   try {
@@ -113,7 +74,7 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       return false
     }
 
-    // Kurangi throttling untuk mobile
+    // Throttle refresh attempts
     const now = Date.now()
     if (now - lastRefreshTime < MIN_REFRESH_INTERVAL / 2) {
       return false
@@ -135,10 +96,6 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       details: {
         action: "start",
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
-        isMobile:
-          typeof navigator !== "undefined"
-            ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-            : false,
       },
     })
 
@@ -352,16 +309,6 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
     })
 
     console.error("❌ Error saat memeriksa sesi:", e)
-
-    // Tambahkan retry untuk mobile
-    if (
-      isMobileDevice() &&
-      e instanceof Error &&
-      (e.message.includes("Auth session missing") || e.message.includes("session not found"))
-    ) {
-      retryRefreshForMobile(client)
-    }
-
     isRefreshingToken = false
     return false
   }
@@ -385,7 +332,7 @@ if (typeof console !== "undefined" && console.warn) {
 
 // Cache untuk menyimpan hasil auth requests
 const authRequestCache = new Map<string, { data: any; timestamp: number }>()
-const AUTH_CACHE_TTL = 600000 // 10 menit (dari 5 menit)
+const AUTH_CACHE_TTL = 300000 // 5 menit
 
 // Fungsi debounce untuk auth requests
 function debounceAuthRequest(fn: Function): Promise<any> {
@@ -611,7 +558,7 @@ export async function getUserWithLogging() {
   }
 }
 
-// Tambahkan logging untuk fungsi signOut
+// Implementasi universal untuk signOut
 export async function signOutWithLogging() {
   const start = performance.now()
   let success = false
@@ -619,11 +566,66 @@ export async function signOutWithLogging() {
 
   try {
     const supabase = createClient()
+
+    // Log attempt
+    logAuthRequest({
+      endpoint: "signOut",
+      method: "POST",
+      source: "client",
+      success: true,
+      duration: 0,
+      cached: false,
+      details: { action: "start" },
+    })
+
+    // 1. Coba signOut standar
     const { error: signOutError } = await supabase.auth.signOut()
 
+    // 2. Jika error, lakukan cleanup manual
     if (signOutError) {
       error = signOutError
-      throw signOutError
+      console.error("Error during signOut:", signOutError)
+
+      // Log error
+      logAuthRequest({
+        endpoint: "signOut",
+        method: "POST",
+        source: "client",
+        success: false,
+        duration: performance.now() - start,
+        cached: false,
+        error: signOutError.message,
+        details: { error: signOutError },
+      })
+    }
+
+    // 3. Selalu lakukan cleanup manual untuk konsistensi
+    if (typeof window !== "undefined") {
+      // Hapus token dari localStorage
+      localStorage.removeItem("supabase.auth.token")
+
+      // Hapus semua item localStorage yang terkait Supabase
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("supabase.")) {
+          localStorage.removeItem(key)
+        }
+      })
+
+      // Hapus cookie secara manual
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/")
+      })
+
+      // Log manual cleanup
+      logAuthRequest({
+        endpoint: "signOut",
+        method: "POST",
+        source: "client",
+        success: true,
+        duration: performance.now() - start,
+        cached: false,
+        details: { action: "manualCleanup" },
+      })
     }
 
     // Bersihkan cache
@@ -635,7 +637,7 @@ export async function signOutWithLogging() {
     error = err
     return { error: err }
   } finally {
-    // Log permintaan
+    // Log final result
     logAuthRequest({
       endpoint: "signOut",
       method: "POST",
@@ -644,6 +646,7 @@ export async function signOutWithLogging() {
       duration: performance.now() - start,
       cached: false,
       error: error ? String(error) : undefined,
+      details: { finalStatus: success ? "success" : "failed" },
     })
   }
 }

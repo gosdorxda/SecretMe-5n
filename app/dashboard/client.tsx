@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, signOutWithLogging } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/lib/supabase/database.types"
 import { FileText, Link2, User, ImageIcon, Trash2 } from "lucide-react"
@@ -71,18 +71,31 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
     fetchViewCount()
   }, [supabase, user.id])
 
+  // Implementasi universal untuk logout
   async function handleLogout() {
     setIsLoading(true)
     try {
-      await supabase.auth.signOut()
+      // Gunakan fungsi signOutWithLogging yang sudah dioptimasi
+      await signOutWithLogging()
+
+      // Redirect dan refresh
       router.push("/")
       router.refresh()
+
+      // Force reload halaman untuk memastikan state bersih
+      setTimeout(() => {
+        window.location.href = "/"
+      }, 100)
     } catch (error: any) {
+      console.error("Logout error:", error)
       toast({
         title: "Logout gagal",
         description: error.message || "Terjadi kesalahan saat logout",
         variant: "destructive",
       })
+
+      // Fallback: force reload halaman
+      window.location.href = "/"
     } finally {
       setIsLoading(false)
     }
@@ -99,7 +112,7 @@ export function DashboardClient({ user, messages }: DashboardClientProps) {
       }
 
       // Sign out
-      await supabase.auth.signOut()
+      await signOutWithLogging()
 
       toast({
         title: "Akun berhasil dihapus",
