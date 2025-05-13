@@ -8,10 +8,12 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { logAuthRequest } from "@/lib/auth-logger"
 
 export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [loginAttempts, setLoginAttempts] = useState(0)
   const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get("error")
@@ -28,8 +30,20 @@ export default function LoginForm() {
         description: "Your session has expired. Please log in again.",
         variant: "destructive",
       })
+
+      // Log session error
+      logAuthRequest({
+        endpoint: "loginForm",
+        method: "GET",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error,
+        details: { errorMessage },
+      })
     }
-  }, [error, toast])
+  }, [error, errorMessage, toast])
 
   // Check for callback errors
   useEffect(() => {
@@ -71,13 +85,88 @@ export default function LoginForm() {
         description: displayMessage,
         variant: "destructive",
       })
+
+      // Log callback error
+      logAuthRequest({
+        endpoint: "loginCallback",
+        method: "GET",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error,
+        details: { errorMessage, displayMessage },
+      })
     }
   }, [error, errorMessage, toast])
+
+  // Fungsi untuk menangani error login
+  const handleLoginError = (error: any) => {
+    console.error("❌ LOGIN: Login failed:", error)
+
+    // Increment login attempts
+    const newAttempts = loginAttempts + 1
+    setLoginAttempts(newAttempts)
+
+    // Log login error
+    logAuthRequest({
+      endpoint: "login",
+      method: "POST",
+      source: "client",
+      success: false,
+      duration: 0,
+      cached: false,
+      error: error.message || "Unknown error",
+      details: {
+        attempts: newAttempts,
+        errorCode: error.code,
+        errorStatus: error.status,
+      },
+    })
+
+    // Customize error message based on error type
+    let errorMessage = error.message || "Email atau password salah"
+
+    // Handle specific error cases
+    if (error.message?.includes("Invalid login credentials")) {
+      errorMessage = "Email atau password salah"
+    } else if (error.message?.includes("rate limit")) {
+      errorMessage = "Terlalu banyak percobaan login. Silakan coba lagi nanti."
+    } else if (error.message?.includes("network")) {
+      errorMessage = "Masalah koneksi internet. Periksa koneksi Anda dan coba lagi."
+    }
+
+    // Add attempt count for multiple failures
+    if (newAttempts > 1) {
+      errorMessage += ` (Percobaan ke-${newAttempts})`
+    }
+
+    toast({
+      title: "Login gagal",
+      description: errorMessage,
+      variant: "destructive",
+    })
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsLoading(true)
     console.log("🔍 LOGIN: Starting email login")
+
+    // Log login attempt
+    logAuthRequest({
+      endpoint: "login",
+      method: "POST",
+      source: "client",
+      success: true,
+      duration: 0,
+      cached: false,
+      details: {
+        method: "email",
+        attempts: loginAttempts,
+        action: "start",
+      },
+    })
 
     const formData = new FormData(event.currentTarget)
     const email = formData.get("email") as string
@@ -85,32 +174,101 @@ export default function LoginForm() {
 
     try {
       console.log("🔍 LOGIN: Authenticating with email/password")
+      const startTime = performance.now()
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
+      const duration = performance.now() - startTime
+
       if (error) {
         console.error("❌ LOGIN: Authentication error:", error)
+
+        // Log auth error
+        logAuthRequest({
+          endpoint: "login",
+          method: "POST",
+          source: "client",
+          success: false,
+          duration,
+          cached: false,
+          error: error.message,
+          details: {
+            method: "email",
+            errorCode: error.code,
+            errorStatus: error.status,
+          },
+        })
+
         throw error
       }
 
       console.log("✅ LOGIN: Authentication successful, checking user in database")
 
+      // Log auth success
+      logAuthRequest({
+        endpoint: "login",
+        method: "POST",
+        source: "client",
+        success: true,
+        duration,
+        cached: false,
+        userId: data.user.id,
+        details: {
+          method: "email",
+          action: "authenticated",
+        },
+      })
+
       // Check if user exists in database
+      const dbStartTime = performance.now()
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("id")
         .eq("id", data.user.id)
         .single()
+      const dbDuration = performance.now() - dbStartTime
 
       if (userError) {
         console.log("🔍 LOGIN: User check error:", userError)
+
+        // Log db error
+        logAuthRequest({
+          endpoint: "loginDbCheck",
+          method: "GET",
+          source: "client",
+          success: false,
+          duration: dbDuration,
+          cached: false,
+          userId: data.user.id,
+          error: userError.message,
+          details: {
+            errorCode: userError.code,
+            action: "checkUser",
+          },
+        })
 
         // If user not found in database, create a new record
         if (userError.code === "PGRST116") {
           console.log("🔍 LOGIN: User not found in database, creating new record")
 
+          // Log create user start
+          logAuthRequest({
+            endpoint: "loginCreateUser",
+            method: "POST",
+            source: "client",
+            success: true,
+            duration: 0,
+            cached: false,
+            userId: data.user.id,
+            details: {
+              action: "start",
+            },
+          })
+
+          const createStartTime = performance.now()
           const { error: insertError } = await supabase.from("users").insert({
             id: data.user.id,
             name: data.user.user_metadata.full_name || data.user.user_metadata.name || email.split("@")[0] || "User",
@@ -119,19 +277,64 @@ export default function LoginForm() {
             updated_at: new Date().toISOString(),
             is_premium: false,
           })
+          const createDuration = performance.now() - createStartTime
 
           if (insertError) {
             console.error("❌ LOGIN: Failed to create user record:", insertError)
+
+            // Log create user error
+            logAuthRequest({
+              endpoint: "loginCreateUser",
+              method: "POST",
+              source: "client",
+              success: false,
+              duration: createDuration,
+              cached: false,
+              userId: data.user.id,
+              error: insertError.message,
+              details: {
+                errorCode: insertError.code,
+              },
+            })
+
             throw new Error("Gagal membuat data pengguna")
           }
 
           console.log("✅ LOGIN: User record created successfully")
+
+          // Log create user success
+          logAuthRequest({
+            endpoint: "loginCreateUser",
+            method: "POST",
+            source: "client",
+            success: true,
+            duration: createDuration,
+            cached: false,
+            userId: data.user.id,
+            details: {
+              action: "complete",
+            },
+          })
         } else {
           console.error("❌ LOGIN: Database error:", userError)
           throw userError
         }
       } else {
         console.log("✅ LOGIN: User exists in database")
+
+        // Log db check success
+        logAuthRequest({
+          endpoint: "loginDbCheck",
+          method: "GET",
+          source: "client",
+          success: true,
+          duration: dbDuration,
+          cached: false,
+          userId: data.user.id,
+          details: {
+            action: "userExists",
+          },
+        })
       }
 
       toast({
@@ -139,17 +342,31 @@ export default function LoginForm() {
         description: "Selamat datang kembali!",
       })
 
+      // Reset login attempts on success
+      setLoginAttempts(0)
+
+      // Log login success
+      logAuthRequest({
+        endpoint: "login",
+        method: "POST",
+        source: "client",
+        success: true,
+        duration: performance.now() - startTime,
+        cached: false,
+        userId: data.user.id,
+        details: {
+          method: "email",
+          action: "complete",
+          redirect,
+        },
+      })
+
       // Redirect to dashboard or requested page
       console.log("✅ LOGIN: Redirecting to:", redirect)
       router.push(redirect)
       router.refresh()
     } catch (error: any) {
-      console.error("❌ LOGIN: Login failed:", error)
-      toast({
-        title: "Login gagal",
-        description: error.message || "Email atau password salah",
-        variant: "destructive",
-      })
+      handleLoginError(error)
     } finally {
       setIsLoading(false)
     }
@@ -159,12 +376,27 @@ export default function LoginForm() {
     setIsGoogleLoading(true)
     console.log("🔍 LOGIN: Starting Google login")
 
+    // Log Google login attempt
+    logAuthRequest({
+      endpoint: "login",
+      method: "POST",
+      source: "client",
+      success: true,
+      duration: 0,
+      cached: false,
+      details: {
+        method: "google",
+        action: "start",
+      },
+    })
+
     try {
       // Use the environment variable instead of window.location.origin
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
       const redirectUrl = `${appUrl}/auth/callback?redirect_to=${encodeURIComponent(redirect)}`
       console.log("🔍 LOGIN: Google OAuth redirect URL:", redirectUrl)
 
+      const startTime = performance.now()
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -175,16 +407,67 @@ export default function LoginForm() {
           },
         },
       })
+      const duration = performance.now() - startTime
 
       if (error) {
         console.error("❌ LOGIN: Google OAuth error:", error)
+
+        // Log Google login error
+        logAuthRequest({
+          endpoint: "login",
+          method: "POST",
+          source: "client",
+          success: false,
+          duration,
+          cached: false,
+          error: error.message,
+          details: {
+            method: "google",
+            errorCode: error.code,
+            errorStatus: error.status,
+          },
+        })
+
         throw error
       }
 
       console.log("✅ LOGIN: Google OAuth initiated, URL:", data?.url)
+
+      // Log Google login success
+      logAuthRequest({
+        endpoint: "login",
+        method: "POST",
+        source: "client",
+        success: true,
+        duration,
+        cached: false,
+        details: {
+          method: "google",
+          action: "redirecting",
+          redirectUrl: data?.url ? true : false,
+        },
+      })
+
       // No need to redirect manually, Supabase will handle it
     } catch (error: any) {
       console.error("❌ LOGIN: Google login failed:", error)
+
+      // Log Google login error
+      logAuthRequest({
+        endpoint: "login",
+        method: "POST",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error.message || "Unknown error",
+        details: {
+          method: "google",
+          errorCode: error.code,
+          errorStatus: error.status,
+        },
+      })
+
       toast({
         title: "Login dengan Google gagal",
         description: error.message || "Terjadi kesalahan saat login dengan Google",
@@ -246,6 +529,7 @@ export default function LoginForm() {
                 required
                 placeholder="email@example.com"
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
+                autoComplete="email"
               />
             </div>
 
@@ -265,10 +549,11 @@ export default function LoginForm() {
                 required
                 placeholder="••••••••"
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
+                autoComplete="current-password"
               />
             </div>
 
-            <button type="submit" disabled={isLoading} className="w-full neo-btn">
+            <button type="submit" disabled={isLoading} className="w-full neo-btn" aria-live="polite">
               {isLoading ? "Memproses..." : "Login"}
             </button>
           </form>

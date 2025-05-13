@@ -12,7 +12,10 @@ import {
   clearAuthCache,
   isAuthCacheValid,
   extendAuthCacheExpiry,
+  isTokenExpiringSoon,
+  isTokenExpired,
 } from "@/lib/auth-cache"
+import { logAuthRequest } from "@/lib/auth-logger"
 
 type AuthContextType = {
   session: Session | null
@@ -20,6 +23,7 @@ type AuthContextType = {
   loading: boolean
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
+  isAuthenticated: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   refreshSession: async () => {},
+  isAuthenticated: false,
 })
 
 // Meningkatkan interval throttle untuk mengurangi auth requests
@@ -45,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
@@ -64,17 +70,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const rateLimitResetTimeRef = useRef(0)
   const RATE_LIMIT_BACKOFF = 600000 // 10 menit
 
+  // Tambahkan counter untuk retry
+  const authRetryCountRef = useRef(0)
+  const MAX_AUTH_RETRIES = 3
+
   const signOut = useCallback(async () => {
     try {
+      // Log signOut start
+      logAuthRequest({
+        endpoint: "signOut",
+        method: "INTERNAL",
+        source: "client",
+        success: true,
+        duration: 0,
+        cached: false,
+        details: { action: "start" },
+      })
+
       // Bersihkan state dan cache terlebih dahulu
       clearAuthCache()
       setSession(null)
       setUser(null)
+      setIsAuthenticated(false)
 
       // Reset flags
       refreshingRef.current = false
       isRefreshingTokenRef.current = false
       hasHitRateLimitRef.current = false
+      authRetryCountRef.current = 0
 
       // Hapus token dari localStorage untuk mencegah error
       if (typeof window !== "undefined") {
@@ -87,16 +110,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (signOutError) {
         // Jika gagal, log error tapi tetap lanjutkan
         console.warn("Error during signOut API call:", signOutError)
+
+        // Log error
+        logAuthRequest({
+          endpoint: "signOut",
+          method: "INTERNAL",
+          source: "client",
+          success: false,
+          duration: 0,
+          cached: false,
+          error: signOutError instanceof Error ? signOutError.message : "Unknown error",
+          details: { error: signOutError },
+        })
       }
 
       // Reset client untuk membersihkan state
       resetClient()
+
+      // Log signOut success
+      logAuthRequest({
+        endpoint: "signOut",
+        method: "INTERNAL",
+        source: "client",
+        success: true,
+        duration: 0,
+        cached: false,
+        details: { action: "complete" },
+      })
 
       // Redirect ke login page
       router.push("/login")
       router.refresh()
     } catch (error) {
       console.error("Error signing out:", error)
+
+      // Log error
+      logAuthRequest({
+        endpoint: "signOut",
+        method: "INTERNAL",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: { error },
+      })
 
       // Jika terjadi error, tetap redirect ke login
       router.push("/login")
@@ -111,6 +169,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasHitRateLimitRef.current = true
         rateLimitResetTimeRef.current = Date.now() + RATE_LIMIT_BACKOFF
         console.warn(`Rate limit hit, backing off for ${RATE_LIMIT_BACKOFF / 60000} minutes`)
+
+        // Log rate limit
+        logAuthRequest({
+          endpoint: "rateLimit",
+          method: "INTERNAL",
+          source: "client",
+          success: false,
+          duration: 0,
+          cached: false,
+          error: "Rate limit exceeded",
+          details: {
+            backoffTime: RATE_LIMIT_BACKOFF,
+            resetTime: new Date(rateLimitResetTimeRef.current).toISOString(),
+          },
+        })
+
         return true
       }
       return false
@@ -127,6 +201,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error?.code === "refresh_token_not_found"
       ) {
         console.warn("Invalid refresh token detected, signing out")
+
+        // Log invalid token
+        logAuthRequest({
+          endpoint: "invalidToken",
+          method: "INTERNAL",
+          source: "client",
+          success: false,
+          duration: 0,
+          cached: false,
+          error: error?.message || "Invalid refresh token",
+          details: { error },
+        })
+
         handleInvalidRefreshToken()
         signOut()
         return true
@@ -147,10 +234,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Deteksi apakah ini perangkat mobile
-    const isMobile =
-      typeof navigator !== "undefined"
-        ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        : false
+    const isMobile = isMobileDevice()
+
+    // Log refresh start
+    logAuthRequest({
+      endpoint: "refreshSession",
+      method: "INTERNAL",
+      source: "client",
+      success: true,
+      duration: 0,
+      cached: false,
+      details: {
+        isMobile,
+        action: "start",
+        retryCount: authRetryCountRef.current,
+      },
+    })
 
     // Kurangi throttling untuk mobile
     const now = Date.now()
@@ -183,25 +282,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       lastAuthCheckRef.current = now
 
-      // Log refresh attempt
-      // recordAuthRequest({
-      //   endpoint: "refreshSession",
-      //   success: true,
-      //   duration: 0,
-      //   source: "client",
-      //   cached: false,
-      //   details: {
-      //     isMobile,
-      //     action: "start"
-      //   }
-      // })
-
       // Try to get session from cache first
       const cachedSession = getCachedAuthSession()
 
       if (cachedSession !== undefined) {
         // We have a valid cached session or null (meaning no session)
         setSession(cachedSession)
+
+        // Periksa apakah token akan segera kedaluwarsa
+        if (cachedSession && isTokenExpiringSoon(cachedSession)) {
+          console.log("Token is expiring soon, will refresh")
+
+          // Log token expiring
+          logAuthRequest({
+            endpoint: "tokenExpiring",
+            method: "INTERNAL",
+            source: "client",
+            success: true,
+            duration: 0,
+            cached: false,
+            userId: cachedSession.user?.id,
+            details: {
+              expiresAt: cachedSession.expires_at ? new Date(cachedSession.expires_at * 1000).toISOString() : null,
+            },
+          })
+
+          // Force refresh token
+          try {
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+
+            if (refreshError) {
+              console.error("Error refreshing token:", refreshError)
+
+              // Log refresh error
+              logAuthRequest({
+                endpoint: "refreshToken",
+                method: "INTERNAL",
+                source: "client",
+                success: false,
+                duration: 0,
+                cached: false,
+                userId: cachedSession.user?.id,
+                error: refreshError.message,
+                details: { error: refreshError },
+              })
+
+              // Handle specific errors
+              handleRateLimitError(refreshError)
+              handleRefreshTokenError(refreshError)
+            } else if (refreshData.session) {
+              // Update session with refreshed data
+              setSession(refreshData.session)
+              setUser(refreshData.session.user)
+              setIsAuthenticated(true)
+              cacheAuthSession(refreshData.session)
+
+              // Log refresh success
+              logAuthRequest({
+                endpoint: "refreshToken",
+                method: "INTERNAL",
+                source: "client",
+                success: true,
+                duration: 0,
+                cached: false,
+                userId: refreshData.session.user.id,
+                details: {
+                  newExpiresAt: refreshData.session.expires_at
+                    ? new Date(refreshData.session.expires_at * 1000).toISOString()
+                    : null,
+                },
+              })
+            }
+          } catch (refreshError) {
+            console.error("Error during token refresh:", refreshError)
+
+            // Log refresh error
+            logAuthRequest({
+              endpoint: "refreshToken",
+              method: "INTERNAL",
+              source: "client",
+              success: false,
+              duration: 0,
+              cached: false,
+              userId: cachedSession.user?.id,
+              error: refreshError instanceof Error ? refreshError.message : "Unknown error",
+              details: { error: refreshError },
+            })
+          }
+        }
 
         // Hanya verifikasi user jika ada session dan belum ada user data
         if (cachedSession && !user) {
@@ -241,27 +409,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Ini mungkin hanya masalah sementara
               if (userError.message === "Auth session missing!") {
                 console.warn("Auth session missing during verification, will retry later")
+
+                // Increment retry counter
+                authRetryCountRef.current++
+
+                // Log retry
+                logAuthRequest({
+                  endpoint: "authRetry",
+                  method: "INTERNAL",
+                  source: "client",
+                  success: true,
+                  duration: 0,
+                  cached: false,
+                  details: {
+                    retryCount: authRetryCountRef.current,
+                    maxRetries: MAX_AUTH_RETRIES,
+                  },
+                })
+
+                // If we've tried too many times, sign out
+                if (authRetryCountRef.current >= MAX_AUTH_RETRIES) {
+                  console.error(`Auth retry limit (${MAX_AUTH_RETRIES}) reached, signing out`)
+
+                  // Log max retries
+                  logAuthRequest({
+                    endpoint: "authRetryLimit",
+                    method: "INTERNAL",
+                    source: "client",
+                    success: false,
+                    duration: 0,
+                    cached: false,
+                    details: {
+                      retryCount: authRetryCountRef.current,
+                      maxRetries: MAX_AUTH_RETRIES,
+                    },
+                  })
+
+                  await signOut()
+                }
+
                 refreshingRef.current = false
                 isRefreshingTokenRef.current = false
                 return
-              }
-
-              // Untuk mobile, coba sekali lagi dengan getSession sebelum sign out
-              if (isMobile) {
-                try {
-                  const { data: sessionData } = await supabase.auth.getSession()
-                  if (sessionData?.session) {
-                    console.log("Session recovered for mobile device")
-                    setSession(sessionData.session)
-                    setUser(sessionData.session.user)
-                    cacheAuthSession(sessionData.session)
-                    refreshingRef.current = false
-                    isRefreshingTokenRef.current = false
-                    return
-                  }
-                } catch (retryError) {
-                  console.error("Error during mobile session retry:", retryError)
-                }
               }
 
               await signOut()
@@ -279,6 +468,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Update user dengan data yang terverifikasi
             setUser(userData.user)
+            setIsAuthenticated(true)
+
+            // Reset retry counter on success
+            authRetryCountRef.current = 0
           } catch (verifyError) {
             // Periksa apakah error adalah rate limit
             if (handleRateLimitError(verifyError)) {
@@ -297,6 +490,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Tangani error dengan lebih baik
             if (verifyError instanceof Error && verifyError.message.includes("Auth session missing")) {
               console.warn("Auth session missing during verification, will retry later")
+
+              // Increment retry counter
+              authRetryCountRef.current++
+
+              // Log retry
+              logAuthRequest({
+                endpoint: "authRetry",
+                method: "INTERNAL",
+                source: "client",
+                success: true,
+                duration: 0,
+                cached: false,
+                details: {
+                  retryCount: authRetryCountRef.current,
+                  maxRetries: MAX_AUTH_RETRIES,
+                },
+              })
+
+              // If we've tried too many times, sign out
+              if (authRetryCountRef.current >= MAX_AUTH_RETRIES) {
+                console.error(`Auth retry limit (${MAX_AUTH_RETRIES}) reached, signing out`)
+
+                // Log max retries
+                logAuthRequest({
+                  endpoint: "authRetryLimit",
+                  method: "INTERNAL",
+                  source: "client",
+                  success: false,
+                  duration: 0,
+                  cached: false,
+                  details: {
+                    retryCount: authRetryCountRef.current,
+                    maxRetries: MAX_AUTH_RETRIES,
+                  },
+                })
+
+                await signOut()
+              }
             } else {
               console.error("Error during user verification:", verifyError)
               await signOut()
@@ -307,6 +538,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else if (!cachedSession) {
           setUser(null)
+          setIsAuthenticated(false)
+        } else {
+          // We have a session and user data
+          setIsAuthenticated(true)
         }
 
         setLoading(false)
@@ -386,6 +621,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Jika error adalah "Auth session missing", jangan langsung sign out
               if (userError.message === "Auth session missing!") {
                 console.warn("Auth session missing during verification, will retry later")
+
+                // Increment retry counter
+                authRetryCountRef.current++
+
+                // Log retry
+                logAuthRequest({
+                  endpoint: "authRetry",
+                  method: "INTERNAL",
+                  source: "client",
+                  success: true,
+                  duration: 0,
+                  cached: false,
+                  details: {
+                    retryCount: authRetryCountRef.current,
+                    maxRetries: MAX_AUTH_RETRIES,
+                  },
+                })
+
+                // If we've tried too many times, sign out
+                if (authRetryCountRef.current >= MAX_AUTH_RETRIES) {
+                  console.error(`Auth retry limit (${MAX_AUTH_RETRIES}) reached, signing out`)
+
+                  // Log max retries
+                  logAuthRequest({
+                    endpoint: "authRetryLimit",
+                    method: "INTERNAL",
+                    source: "client",
+                    success: false,
+                    duration: 0,
+                    cached: false,
+                    details: {
+                      retryCount: authRetryCountRef.current,
+                      maxRetries: MAX_AUTH_RETRIES,
+                    },
+                  })
+
+                  await signOut()
+                }
+
                 refreshingRef.current = false
                 isRefreshingTokenRef.current = false
                 return
@@ -399,7 +673,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.log("Session recovered for mobile device")
                     setSession(retrySessionData.session)
                     setUser(retrySessionData.session.user)
+                    setIsAuthenticated(true)
                     cacheAuthSession(retrySessionData.session)
+
+                    // Reset retry counter on success
+                    authRetryCountRef.current = 0
+
                     refreshingRef.current = false
                     isRefreshingTokenRef.current = false
                     return
@@ -424,6 +703,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Gunakan user yang terverifikasi
             verifiedUser = userData.user
+
+            // Reset retry counter on success
+            authRetryCountRef.current = 0
           } catch (verifyError) {
             // Periksa apakah error adalah rate limit
             if (handleRateLimitError(verifyError)) {
@@ -442,6 +724,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Tangani error dengan lebih baik
             if (verifyError instanceof Error && verifyError.message.includes("Auth session missing")) {
               console.warn("Auth session missing during verification, will retry later")
+
+              // Increment retry counter
+              authRetryCountRef.current++
+
+              // Log retry
+              logAuthRequest({
+                endpoint: "authRetry",
+                method: "INTERNAL",
+                source: "client",
+                success: true,
+                duration: 0,
+                cached: false,
+                details: {
+                  retryCount: authRetryCountRef.current,
+                  maxRetries: MAX_AUTH_RETRIES,
+                },
+              })
+
+              // If we've tried too many times, sign out
+              if (authRetryCountRef.current >= MAX_AUTH_RETRIES) {
+                console.error(`Auth retry limit (${MAX_AUTH_RETRIES}) reached, signing out`)
+
+                // Log max retries
+                logAuthRequest({
+                  endpoint: "authRetryLimit",
+                  method: "INTERNAL",
+                  source: "client",
+                  success: false,
+                  duration: 0,
+                  cached: false,
+                  details: {
+                    retryCount: authRetryCountRef.current,
+                    maxRetries: MAX_AUTH_RETRIES,
+                  },
+                })
+
+                await signOut()
+              }
             } else {
               console.error("Error during user verification:", verifyError)
               await signOut()
@@ -457,7 +777,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setSession(sessionData?.session ?? null)
         setUser(verifiedUser)
+        setIsAuthenticated(!!sessionData?.session)
         setLoading(false)
+
+        // Log refresh success
+        logAuthRequest({
+          endpoint: "refreshSession",
+          method: "INTERNAL",
+          source: "client",
+          success: true,
+          duration: 0,
+          cached: false,
+          userId: verifiedUser?.id,
+          details: {
+            hasSession: !!sessionData?.session,
+            isMobile,
+          },
+        })
       } catch (sessionError) {
         // Periksa apakah error adalah rate limit
         handleRateLimitError(sessionError)
@@ -467,6 +803,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.error("Error fetching session:", sessionError)
         setLoading(false)
+
+        // Log refresh error
+        logAuthRequest({
+          endpoint: "refreshSession",
+          method: "INTERNAL",
+          source: "client",
+          success: false,
+          duration: 0,
+          cached: false,
+          error: sessionError instanceof Error ? sessionError.message : "Unknown error",
+          details: {
+            error: sessionError,
+            isMobile,
+          },
+        })
       }
     } catch (error) {
       // Periksa apakah error adalah rate limit
@@ -477,6 +828,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.error("Unexpected error refreshing session:", error)
       setLoading(false)
+
+      // Log refresh error
+      logAuthRequest({
+        endpoint: "refreshSession",
+        method: "INTERNAL",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: {
+          error,
+          isMobile: isMobileDevice(),
+        },
+      })
     } finally {
       refreshingRef.current = false
       isRefreshingTokenRef.current = false
@@ -499,17 +865,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isMobile = isMobileDevice()
 
         // Log initial auth check
-        // recordAuthRequest({
-        //   endpoint: "initializeAuth",
-        //   success: true,
-        //   duration: 0,
-        //   source: "client",
-        //   cached: false,
-        //   details: {
-        //     isMobile,
-        //     action: "start"
-        //   }
-        // })
+        logAuthRequest({
+          endpoint: "initializeAuth",
+          method: "INTERNAL",
+          source: "client",
+          success: true,
+          duration: 0,
+          cached: false,
+          details: {
+            isMobile,
+            action: "start",
+          },
+        })
 
         // Try to get from cache first on initial load
         const cachedSession = getCachedAuthSession()
@@ -517,6 +884,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cachedSession !== undefined && mounted) {
           setSession(cachedSession)
           setUser(cachedSession?.user ?? null)
+          setIsAuthenticated(!!cachedSession)
           setLoading(false)
 
           // Refresh in background hanya jika ada session tapi tidak ada user
@@ -530,6 +898,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               isMobile ? 2000 : 5000,
             ) // 2 detik untuk mobile, 5 detik untuk desktop
           }
+
+          // Jika token akan segera kedaluwarsa, refresh sekarang
+          if (cachedSession && isTokenExpiringSoon(cachedSession)) {
+            console.log("Token is expiring soon, refreshing immediately")
+            refreshSession()
+          }
+
           return
         }
 
@@ -544,6 +919,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.error("Error initializing auth:", error)
         if (mounted) setLoading(false)
+
+        // Log init error
+        logAuthRequest({
+          endpoint: "initializeAuth",
+          method: "INTERNAL",
+          source: "client",
+          success: false,
+          duration: 0,
+          cached: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+          details: {
+            error,
+            isMobile: isMobileDevice(),
+          },
+        })
       }
     }
 
@@ -555,23 +945,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           setSession(newSession)
           setUser(newSession?.user ?? null)
+          setIsAuthenticated(!!newSession)
           setLoading(false)
 
           // Update cache when auth state changes
           cacheAuthSession(newSession)
 
           // Log auth state change
-          // recordAuthRequest({
-          //   endpoint: "authStateChange",
-          //   success: true,
-          //   duration: 0,
-          //   source: "client",
-          //   cached: false,
-          //   details: {
-          //     event,
-          //     hasSession: !!newSession
-          //   }
-          // })
+          logAuthRequest({
+            endpoint: "authStateChange",
+            method: "INTERNAL",
+            source: "client",
+            success: true,
+            duration: 0,
+            cached: false,
+            userId: newSession?.user?.id,
+            details: {
+              event,
+              hasSession: !!newSession,
+            },
+          })
         }
 
         // If token was refreshed, update the session
@@ -581,17 +974,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lastRefreshTimeRef.current = Date.now()
 
           // Log token refresh
-          // recordAuthRequest({
-          //   endpoint: "tokenRefreshed",
-          //   success: true,
-          //   duration: 0,
-          //   source: "client",
-          //   cached: false,
-          //   details: {
-          //     event,
-          //     hasSession: !!newSession
-          //   }
-          // })
+          logAuthRequest({
+            endpoint: "tokenRefreshed",
+            method: "INTERNAL",
+            source: "client",
+            success: true,
+            duration: 0,
+            cached: false,
+            userId: newSession?.user?.id,
+            details: {
+              event,
+              hasSession: !!newSession,
+            },
+          })
         }
 
         // Handle sign out
@@ -601,18 +996,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           refreshingRef.current = false
           isRefreshingTokenRef.current = false
           hasHitRateLimitRef.current = false
+          authRetryCountRef.current = 0
 
           // Log sign out
-          // recordAuthRequest({
-          //   endpoint: "signedOut",
-          //   success: true,
-          //   duration: 0,
-          //   source: "client",
-          //   cached: false,
-          //   details: {
-          //     event
-          //   }
-          // })
+          logAuthRequest({
+            endpoint: "signedOut",
+            method: "INTERNAL",
+            source: "client",
+            success: true,
+            duration: 0,
+            cached: false,
+            details: {
+              event,
+            },
+          })
         }
       })
 
@@ -623,6 +1020,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error setting up auth listener:", error)
       setLoading(false)
+
+      // Log listener error
+      logAuthRequest({
+        endpoint: "authListener",
+        method: "INTERNAL",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: {
+          error,
+        },
+      })
     }
 
     return () => {
@@ -640,13 +1051,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Protect routes - optimasi dengan mengurangi re-renders
   useEffect(() => {
-    if (!loading && !session && pathname?.startsWith("/dashboard")) {
+    if (!loading && !isAuthenticated && pathname?.startsWith("/dashboard")) {
+      // Log redirect
+      logAuthRequest({
+        endpoint: "protectedRouteRedirect",
+        method: "INTERNAL",
+        source: "client",
+        success: true,
+        duration: 0,
+        cached: false,
+        details: {
+          from: pathname,
+          to: `/login?redirect=${encodeURIComponent(pathname)}`,
+        },
+      })
+
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [session, loading, pathname, router])
+  }, [isAuthenticated, loading, pathname, router])
+
+  // Periodic session check untuk memastikan token tetap valid
+  useEffect(() => {
+    // Jika tidak ada sesi, tidak perlu melakukan pengecekan berkala
+    if (!session) return
+
+    // Interval yang berbeda untuk mobile dan desktop
+    const checkInterval = isMobileDevice() ? 5 * 60 * 1000 : 15 * 60 * 1000 // 5 menit untuk mobile, 15 menit untuk desktop
+
+    const intervalId = setInterval(() => {
+      // Jika token akan segera kedaluwarsa, refresh
+      if (session && isTokenExpiringSoon(session)) {
+        console.log("Periodic check: Token is expiring soon, refreshing")
+        refreshSession()
+      }
+
+      // Jika token sudah kedaluwarsa, force refresh
+      if (session && isTokenExpired(session)) {
+        console.warn("Periodic check: Token is expired, forcing refresh")
+        refreshSession()
+      }
+    }, checkInterval)
+
+    return () => clearInterval(intervalId)
+  }, [session, refreshSession])
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signOut, refreshSession }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ session, user, loading, signOut, refreshSession, isAuthenticated }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

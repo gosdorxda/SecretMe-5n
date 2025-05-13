@@ -4,9 +4,18 @@ import { recordAuthRequest } from "./auth-monitor"
 // Kunci untuk menyimpan data di localStorage
 const AUTH_SESSION_CACHE_KEY = "auth_session_cache"
 const AUTH_SESSION_EXPIRY_KEY = "auth_session_expiry"
+const AUTH_SESSION_DEVICE_KEY = "auth_session_device"
 
-// Durasi cache dalam milidetik (5 menit)
-const CACHE_DURATION = 5 * 60 * 1000
+// Durasi cache dalam milidetik (10 menit)
+const CACHE_DURATION = 10 * 60 * 1000
+// Durasi cache yang lebih pendek untuk mobile (5 menit)
+const MOBILE_CACHE_DURATION = 5 * 60 * 1000
+
+// Fungsi untuk mendeteksi perangkat mobile
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
 
 // Fungsi untuk menyimpan sesi auth di cache
 export function cacheAuthSession(session: Session | null): void {
@@ -14,9 +23,14 @@ export function cacheAuthSession(session: Session | null): void {
     // Simpan sesi
     localStorage.setItem(AUTH_SESSION_CACHE_KEY, JSON.stringify(session))
 
-    // Simpan waktu kedaluwarsa
-    const expiry = Date.now() + CACHE_DURATION
+    // Simpan waktu kedaluwarsa berdasarkan tipe perangkat
+    const isMobile = isMobileDevice()
+    const duration = isMobile ? MOBILE_CACHE_DURATION : CACHE_DURATION
+    const expiry = Date.now() + duration
     localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, expiry.toString())
+
+    // Simpan informasi perangkat
+    localStorage.setItem(AUTH_SESSION_DEVICE_KEY, isMobile ? "mobile" : "desktop")
 
     // Catat penggunaan cache untuk monitoring
     recordAuthRequest({
@@ -25,6 +39,10 @@ export function cacheAuthSession(session: Session | null): void {
       duration: 0,
       source: "client",
       cached: true,
+      details: {
+        isMobile,
+        cacheDuration: duration,
+      },
     })
   } catch (error) {
     console.error("Error caching auth session:", error)
@@ -46,6 +64,17 @@ export function getCachedAuthSession(): Session | null | undefined {
       return null
     }
 
+    // Periksa apakah perangkat saat ini sama dengan perangkat saat cache dibuat
+    const cachedDevice = localStorage.getItem(AUTH_SESSION_DEVICE_KEY) || "unknown"
+    const currentDevice = isMobileDevice() ? "mobile" : "desktop"
+
+    // Jika perangkat berbeda, invalidasi cache
+    if (cachedDevice !== currentDevice) {
+      console.warn("Device type changed, invalidating auth cache")
+      clearAuthCache()
+      return undefined
+    }
+
     // Catat penggunaan cache untuk monitoring
     recordAuthRequest({
       endpoint: "cache/get",
@@ -53,6 +82,10 @@ export function getCachedAuthSession(): Session | null | undefined {
       duration: 0,
       source: "client",
       cached: true,
+      details: {
+        device: currentDevice,
+        cachedDevice,
+      },
     })
 
     return JSON.parse(cachedSession)
@@ -72,7 +105,9 @@ export function isAuthCacheValid(): boolean {
     }
 
     const expiry = Number.parseInt(expiryString, 10)
-    return Date.now() < expiry
+
+    // Tambahkan margin 10 detik untuk mencegah race condition
+    return Date.now() < expiry - 10000
   } catch (error) {
     console.error("Error checking auth cache validity:", error)
     return false
@@ -82,8 +117,13 @@ export function isAuthCacheValid(): boolean {
 // Fungsi untuk memperpanjang waktu kedaluwarsa cache
 export function extendAuthCacheExpiry(): void {
   try {
-    const expiry = Date.now() + CACHE_DURATION
+    const isMobile = isMobileDevice()
+    const duration = isMobile ? MOBILE_CACHE_DURATION : CACHE_DURATION
+    const expiry = Date.now() + duration
     localStorage.setItem(AUTH_SESSION_EXPIRY_KEY, expiry.toString())
+
+    // Update informasi perangkat
+    localStorage.setItem(AUTH_SESSION_DEVICE_KEY, isMobile ? "mobile" : "desktop")
   } catch (error) {
     console.error("Error extending auth cache expiry:", error)
   }
@@ -94,6 +134,7 @@ export function clearAuthCache(): void {
   try {
     localStorage.removeItem(AUTH_SESSION_CACHE_KEY)
     localStorage.removeItem(AUTH_SESSION_EXPIRY_KEY)
+    localStorage.removeItem(AUTH_SESSION_DEVICE_KEY)
 
     // Catat pembersihan cache untuk monitoring
     recordAuthRequest({
@@ -106,4 +147,22 @@ export function clearAuthCache(): void {
   } catch (error) {
     console.error("Error clearing auth cache:", error)
   }
+}
+
+// Fungsi untuk memeriksa apakah token akan segera kedaluwarsa
+export function isTokenExpiringSoon(session: Session | null): boolean {
+  if (!session || !session.expires_at) return false
+
+  // Token dianggap akan segera kedaluwarsa jika kurang dari 5 menit
+  const expiryTime = session.expires_at * 1000 // Convert to milliseconds
+  const timeUntilExpiry = expiryTime - Date.now()
+  return timeUntilExpiry < 5 * 60 * 1000 // 5 menit
+}
+
+// Fungsi untuk memeriksa apakah token sudah kedaluwarsa
+export function isTokenExpired(session: Session | null): boolean {
+  if (!session || !session.expires_at) return true
+
+  const expiryTime = session.expires_at * 1000 // Convert to milliseconds
+  return Date.now() > expiryTime
 }
