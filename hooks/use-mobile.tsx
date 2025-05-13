@@ -2,28 +2,28 @@
 
 import { useState, useEffect } from "react"
 
+// Function to check if the device is mobile based on screen width
 export function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const checkIsMobile = () => {
+    // Function to update state based on window width
+    function handleResize() {
       setIsMobile(window.innerWidth < 768)
     }
 
-    // Initial check
-    checkIsMobile()
+    // Set initial value
+    handleResize()
 
     // Add event listener
-    window.addEventListener("resize", checkIsMobile)
+    window.addEventListener("resize", handleResize)
 
     // Clean up
-    return () => {
-      window.removeEventListener("resize", checkIsMobile)
-    }
+    return () => window.removeEventListener("resize", handleResize)
   }, [])
 
   return isMobile
 }
 
-// Add the missing export that's being referenced in the code
+// Alias export for compatibility
 export const useMobile = useIsMobile
