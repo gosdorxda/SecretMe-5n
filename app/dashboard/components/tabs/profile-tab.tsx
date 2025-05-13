@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Crown, User, FileText, Link2, CheckCircle, Lock } from "lucide-react"
+import { Crown, User, FileText, Link2, Lock, AtSign, Send, MessageSquare, Check } from "lucide-react"
 import Link from "next/link"
 import { ProfilePreview } from "@/components/profile-preview"
 import { UsernameForm } from "@/components/username-form"
@@ -391,99 +391,142 @@ export function ProfileTab({ user }: ProfileTabProps) {
                 </div>
               </div>
 
-              <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
-                <div className="flex items-center justify-center bg-amber-100 text-amber-600 p-1.5 rounded-lg">
-                  <User className="h-4 w-4" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                    <div className="flex items-center justify-center bg-amber-100 text-amber-600 p-1.5 rounded-lg">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <span>Foto Profil</span>
+                  </h3>
+                  <div className="h-32 w-full bg-gray-100 rounded-lg border border-gray-200 mb-4"></div>
                 </div>
-                <span>Foto Profil</span>
-              </h3>
-              <div className="h-32 w-full bg-gray-100 rounded-lg border border-gray-200 mb-4"></div>
 
-              <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
-                <div className="flex items-center justify-center bg-blue-100 text-blue-600 p-1.5 rounded-lg">
-                  <User className="h-4 w-4" />
+                <div>
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                    <div className="flex items-center justify-center bg-blue-100 text-blue-600 p-1.5 rounded-lg">
+                      <AtSign className="h-4 w-4" />
+                    </div>
+                    <span>Username Kustom</span>
+                  </h3>
+                  <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200 mb-4"></div>
                 </div>
-                <span>Username Kustom</span>
-              </h3>
-              <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200 mb-4"></div>
 
-              <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
-                <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg">
-                  <FileText className="h-4 w-4" />
+                <div>
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                    <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <span>Bio / Deskripsi Singkat</span>
+                  </h3>
+                  <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
                 </div>
-                <span>Bio / Deskripsi Singkat</span>
-              </h3>
-              <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
+
+                <div>
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                    <div className="flex items-center justify-center bg-purple-100 text-purple-600 p-1.5 rounded-lg">
+                      <Link2 className="h-4 w-4" />
+                    </div>
+                    <span>Link Sosial Media</span>
+                  </h3>
+                  <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                    <div className="flex items-center justify-center bg-cyan-100 text-cyan-600 p-1.5 rounded-lg">
+                      <Send className="h-4 w-4" />
+                    </div>
+                    <span>Notifikasi Telegram</span>
+                  </h3>
+                  <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base flex items-center gap-2 text-gray-800">
+                    <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg">
+                      <MessageSquare className="h-4 w-4" />
+                    </div>
+                    <span>Notifikasi WhatsApp</span>
+                  </h3>
+                  <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
+                </div>
+              </div>
             </div>
 
             {/* Premium CTA with detailed benefits */}
             <div className="bg-[rgb(250,204,21)]/10 p-6 rounded-lg border-2 border-[rgb(250,204,21)] mt-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-12 w-12 rounded-full bg-[var(--main)] border-2 border-black flex items-center justify-center">
-                  <Crown className="h-6 w-6 text-black" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Upgrade ke Premium</h3>
-                  <p className="text-sm text-gray-600">Akses semua fitur premium dengan sekali bayar</p>
-                </div>
-              </div>
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-500" />
+                <span>Keuntungan Premium</span>
+              </h3>
 
-              <div className="space-y-3 mb-6">
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Username Kustom</p>
-                    <p className="text-sm text-gray-600">Pilih username unik untuk link profil Anda</p>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
                   </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="font-medium">Foto Profil</p>
-                    <p className="text-sm text-gray-600">Unggah foto profil Anda sendiri</p>
+                    <span className="font-medium">Foto Profil Kustom</span>
+                    <p className="text-sm text-gray-600">Upload foto profil untuk personalisasi halaman Anda</p>
                   </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Bio Profil</p>
-                    <p className="text-sm text-gray-600">Tambahkan deskripsi singkat tentang diri Anda</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Link Sosial Media</p>
-                    <p className="text-sm text-gray-600">Tambahkan link Instagram, Facebook, LinkedIn, dan TikTok</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Hapus Pesan</p>
-                    <p className="text-sm text-gray-600">Hapus pesan yang tidak diinginkan</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Balasan Publik</p>
-                    <p className="text-sm text-gray-600">Aktifkan balasan publik untuk pesan Anda</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Akses Selamanya</p>
-                    <p className="text-sm text-gray-600">Bayar sekali, akses premium selamanya</p>
-                  </div>
-                </div>
-              </div>
+                </li>
 
-              <Button asChild className="neo-btn w-full">
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Username Kustom</span>
+                    <p className="text-sm text-gray-600">Pilih username unik yang mudah diingat</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Bio Lengkap</span>
+                    <p className="text-sm text-gray-600">Tambahkan deskripsi tentang diri Anda</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Link Sosial Media</span>
+                    <p className="text-sm text-gray-600">Hubungkan profil sosial media Anda</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Notifikasi Instan</span>
+                    <p className="text-sm text-gray-600">Dapatkan notifikasi langsung via Telegram & WhatsApp</p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-2">
+                  <div className="mt-1 text-green-500 flex-shrink-0">
+                    <Check className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Statistik Lengkap</span>
+                    <p className="text-sm text-gray-600">Lihat statistik kunjungan profil Anda</p>
+                  </div>
+                </li>
+              </ul>
+
+              <Button asChild className="neo-btn w-full mt-6">
                 <Link href="/premium">
                   <Crown className="h-4 w-4 mr-2" />
-                  Upgrade Sekarang
+                  Upgrade ke Premium
                 </Link>
               </Button>
             </div>
