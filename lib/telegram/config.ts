@@ -30,11 +30,12 @@ export const TELEGRAM_MESSAGE_TEMPLATES = {
     "✅ *Koneksi Berhasil!* 🎉\n\n" +
     "🔗 Akun SecretMe Anda telah berhasil terhubung dengan Telegram.\n\n" +
     "📨 Anda akan menerima notifikasi saat ada pesan baru.\n" +
-    "❓ Gunakan perintah /help untuk melihat bantuan.",
+    "❓ Gunakan perintah /help untuk melihat bantuan.\n\n" +
+    "🔄 *Kembali ke SecretMe dan klik tombol verifikasi untuk menyelesaikan proses koneksi.*",
   DISCONNECTED:
     "🔌 *Akun Terputus* ⚠️\n\n" +
     "❌ Akun SecretMe Anda telah berhasil diputuskan dari Telegram.\n\n" +
-    "🔕 Anda tidak akan lagi menerima notifikasi pesan.\n" +
+    "🔕 Anda tidak akan lagi menerima notifikasi pesan.\n\n" +
     "🔄 Jika ingin menghubungkan kembali, silakan kunjungi pengaturan notifikasi di SecretMe.",
   HELP:
     "📚 *Bantuan SecretMe Bot* 💬\n\n" +
