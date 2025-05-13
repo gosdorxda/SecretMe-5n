@@ -49,7 +49,7 @@ const isMobileDevice = () => {
 }
 
 // Tambahkan di bagian atas file, di luar komponen
-let lastAuthStateChangeLog = 0
+const lastAuthStateChangeLog = 0
 const AUTH_STATE_CHANGE_LOG_THROTTLE = 5000 // 5 detik
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -83,93 +83,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Tambahkan ref untuk melacak subscription
   const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
 
-  const signOut = useCallback(async () => {
-    try {
-      // Log signOut start
-      logAuthRequest({
-        endpoint: "signOut",
-        method: "INTERNAL",
-        source: "client",
-        success: true,
-        duration: 0,
-        cached: false,
-        details: { action: "start" },
-      })
-
-      // Bersihkan state dan cache terlebih dahulu
-      clearAuthCache()
-      setSession(null)
-      setUser(null)
-      setIsAuthenticated(false)
-
-      // Reset flags
-      refreshingRef.current = false
-      isRefreshingTokenRef.current = false
-      hasHitRateLimitRef.current = false
-      authRetryCountRef.current = 0
-
-      // Hapus token dari localStorage untuk mencegah error
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("supabase.auth.token")
-      }
-
-      try {
-        // Coba sign out dari Supabase
-        await supabase.auth.signOut()
-      } catch (signOutError) {
-        // Jika gagal, log error tapi tetap lanjutkan
-        console.warn("Error during signOut API call:", signOutError)
-
-        // Log error
-        logAuthRequest({
-          endpoint: "signOut",
-          method: "INTERNAL",
-          source: "client",
-          success: false,
-          duration: 0,
-          cached: false,
-          error: signOutError instanceof Error ? signOutError.message : "Unknown error",
-          details: { error: signOutError },
-        })
-      }
-
-      // Reset client untuk membersihkan state
-      resetClient()
-
-      // Log signOut success
-      logAuthRequest({
-        endpoint: "signOut",
-        method: "INTERNAL",
-        source: "client",
-        success: true,
-        duration: 0,
-        cached: false,
-        details: { action: "complete" },
-      })
-
-      // Redirect ke login page
-      router.push("/login")
-      router.refresh()
-    } catch (error) {
-      console.error("Error signing out:", error)
-
-      // Log error
-      logAuthRequest({
-        endpoint: "signOut",
-        method: "INTERNAL",
-        source: "client",
-        success: false,
-        duration: 0,
-        cached: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: { error },
-      })
-
-      // Jika terjadi error, tetap redirect ke login
-      router.push("/login")
-      router.refresh()
-    }
-  }, [supabase, router])
+  // Fungsi signOut yang sederhana
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    setSession(null)
+    setUser(null)
+    setIsAuthenticated(false)
+    router.push("/login")
+    router.refresh()
+  }
 
   // Fungsi untuk force logout dalam kasus darurat
   const forceLogout = useCallback(async () => {
@@ -298,35 +220,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 
   // Fungsi untuk menangani invalid refresh token
-  const handleRefreshTokenError = useCallback(
-    (error: any) => {
-      if (
-        error?.message?.includes("Invalid Refresh Token") ||
-        error?.message?.includes("refresh_token_not_found") ||
-        error?.code === "refresh_token_not_found"
-      ) {
-        console.warn("Invalid refresh token detected, signing out")
+  const handleRefreshTokenError = useCallback((error: any) => {
+    if (
+      error?.message?.includes("Invalid Refresh Token") ||
+      error?.message?.includes("refresh_token_not_found") ||
+      error?.code === "refresh_token_not_found"
+    ) {
+      console.warn("Invalid refresh token detected, signing out")
 
-        // Log invalid token
-        logAuthRequest({
-          endpoint: "invalidToken",
-          method: "INTERNAL",
-          source: "client",
-          success: false,
-          duration: 0,
-          cached: false,
-          error: error?.message || "Invalid refresh token",
-          details: { error },
-        })
+      // Log invalid token
+      logAuthRequest({
+        endpoint: "invalidToken",
+        method: "INTERNAL",
+        source: "client",
+        success: false,
+        duration: 0,
+        cached: false,
+        error: error?.message || "Invalid refresh token",
+        details: { error },
+      })
 
-        handleInvalidRefreshToken()
-        signOut()
-        return true
-      }
-      return false
-    },
-    [signOut],
-  )
+      handleInvalidRefreshToken()
+      signOut()
+      return true
+    }
+    return false
+  }, [])
 
   // Fungsi untuk mendeteksi ketidakkonsistenan session
   const detectSessionInconsistency = useCallback(async () => {
@@ -987,213 +906,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch session dan setup auth listener dengan optimasi
   useEffect(() => {
-    let mounted = true
-
-    // Jika sudah ada subscription, jangan buat lagi
-    if (authSubscriptionRef.current) {
-      console.log("Auth subscription already exists, skipping")
-      return () => {}
-    }
-
-    // Initial session check
-    const initializeAuth = async () => {
-      // Hindari multiple initial auth checks
-      if (initialAuthCheckDoneRef.current) return
-      initialAuthCheckDoneRef.current = true
-
-      try {
-        // Deteksi apakah ini perangkat mobile
-        const isMobile = isMobileDevice()
-
-        // Log initial auth check
-        logAuthRequest({
-          endpoint: "initializeAuth",
-          method: "INTERNAL",
-          source: "client",
-          success: true,
-          duration: 0,
-          cached: false,
-          details: {
-            isMobile,
-            action: "start",
-          },
-        })
-
-        // Try to get from cache first on initial load
-        const cachedSession = getCachedAuthSession()
-
-        if (cachedSession !== undefined && mounted) {
-          setSession(cachedSession)
-          setUser(cachedSession?.user ?? null)
-          setIsAuthenticated(!!cachedSession)
-          setLoading(false)
-
-          // Refresh in background hanya jika ada session tapi tidak ada user
-          if (cachedSession && !cachedSession.user) {
-            // Delay refresh untuk menghindari multiple requests
-            // Kurangi delay untuk mobile
-            setTimeout(
-              () => {
-                refreshSession()
-              },
-              isMobile ? 2000 : 5000,
-            ) // 2 detik untuk mobile, 5 detik untuk desktop
-          }
-
-          // Jika token akan segera kedaluwarsa, refresh sekarang
-          if (cachedSession && isTokenExpiringSoon(cachedSession)) {
-            console.log("Token is expiring soon, refreshing immediately")
-            refreshSession()
-          }
-
-          return
-        }
-
-        // No valid cache, do a full refresh
-        await refreshSession()
-      } catch (error) {
-        // Periksa apakah error adalah rate limit
-        handleRateLimitError(error)
-
-        // Periksa apakah error adalah invalid refresh token
-        handleRefreshTokenError(error)
-
-        console.error("Error initializing auth:", error)
-        if (mounted) setLoading(false)
-
-        // Log init error
-        logAuthRequest({
-          endpoint: "initializeAuth",
-          method: "INTERNAL",
-          source: "client",
-          success: false,
-          duration: 0,
-          cached: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-          details: {
-            error,
-            isMobile: isMobileDevice(),
-          },
-        })
-      }
-    }
-
-    initializeAuth()
-
-    // Set up auth state change listener
-    try {
-      const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-        if (mounted) {
-          setSession(newSession)
-          setUser(newSession?.user ?? null)
-          setIsAuthenticated(!!newSession)
-          setLoading(false)
-
-          // Update cache when auth state changes
-          cacheAuthSession(newSession)
-
-          const now = Date.now()
-          if (now - lastAuthStateChangeLog > AUTH_STATE_CHANGE_LOG_THROTTLE) {
-            // Log auth state change
-            logAuthRequest({
-              endpoint: "authStateChange",
-              method: "INTERNAL",
-              source: "client",
-              success: true,
-              duration: 0,
-              cached: false,
-              userId: newSession?.user?.id,
-              details: {
-                event,
-                hasSession: !!newSession,
-              },
-            })
-            lastAuthStateChangeLog = now
-          }
-        }
-
-        // If token was refreshed, update the session
-        if (event === "TOKEN_REFRESHED") {
-          cacheAuthSession(newSession)
-          // Update last refresh time to prevent multiple refreshes
-          lastRefreshTimeRef.current = Date.now()
-
-          // Log token refresh
-          logAuthRequest({
-            endpoint: "tokenRefreshed",
-            method: "INTERNAL",
-            source: "client",
-            success: true,
-            duration: 0,
-            cached: false,
-            userId: newSession?.user?.id,
-            details: {
-              event,
-              hasSession: !!newSession,
-            },
-          })
-        }
-
-        // Handle sign out
-        if (event === "SIGNED_OUT") {
-          clearAuthCache()
-          // Reset flags
-          refreshingRef.current = false
-          isRefreshingTokenRef.current = false
-          hasHitRateLimitRef.current = false
-          authRetryCountRef.current = 0
-
-          // Log sign out
-          logAuthRequest({
-            endpoint: "signedOut",
-            method: "INTERNAL",
-            source: "client",
-            success: true,
-            duration: 0,
-            cached: false,
-            details: {
-              event,
-            },
-          })
-        }
-      })
-
-      // Safely store the subscription for cleanup
-      if (data && data.subscription && typeof data.subscription.unsubscribe === "function") {
-        authSubscriptionRef.current = data.subscription
-      }
-    } catch (error) {
-      console.error("Error setting up auth listener:", error)
+    // Ambil session saat komponen dimount
+    const getSession = async () => {
+      const {
+        data: { session: activeSession },
+      } = await supabase.auth.getSession()
+      setSession(activeSession)
+      setUser(activeSession?.user || null)
+      setIsAuthenticated(!!activeSession)
       setLoading(false)
-
-      // Log listener error
-      logAuthRequest({
-        endpoint: "authListener",
-        method: "INTERNAL",
-        source: "client",
-        success: false,
-        duration: 0,
-        cached: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: {
-          error,
-        },
-      })
     }
+
+    getSession()
+
+    // Setup listener untuk perubahan auth state
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession)
+      setUser(currentSession?.user || null)
+      setIsAuthenticated(!!currentSession)
+      setLoading(false)
+    })
 
     return () => {
-      mounted = false
-      // Safely unsubscribe only if the subscription exists
-      if (authSubscriptionRef.current) {
-        try {
-          authSubscriptionRef.current.unsubscribe()
-          authSubscriptionRef.current = null
-        } catch (error) {
-          console.error("Error unsubscribing from auth listener:", error)
-        }
-      }
+      subscription.unsubscribe()
     }
-  }, [supabase, refreshSession, handleRateLimitError, handleRefreshTokenError, detectSessionInconsistency])
+  }, [supabase, router])
 
   // Protect routes - optimasi dengan mengurangi re-renders
   useEffect(() => {
