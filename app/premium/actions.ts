@@ -5,9 +5,21 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { revalidatePath } from "next/cache"
 
+// Optimasi 1: Tambahkan caching untuk pengaturan premium
+// Tambahkan variabel cache dan timestamp di luar fungsi
+let premiumSettingsCache = null
+let premiumSettingsCacheTime = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 menit
+
 // Fungsi helper untuk mendapatkan pengaturan premium dari database
 async function getPremiumSettings() {
   const supabase = createClient()
+
+  // Gunakan cache jika masih valid
+  const now = Date.now()
+  if (premiumSettingsCache && now - premiumSettingsCacheTime < CACHE_TTL) {
+    return premiumSettingsCache
+  }
 
   // Default values from env
   let premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
@@ -32,7 +44,34 @@ async function getPremiumSettings() {
     }
   }
 
+  // Simpan ke cache
+  premiumSettingsCache = { premiumPrice, activeGateway }
+  premiumSettingsCacheTime = now
+
   return { premiumPrice, activeGateway }
+}
+
+// Optimasi 2: Tambahkan caching untuk user data
+const userDataCache = new Map()
+const userDataCacheTime = new Map()
+const USER_CACHE_TTL = 60 * 1000 // 1 menit
+
+// Fungsi helper untuk mendapatkan data user dengan cache
+async function getUserDataWithCache(supabase, userId) {
+  const now = Date.now()
+  if (userDataCache.has(userId) && now - userDataCacheTime.get(userId) < USER_CACHE_TTL) {
+    return userDataCache.get(userId)
+  }
+
+  const { data, error } = await supabase.from("users").select("name, email, is_premium").eq("id", userId).single()
+
+  if (error) {
+    throw error
+  }
+
+  userDataCache.set(userId, data)
+  userDataCacheTime.set(userId, now)
+  return data
 }
 
 // Perbarui fungsi createTransaction untuk menerima parameter gateway
@@ -40,7 +79,7 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
   try {
     const supabase = createClient()
 
-    // Get premium settings
+    // Get premium settings (now cached)
     const { premiumPrice, activeGateway: defaultGateway } = await getPremiumSettings()
 
     // Use provided gateway or default
@@ -54,97 +93,99 @@ export async function createTransaction(paymentMethod: string, gatewayName: stri
 
     const user = userData.user
 
-    // Get user data from database
-    const { data: userDbData, error: userDbError } = await supabase
-      .from("users")
-      .select("name, email, is_premium")
-      .eq("id", user.id)
-      .single()
+    // Get user data from database (now cached)
+    try {
+      const userDbData = await getUserDataWithCache(supabase, user.id)
 
-    if (userDbError) {
-      return { success: false, error: "Data pengguna tidak ditemukan" }
-    }
+      if (userDbData.is_premium) {
+        return { success: false, error: "Anda sudah menjadi pengguna premium" }
+      }
 
-    if (userDbData.is_premium) {
-      return { success: false, error: "Anda sudah menjadi pengguna premium" }
-    }
+      // Generate order ID
+      const orderId = generateOrderId(user.id)
 
-    // Generate order ID
-    const orderId = generateOrderId(user.id)
+      // Create transaction record
+      const { data: transaction, error: transactionError } = await supabase
+        .from("premium_transactions")
+        .insert({
+          user_id: user.id,
+          plan_id: orderId,
+          amount: premiumPrice,
+          status: "pending",
+          payment_gateway: finalGatewayName,
+          payment_method: paymentMethod,
+        })
+        .select()
+        .single()
 
-    // Create transaction record
-    const { data: transaction, error: transactionError } = await supabase
-      .from("premium_transactions")
-      .insert({
-        user_id: user.id,
-        plan_id: orderId,
+      if (transactionError) {
+        console.error("Error creating transaction record:", transactionError)
+        return { success: false, error: "Gagal membuat catatan transaksi" }
+      }
+
+      // Get payment gateway
+      const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
+
+      // Create transaction in payment gateway
+      const result = await gateway.createTransaction({
+        userId: user.id,
+        userEmail: userDbData.email || user.email || "",
+        userName: userDbData.name || "User",
         amount: premiumPrice,
-        status: "pending",
-        payment_gateway: finalGatewayName,
-        payment_method: paymentMethod,
+        orderId: orderId,
+        description: "SecretMe Premium Lifetime",
+        successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
+        failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
+        pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
+        notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
+        paymentMethod: paymentMethod,
       })
-      .select()
-      .single()
 
-    if (transactionError) {
-      console.error("Error creating transaction record:", transactionError)
-      return { success: false, error: "Gagal membuat catatan transaksi" }
-    }
+      if (!result.success) {
+        // Update transaction status to failed
+        await supabase
+          .from("premium_transactions")
+          .update({
+            status: "failed",
+            updated_at: new Date().toISOString(),
+            payment_details: { error: result.error },
+          })
+          .eq("id", transaction.id)
 
-    // Get payment gateway
-    const gateway = await getPaymentGateway(finalGatewayName || defaultGateway)
+        return { success: false, error: result.error || "Gagal membuat transaksi" }
+      }
 
-    // Create transaction in payment gateway
-    const result = await gateway.createTransaction({
-      userId: user.id,
-      userEmail: userDbData.email || user.email || "",
-      userName: userDbData.name || "User",
-      amount: premiumPrice,
-      orderId: orderId,
-      description: "SecretMe Premium Lifetime",
-      successRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=success&order_id=${orderId}`,
-      failureRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=failed&order_id=${orderId}`,
-      pendingRedirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/premium?status=pending&order_id=${orderId}`,
-      notificationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/notification`,
-      paymentMethod: paymentMethod,
-    })
-
-    if (!result.success) {
-      // Update transaction status to failed
+      // Update transaction with gateway reference
       await supabase
         .from("premium_transactions")
         .update({
-          status: "failed",
-          updated_at: new Date().toISOString(),
-          payment_details: { error: result.error },
+          payment_details: {
+            gateway_reference: result.gatewayReference,
+            redirect_url: result.redirectUrl,
+          },
         })
         .eq("id", transaction.id)
 
-      return { success: false, error: result.error || "Gagal membuat transaksi" }
-    }
-
-    // Update transaction with gateway reference
-    await supabase
-      .from("premium_transactions")
-      .update({
-        payment_details: {
-          gateway_reference: result.gatewayReference,
-          redirect_url: result.redirectUrl,
-        },
-      })
-      .eq("id", transaction.id)
-
-    return {
-      success: true,
-      redirectUrl: result.redirectUrl,
-      orderId: orderId,
-      token: result.token,
+      return {
+        success: true,
+        redirectUrl: result.redirectUrl,
+        orderId: orderId,
+        token: result.token,
+      }
+    } catch (error) {
+      console.error("Error getting user data:", error)
+      return { success: false, error: "Gagal mendapatkan data pengguna" }
     }
   } catch (error: any) {
     console.error("Error creating transaction:", error)
     return { success: false, error: error.message || "Failed to create transaction" }
   }
 }
+
+// Optimasi 3: Tambahkan caching untuk transaksi terbaru
+const latestTransactionCache = new Map()
+const latestTransactionCacheTime = new Map()
+const TRANSACTION_CACHE_TTL = 10 * 1000 // 10 detik
 
 // Fungsi untuk mendapatkan transaksi terbaru
 export async function getLatestTransaction() {
@@ -158,48 +199,66 @@ export async function getLatestTransaction() {
     }
 
     const user = userData.user
+    const userId = user.id
+
+    // Gunakan cache jika masih valid
+    const now = Date.now()
+    if (latestTransactionCache.has(userId) && now - latestTransactionCacheTime.get(userId) < TRANSACTION_CACHE_TTL) {
+      return latestTransactionCache.get(userId)
+    }
 
     // Periksa apakah user sudah premium
-    const { data: userDbData, error: userError } = await supabase
-      .from("users")
-      .select("is_premium")
-      .eq("id", user.id)
-      .single()
+    try {
+      const userDbData = await getUserDataWithCache(supabase, userId)
 
-    if (userError) {
-      return { success: false, error: "User not found", isPremium: false, hasTransaction: false }
+      if (userDbData.is_premium) {
+        const result = { success: true, isPremium: true, hasTransaction: false }
+        latestTransactionCache.set(userId, result)
+        latestTransactionCacheTime.set(userId, now)
+        return result
+      }
+
+      // Dapatkan transaksi terbaru
+      const { data: transactionData, error: transactionError } = await supabase
+        .from("premium_transactions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+
+      if (transactionError) {
+        const result = { success: true, isPremium: false, hasTransaction: false }
+        latestTransactionCache.set(userId, result)
+        latestTransactionCacheTime.set(userId, now)
+        return result
+      }
+
+      // Format transaksi untuk client
+      const transaction = {
+        id: transactionData.id,
+        orderId: transactionData.plan_id,
+        status: transactionData.status,
+        amount: transactionData.amount,
+        paymentMethod: transactionData.payment_method || "",
+        createdAt: transactionData.created_at,
+        updatedAt: transactionData.updated_at,
+        gateway: transactionData.payment_gateway,
+      }
+
+      const result = { success: true, isPremium: false, hasTransaction: true, transaction }
+
+      // Hanya cache jika status bukan pending (karena pending bisa berubah)
+      if (transactionData.status !== "pending") {
+        latestTransactionCache.set(userId, result)
+        latestTransactionCacheTime.set(userId, now)
+      }
+
+      return result
+    } catch (error) {
+      console.error("Error getting user data:", error)
+      return { success: false, error: "Gagal mendapatkan data pengguna", isPremium: false, hasTransaction: false }
     }
-
-    if (userDbData.is_premium) {
-      return { success: true, isPremium: true, hasTransaction: false }
-    }
-
-    // Dapatkan transaksi terbaru
-    const { data: transactionData, error: transactionError } = await supabase
-      .from("premium_transactions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single()
-
-    if (transactionError) {
-      return { success: true, isPremium: false, hasTransaction: false }
-    }
-
-    // Format transaksi untuk client
-    const transaction = {
-      id: transactionData.id,
-      orderId: transactionData.plan_id,
-      status: transactionData.status,
-      amount: transactionData.amount,
-      paymentMethod: transactionData.payment_method || "",
-      createdAt: transactionData.created_at,
-      updatedAt: transactionData.updated_at,
-      gateway: transactionData.payment_gateway,
-    }
-
-    return { success: true, isPremium: false, hasTransaction: true, transaction }
   } catch (error: any) {
     console.error("Error in get latest transaction:", error)
     return { success: false, error: error.message || "Internal server error", isPremium: false, hasTransaction: false }
@@ -358,6 +417,9 @@ export async function cancelTransaction(transactionId: string) {
     // Revalidasi path
     revalidatePath("/premium")
     revalidatePath("/dashboard")
+
+    // Hapus cache transaksi
+    latestTransactionCache.delete(user.id)
 
     return { success: true }
   } catch (error: any) {

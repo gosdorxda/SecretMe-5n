@@ -388,9 +388,16 @@ export function PremiumClient({
   const checkTransactionStatus = async () => {
     if (!currentTransaction) return
 
+    // Tambahkan throttling untuk mencegah terlalu banyak request
+    if (checkingStatus) return
+
     try {
       setCheckingStatus(true)
       const result = await getLatestTransaction()
+
+      // Tambahkan delay minimum 1 detik untuk mencegah UI flickering
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
       setCheckingStatus(false)
 
       if (result.success) {

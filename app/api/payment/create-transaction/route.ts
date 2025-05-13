@@ -4,6 +4,48 @@ import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 import { generateOrderId } from "@/lib/payment/types"
 import { createPaymentLogger } from "@/lib/payment/payment-logger"
 
+// Tambahkan cache untuk pengaturan premium
+let premiumSettingsCache = null
+let premiumSettingsCacheTime = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 menit
+
+// Fungsi untuk mendapatkan pengaturan premium dengan cache
+async function getPremiumSettings(supabase) {
+  const now = Date.now()
+  if (premiumSettingsCache && now - premiumSettingsCacheTime < CACHE_TTL) {
+    return premiumSettingsCache
+  }
+
+  // Default values from env
+  let premiumPrice = Number.parseInt(process.env.PREMIUM_PRICE || "49000")
+  let activeGateway = process.env.ACTIVE_PAYMENT_GATEWAY || "duitku"
+
+  // Try to get from database
+  const { data: configData } = await supabase
+    .from("site_config")
+    .select("config")
+    .eq("type", "premium_settings")
+    .single()
+
+  if (configData?.config) {
+    // Use price from database if available
+    if (configData.config.price) {
+      premiumPrice = Number.parseInt(configData.config.price.toString())
+    }
+
+    // Use active gateway from database if available
+    if (configData.config.activeGateway) {
+      activeGateway = configData.config.activeGateway
+    }
+  }
+
+  const settings = { premiumPrice, activeGateway }
+  premiumSettingsCache = settings
+  premiumSettingsCacheTime = now
+
+  return settings
+}
+
 export async function POST(request: NextRequest) {
   const requestId = `payment-create-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
   const logger = createPaymentLogger("transaction")
@@ -59,17 +101,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "User is already premium" }, { status: 400 })
     }
 
-    // Get premium price from site_config or env
-    // Ambil dari database jika ada
-    const { data: configData } = await supabase
-      .from("site_config")
-      .select("config")
-      .eq("type", "premium_settings")
-      .single()
-
-    // Gunakan harga dari database jika ada, jika tidak gunakan dari env
-    const premiumPrice = configData?.config?.price || Number.parseInt(process.env.PREMIUM_PRICE || "49000")
-
+    // Get premium settings from cache or database
+    const { premiumPrice, activeGateway } = await getPremiumSettings(supabase)
     logger.info(`Premium price: ${premiumPrice}`)
 
     // Generate order ID

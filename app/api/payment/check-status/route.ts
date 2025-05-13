@@ -2,6 +2,11 @@ import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { getPaymentGateway } from "@/lib/payment/gateway-factory"
 
+// Tambahkan cache untuk status transaksi
+const transactionStatusCache = new Map()
+const transactionStatusCacheTime = new Map()
+const CACHE_TTL = 5 * 1000 // 5 detik
+
 export async function GET(request: NextRequest) {
   const requestId = `check-status-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
   console.log(`[${requestId}] 🔍 Checking transaction status`)
@@ -32,6 +37,14 @@ export async function GET(request: NextRequest) {
     const user = session.user
     console.log(`[${requestId}] 👤 User authenticated: ${user.id}`)
 
+    // Periksa cache untuk status transaksi
+    const cacheKey = `${user.id}:${orderId}`
+    const now = Date.now()
+    if (transactionStatusCache.has(cacheKey) && now - transactionStatusCacheTime.get(cacheKey) < CACHE_TTL) {
+      console.log(`[${requestId}] 📦 Using cached transaction status`)
+      return NextResponse.json(transactionStatusCache.get(cacheKey))
+    }
+
     // Cari transaksi di database
     const { data: transaction, error: findError } = await supabase
       .from("premium_transactions")
@@ -57,7 +70,7 @@ export async function GET(request: NextRequest) {
     // Jika transaksi sudah success atau failed, tidak perlu cek lagi
     if (transaction.status === "success" || transaction.status === "failed") {
       console.log(`[${requestId}] ℹ️ Transaction already in final state: ${transaction.status}`)
-      return NextResponse.json({
+      const response = {
         success: true,
         status: transaction.status,
         transaction: {
@@ -69,7 +82,13 @@ export async function GET(request: NextRequest) {
           created_at: transaction.created_at,
           updated_at: transaction.updated_at,
         },
-      })
+      }
+
+      // Simpan ke cache
+      transactionStatusCache.set(cacheKey, response)
+      transactionStatusCacheTime.set(cacheKey, now)
+
+      return NextResponse.json(response)
     }
 
     // Jika masih pending, cek status di gateway
@@ -172,7 +191,7 @@ export async function GET(request: NextRequest) {
       // Continue processing even if logging fails
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       status: finalStatus,
       transaction: updatedTransaction || {
@@ -184,7 +203,13 @@ export async function GET(request: NextRequest) {
         created_at: transaction.created_at,
         updated_at: new Date().toISOString(),
       },
-    })
+    }
+
+    // Simpan ke cache
+    transactionStatusCache.set(cacheKey, response)
+    transactionStatusCacheTime.set(cacheKey, now)
+
+    return NextResponse.json(response)
   } catch (error: any) {
     console.error(`[${requestId}] 💥 Error checking transaction status:`, error)
     console.error(`[${requestId}] 📋 Error details:`, error.stack || "No stack trace available")
