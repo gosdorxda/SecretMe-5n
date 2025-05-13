@@ -1,3 +1,6 @@
+// Tambahkan ini di bagian atas file
+export const dynamic = "force-dynamic"
+
 import { notFound, redirect } from "next/navigation"
 import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { SendMessageForm } from "./send-message-form"

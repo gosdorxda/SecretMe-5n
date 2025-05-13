@@ -21,7 +21,39 @@ if (typeof console !== "undefined" && console.warn) {
 // Server-side Supabase client
 export const createClient = () => {
   try {
-    const cookieStore = cookies()
+    let cookieStore
+
+    try {
+      cookieStore = cookies()
+    } catch (cookieError) {
+      // Jika cookies() gagal (misalnya saat static rendering), log error
+      console.warn("Cookies not available, possibly during static rendering:", cookieError)
+
+      // Return dummy client untuk static rendering
+      return {
+        auth: {
+          getSession: async () => ({ data: { session: null }, error: null }),
+          getUser: async () => ({ data: { user: null }, error: null }),
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: null, error: null }),
+              maybeSingle: async () => ({ data: null, error: null }),
+            }),
+            order: () => ({
+              data: [],
+              error: null,
+            }),
+          }),
+          order: () => ({
+            data: [],
+            error: null,
+          }),
+        }),
+      } as any
+    }
+
     return createServerComponentClient<Database>({
       cookies: () => cookieStore,
     })
@@ -41,24 +73,24 @@ export const createClient = () => {
     // Fallback ke client tanpa cookies untuk mencegah crash
     console.error("Error creating Supabase client:", error)
 
-    // Return dummy client yang akan mengembalikan null untuk auth operations
-    // dan mengimplementasikan semua method yang dibutuhkan
+    // Return dummy client
     return {
       auth: {
         getSession: async () => ({ data: { session: null }, error: null }),
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-      from: (table: string) => ({
-        select: (columns: string) => ({
-          eq: (column: string, value: any) => ({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
             single: async () => ({ data: null, error: null }),
+            maybeSingle: async () => ({ data: null, error: null }),
           }),
-          order: (column: string, options: any) => ({
+          order: () => ({
             data: [],
             error: null,
           }),
         }),
-        order: (column: string, options: any) => ({
+        order: () => ({
           data: [],
           error: null,
         }),
