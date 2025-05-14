@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +33,18 @@ const messageTemplates = [
   "Keren banget profilmu!",
 ]
 
+// Cache untuk hasil rate limit check
+interface RateLimitCache {
+  timestamp: number
+  result: {
+    allowed: boolean
+    reason?: string
+  }
+}
+
+// Durasi cache rate limit dalam milidetik (5 detik)
+const RATE_LIMIT_CACHE_DURATION = 5000
+
 export function SendMessageForm({ user }: SendMessageFormProps) {
   const [message, setMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
@@ -40,9 +52,15 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
   const [characterCount, setCharacterCount] = useState(0)
   const [rateLimitError, setRateLimitError] = useState<string | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [rateLimitCache, setRateLimitCache] = useState<RateLimitCache | null>(null)
   const maxLength = 500
   const supabase = createClient()
   const { toast } = useToast()
+
+  // Reset rate limit cache when component mounts or user changes
+  useEffect(() => {
+    setRateLimitCache(null)
+  }, [user.id])
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
@@ -60,6 +78,21 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
 
   const checkRateLimit = async (): Promise<boolean> => {
     try {
+      // Check cache first
+      const now = Date.now()
+      if (rateLimitCache && now - rateLimitCache.timestamp < RATE_LIMIT_CACHE_DURATION) {
+        console.log("Using cached rate limit result")
+
+        if (!rateLimitCache.result.allowed) {
+          setRateLimitError(rateLimitCache.result.reason || "Terlalu banyak permintaan. Coba lagi nanti.")
+        } else {
+          setRateLimitError(null)
+        }
+
+        return rateLimitCache.result.allowed
+      }
+
+      console.log("Checking rate limit from server")
       const response = await fetch("/api/rate-limit/check", {
         method: "POST",
         headers: {
@@ -71,6 +104,15 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       })
 
       const data = await response.json()
+
+      // Cache the result
+      setRateLimitCache({
+        timestamp: now,
+        result: {
+          allowed: response.ok,
+          reason: data.reason,
+        },
+      })
 
       if (!response.ok) {
         setRateLimitError(data.reason || "Terlalu banyak permintaan. Coba lagi nanti.")
@@ -141,6 +183,7 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
           description: rateLimitError || "Anda telah mencapai batas pengiriman pesan. Coba lagi nanti.",
           variant: "destructive",
         })
+        setIsSending(false)
         return
       }
 
@@ -176,6 +219,9 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
             recipientId: user.id,
           }),
         })
+
+        // Invalidate rate limit cache after successful send
+        setRateLimitCache(null)
       } catch (error) {
         console.error("Error reporting rate limit:", error)
       }
