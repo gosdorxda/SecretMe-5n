@@ -2,12 +2,6 @@ import { cache } from "react"
 import { createClient } from "@/lib/supabase/server"
 import type { Session } from "@supabase/supabase-js"
 
-// Fungsi untuk mendeteksi perangkat mobile
-export function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
-
 // Cache untuk getSession menggunakan React server cache
 export const getSessionCache = cache(async () => {
   const supabase = createClient()

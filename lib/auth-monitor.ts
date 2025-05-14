@@ -52,12 +52,6 @@ let authStats: {
 let totalRequests = 0
 let errorRequests = 0
 
-// Fungsi untuk mendeteksi perangkat mobile
-export function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
-
 // Fungsi untuk menyimpan statistik permintaan auth
 export function recordAuthRequest(data: {
   endpoint: string
@@ -66,11 +60,8 @@ export function recordAuthRequest(data: {
   source: "client" | "server" | "middleware"
   cached?: boolean
 }) {
-  // Tambahkan deteksi mobile
-  const isMobile = isMobileDevice()
-
   // Tambahkan ke statistik
-  const key = `${data.endpoint}:${data.success ? "success" : "error"}:${data.source}:${data.cached ? "cached" : "fresh"}:${isMobile ? "mobile" : "desktop"}`
+  const key = `${data.endpoint}:${data.success ? "success" : "error"}:${data.source}:${data.cached ? "cached" : "fresh"}`
 
   // Simpan statistik
   if (!authStats[key]) {
@@ -92,28 +83,12 @@ export function recordAuthRequest(data: {
   if (!data.success) {
     errorRequests++
   }
-
-  // Tambahkan ke mobile jika mobile
-  if (isMobile) {
-    if (!mobileStats) {
-      mobileStats = {
-        total: 0,
-        success: 0,
-        error: 0,
-        cached: 0,
-      }
-    }
-
-    mobileStats.total++
-    if (data.success) mobileStats.success++
-    else mobileStats.error++
-    if (data.cached) mobileStats.cached++
-  }
 }
 
 // Fungsi untuk mendapatkan semua statistik
 export function getAuthStats(): AuthRequestStats[] {
   try {
+    if (typeof localStorage === "undefined") return []
     const statsJson = localStorage.getItem(AUTH_STATS_KEY)
     return statsJson ? JSON.parse(statsJson) : []
   } catch (error) {

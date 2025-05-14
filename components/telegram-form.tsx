@@ -13,7 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useIsMobile } from "@/hooks/use-mobile"
 
 // Alias export for compatibility
-export const useMobile = useIsMobile
+// Hapus alias export untuk useMobile
+// export const useMobile = useIsMobile
 
 interface TelegramFormProps {
   userId: string

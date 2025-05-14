@@ -1,29 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 
-// Function to check if the device is mobile based on screen width
-export function useIsMobile() {
+export default function useMobile() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    // Function to update state based on window width
-    function handleResize() {
+    const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
 
-    // Set initial value
-    handleResize()
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
 
-    // Add event listener
-    window.addEventListener("resize", handleResize)
-
-    // Clean up
-    return () => window.removeEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
   return isMobile
 }
 
-// Alias export for compatibility
-export const useMobile = useIsMobile
+// Alias untuk kompatibilitas
+export const useIsMobile = useMobile

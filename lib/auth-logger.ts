@@ -18,12 +18,6 @@ export type AuthLogEntry = {
 const inMemoryLogs: AuthLogEntry[] = []
 const MAX_IN_MEMORY_LOGS = 1000
 
-// Fungsi untuk mendeteksi perangkat mobile
-export function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-}
-
 // Fungsi untuk mencatat log auth
 export function logAuthRequest(data: {
   endpoint: string
@@ -36,14 +30,6 @@ export function logAuthRequest(data: {
   error?: string
   details?: Record<string, any>
 }) {
-  // Tambahkan deteksi mobile jika tidak ada di details
-  if (data.details && !("isMobile" in data.details)) {
-    data.details.isMobile = isMobileDevice()
-  }
-
-  // Tambahkan prefix untuk mobile
-  const mobilePrefix = data.details?.isMobile ? "📱 " : ""
-
   // Format log message
   const timestamp = new Date().toISOString()
   const cachedIndicator = data.cached ? "🔄 [CACHED] " : " "
@@ -54,7 +40,7 @@ export function logAuthRequest(data: {
 
   // Log ke console
   console.log(
-    `🔐 AUTH ${statusIndicator} [${data.source.toUpperCase()}] ${mobilePrefix}${cachedIndicator}${timestamp} | ${data.method} ${data.endpoint} | ${durationText} ${userIdText} ${errorText}`,
+    `🔐 AUTH ${statusIndicator} [${data.source.toUpperCase()}] ${cachedIndicator}${timestamp} | ${data.method} ${data.endpoint} | ${durationText} ${userIdText} ${errorText}`,
   )
 
   // Tambahkan ke log history
@@ -65,7 +51,6 @@ export function logAuthRequest(data: {
       logs.push({
         ...data,
         timestamp,
-        isMobile: data.details?.isMobile || isMobileDevice(),
       })
 
       // Batasi jumlah log
@@ -78,11 +63,37 @@ export function logAuthRequest(data: {
       // Ignore localStorage errors
     }
   }
+
+  // Tambahkan ke in-memory logs
+  inMemoryLogs.push({
+    ...data,
+    timestamp: Date.now(),
+    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+  })
+
+  // Batasi jumlah log dalam memori
+  if (inMemoryLogs.length > MAX_IN_MEMORY_LOGS) {
+    inMemoryLogs.shift()
+  }
 }
 
 // Fungsi untuk mendapatkan log terbaru
 export function getRecentAuthLogs(limit = 100): AuthLogEntry[] {
   return inMemoryLogs.slice(0, limit)
+}
+
+// Fungsi untuk membersihkan log
+export function clearAuthLogs() {
+  inMemoryLogs.length = 0
+
+  // Juga bersihkan localStorage jika tersedia
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem("auth_logs")
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }
 }
 
 // Fungsi untuk menghitung statistik auth
@@ -139,31 +150,42 @@ function getEndpointStats(logs: AuthLogEntry[]) {
       stats[key] = { count: 0, success: 0, failed: 0 }
     }
     stats[key].count++
-    if (log.success) stats[key].success++
-    else stats[key].failed++
+    if (log.success) {
+      stats[key].success++
+    } else {
+      stats[key].failed++
+    }
   })
 
-  return stats
+  return Object.entries(stats)
+    .sort(([, a], [, b]) => b.count - a.count)
+    .reduce((obj: Record<string, { count: number; success: number; failed: number }>, [key, value]) => {
+      obj[key] = value
+      return obj
+    }, {})
 }
 
-// Helper untuk mendapatkan statistik berdasarkan sumber
+// Helper untuk mendapatkan statistik berdasarkan source
 function getSourceStats(logs: AuthLogEntry[]) {
   const stats: Record<string, { count: number; success: number; failed: number }> = {}
 
   logs.forEach((log) => {
-    const source = log.source
-    if (!stats[source]) {
-      stats[source] = { count: 0, success: 0, failed: 0 }
+    const key = log.source
+    if (!stats[key]) {
+      stats[key] = { count: 0, success: 0, failed: 0 }
     }
-    stats[source].count++
-    if (log.success) stats[source].success++
-    else stats[source].failed++
+    stats[key].count++
+    if (log.success) {
+      stats[key].success++
+    } else {
+      stats[key].failed++
+    }
   })
 
-  return stats
-}
-
-// Fungsi untuk membersihkan log
-export function clearAuthLogs() {
-  inMemoryLogs.length = 0
+  return Object.entries(stats)
+    .sort(([, a], [, b]) => b.count - a.count)
+    .reduce((obj: Record<string, { count: number; success: number; failed: number }>, [key, value]) => {
+      obj[key] = value
+      return obj
+    }, {})
 }

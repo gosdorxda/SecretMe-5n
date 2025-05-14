@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle, CheckCircle, RefreshCw } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
-import { isMobileDevice } from "@/lib/auth-cache"
 
 export function AuthTroubleshooter() {
   const { session, user, isAuthenticated, refreshSession, forceLogout } = useAuth()
@@ -15,7 +14,6 @@ export function AuthTroubleshooter() {
     tokenValid: boolean
     cookiesEnabled: boolean
     localStorageEnabled: boolean
-    isMobile: boolean
     browserInfo: string
   } | null>(null)
 
@@ -50,7 +48,6 @@ export function AuthTroubleshooter() {
         tokenValid,
         cookiesEnabled,
         localStorageEnabled,
-        isMobile: isMobileDevice(),
         browserInfo,
       })
     } catch (error) {
@@ -120,9 +117,6 @@ export function AuthTroubleshooter() {
                 <AlertTriangle size={16} className="text-orange-500" />
               )}
               <span>LocalStorage: {diagnosisResults.localStorageEnabled ? "Diaktifkan" : "Dinonaktifkan"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>Perangkat: {diagnosisResults.isMobile ? "Mobile" : "Desktop"}</span>
             </div>
           </div>
         ) : (

@@ -7,7 +7,6 @@ import { useRouter, usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Session, User } from "@supabase/supabase-js"
 import { logAuthRequest } from "@/lib/auth-logger"
-import { isMobileDevice } from "@/lib/auth-cache"
 
 type AuthContextType = {
   session: Session | null
@@ -67,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userId: user?.id,
         details: {
           action: "start",
-          isMobile: isMobileDevice(),
         },
       })
 
