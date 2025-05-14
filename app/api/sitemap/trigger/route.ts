@@ -37,12 +37,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Panggil API regenerasi sitemap
-    const regenerateUrl = new URL("/api/sitemap/regenerate", request.url)
-    regenerateUrl.searchParams.set("secret", process.env.CRON_SECRET || "")
+    // Get base URL from environment or construct it properly
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (request.url.startsWith("https") ? new URL(request.url).origin : `https://${new URL(request.url).host}`)
 
+    // Use absolute URL instead of relative URL
+    const regenerateUrl = `${baseUrl}/api/sitemap/regenerate`
+
+    // Make the request with proper error handling
     const response = await fetch(regenerateUrl, {
-      method: "POST", // Gunakan POST untuk konsistensi
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
