@@ -7,12 +7,20 @@ export default async function PremiumPage() {
   const supabase = createClient()
 
   // Ambil pengaturan premium dari database
-  const { data: settingsData } = await supabase
-    .from("site_config")
-    .select("*")
-    .eq("type", "premium_settings")
-    .single()
-    .catch(() => ({ data: null }))
+  let settingsData = null
+  try {
+    const { data, error } = await supabase
+      .from("site_config")
+      .select("*")
+      .eq("type", "premium_settings")
+      .single()
+    
+    if (!error) {
+      settingsData = data
+    }
+  } catch (error) {
+    console.error("Error fetching premium settings:", error)
+  }
 
   // Ambil jumlah pengguna premium
   const { count: premiumCount } = await supabase
