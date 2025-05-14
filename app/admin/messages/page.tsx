@@ -28,19 +28,10 @@ export default async function MessagesPage({
   }
 
   // Ambil pesan dengan pagination - perbaikan query
+  // Tidak menggunakan join karena ada masalah dengan relasi
   const { data: messages, error: messagesError } = await supabase
     .from("messages")
-    .select(`
-      id, 
-      content, 
-      created_at,
-      recipient_id,
-      profiles:recipient_id (
-        id,
-        full_name,
-        username
-      )
-    `)
+    .select("*")
     .order("created_at", { ascending: false })
     .range(from, to)
 
@@ -48,9 +39,32 @@ export default async function MessagesPage({
     console.error("Error fetching messages:", messagesError)
   }
 
-  // Debug info
-  console.log("Messages count:", count)
-  console.log("Messages data sample:", messages?.slice(0, 2))
+  // Jika berhasil mendapatkan pesan, ambil data pengguna untuk setiap pesan
+  let messagesWithUsers = []
+
+  if (messages && messages.length > 0) {
+    // Ambil semua user_id unik dari pesan
+    const userIds = [...new Set(messages.map((message) => message.user_id))]
+
+    // Ambil data pengguna untuk semua user_id
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, name, username")
+      .in("id", userIds)
+
+    if (usersError) {
+      console.error("Error fetching users:", usersError)
+    }
+
+    // Gabungkan data pesan dengan data pengguna
+    messagesWithUsers = messages.map((message) => {
+      const user = users?.find((user) => user.id === message.user_id)
+      return {
+        ...message,
+        user,
+      }
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -75,15 +89,15 @@ export default async function MessagesPage({
           )}
 
           <div className="space-y-6">
-            {messages && messages.length > 0 ? (
-              messages.map((message) => (
+            {messagesWithUsers && messagesWithUsers.length > 0 ? (
+              messagesWithUsers.map((message) => (
                 <div key={message.id} className="border-b pb-4 last:border-0 last:pb-0">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className="font-medium">
-                        Kepada: {message.profiles?.full_name || "Unknown"}
-                        {message.profiles?.username && (
-                          <span className="text-muted-foreground ml-1">@{message.profiles.username}</span>
+                        Kepada: {message.user?.name || "Unknown"}
+                        {message.user?.username && (
+                          <span className="text-muted-foreground ml-1">@{message.user.username}</span>
                         )}
                       </h3>
                       <p className="text-xs text-muted-foreground">
