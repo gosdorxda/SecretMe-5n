@@ -1,36 +1,17 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { format, parseISO } from "date-fns"
+import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  AreaChart,
-  Area,
-} from "recharts"
-import { TrendingUp, TrendingDown, Users, MessageSquare, Crown, Clock } from "lucide-react"
+import { BarChart, LineChart } from "lucide-react"
+import { ResponsiveBar } from "@nivo/bar"
+import { ResponsiveLine } from "@nivo/line"
+import { ResponsivePie } from "@nivo/pie"
 
-// Tipe data untuk props
 interface AnalyticsDashboardProps {
-  userSignups: { created_at: string }[]
-  messageActivity: { created_at: string }[]
-  premiumTransactions: { created_at: string; amount: number; status: string }[]
+  userSignups: any[]
+  messageActivity: any[]
+  premiumTransactions: any[]
   premiumStats: {
     premiumUsers: number
     totalUsers: number
@@ -39,8 +20,11 @@ interface AnalyticsDashboardProps {
     currentMonth: number
     lastMonth: number
   }
-  hourlyActivity: { created_at: string }[]
-  trafficSources: { source: string; count: number }[]
+  hourlyActivity: any[]
+  trafficSources: {
+    source: string
+    count: number
+  }[]
 }
 
 export default function AnalyticsDashboard({
@@ -52,341 +36,270 @@ export default function AnalyticsDashboard({
   hourlyActivity,
   trafficSources,
 }: AnalyticsDashboardProps) {
-  const [activeTab, setActiveTab] = useState("overview")
+  // Proses data untuk grafik pendaftaran pengguna
+  const userSignupData = processDateData(userSignups, "created_at")
 
-  // Persiapkan data untuk grafik pengguna per hari
-  const userSignupData = prepareTimeSeriesData(userSignups, "created_at")
+  // Proses data untuk grafik aktivitas pesan
+  const messageActivityData = processDateData(messageActivity, "created_at")
 
-  // Persiapkan data untuk grafik pesan per hari
-  const messageActivityData = prepareTimeSeriesData(messageActivity, "created_at")
+  // Proses data untuk grafik transaksi premium
+  const premiumTransactionData = processDateData(premiumTransactions, "created_at")
 
-  // Persiapkan data untuk grafik transaksi premium
-  const premiumTransactionData = prepareTimeSeriesData(
-    premiumTransactions.filter((t) => t.status === "success"),
-    "created_at",
-  )
-
-  // Persiapkan data untuk grafik pie sumber traffic
+  // Data untuk grafik pie sumber traffic
   const trafficSourceData = trafficSources.map((source) => ({
-    name: source.source,
+    id: source.source,
+    label: source.source,
     value: source.count,
   }))
 
-  // Persiapkan data untuk peta panas aktivitas
-  const heatmapData = prepareHeatmapData(hourlyActivity)
-
-  // Hitung persentase perubahan pengguna bulan ini vs bulan lalu
-  const monthlyChangePercent = monthlyComparison.lastMonth
+  // Hitung persentase pertumbuhan bulanan
+  const monthlyGrowth = monthlyComparison.lastMonth
     ? ((monthlyComparison.currentMonth - monthlyComparison.lastMonth) / monthlyComparison.lastMonth) * 100
     : 0
-
-  // Warna untuk grafik
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Analitik</h1>
-        <p className="text-muted-foreground">Analisis statistik pengguna dan aktivitas platform.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Analitik</h1>
+        <p className="text-muted-foreground">Analisis performa platform dan aktivitas pengguna.</p>
       </div>
 
-      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">Pengguna</TabsTrigger>
-          <TabsTrigger value="messages">Pesan</TabsTrigger>
-          <TabsTrigger value="premium">Premium</TabsTrigger>
-        </TabsList>
+      {/* Statistik Utama */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pengguna Premium</CardTitle>
+            <div className="h-4 w-4 text-muted-foreground">%</div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {premiumStats.totalUsers > 0
+                ? ((premiumStats.premiumUsers / premiumStats.totalUsers) * 100).toFixed(1)
+                : "0"}
+              %
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {premiumStats.premiumUsers} dari {premiumStats.totalUsers} pengguna
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pertumbuhan Bulanan</CardTitle>
+            <BarChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {monthlyGrowth > 0 ? "+" : ""}
+              {monthlyGrowth.toFixed(1)}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Dibandingkan bulan lalu ({monthlyComparison.lastMonth} pengguna)
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pengguna Baru Bulan Ini</CardTitle>
+            <LineChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{monthlyComparison.currentMonth}</div>
+            <p className="text-xs text-muted-foreground">Pengguna baru bulan ini</p>
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="overview" className="space-y-4">
-          {/* Kartu Statistik */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Total Pengguna"
-              value={premiumStats.totalUsers.toLocaleString()}
-              trend={{
-                value: monthlyChangePercent,
-                label: "dari bulan lalu",
+      {/* Grafik Utama */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Aktivitas Platform</CardTitle>
+          <CardDescription>Aktivitas pengguna dalam 30 hari terakhir</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <div className="h-[300px]">
+            <ResponsiveLine
+              data={[
+                {
+                  id: "Pendaftaran",
+                  data: userSignupData,
+                },
+                {
+                  id: "Pesan",
+                  data: messageActivityData,
+                },
+              ]}
+              margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+              xScale={{ type: "point" }}
+              yScale={{
+                type: "linear",
+                min: "auto",
+                max: "auto",
+                stacked: false,
+                reverse: false,
               }}
-              icon={<Users className="h-4 w-4" />}
-            />
-            <StatCard
-              title="Pengguna Premium"
-              value={`${premiumStats.premiumUsers.toLocaleString()} (${Math.round((premiumStats.premiumUsers / premiumStats.totalUsers) * 100) || 0}%)`}
-              trend={{
-                value: 5.2, // Contoh nilai
-                label: "dari bulan lalu",
+              curve="monotoneX"
+              axisTop={null}
+              axisRight={null}
+              axisBottom={{
+                tickSize: 5,
+                tickPadding: 5,
+                tickRotation: -45,
+                legend: "Tanggal",
+                legendOffset: 45,
+                legendPosition: "middle",
               }}
-              icon={<Crown className="h-4 w-4" />}
-            />
-            <StatCard
-              title="Pesan Bulan Ini"
-              value={messageActivityData.length.toLocaleString()}
-              trend={{
-                value: 12.5, // Contoh nilai
-                label: "dari bulan lalu",
+              axisLeft={{
+                tickSize: 5,
+                tickPadding: 5,
+                tickRotation: 0,
+                legend: "Jumlah",
+                legendOffset: -50,
+                legendPosition: "middle",
               }}
-              icon={<MessageSquare className="h-4 w-4" />}
-            />
-            <StatCard
-              title="Waktu Aktif Rata-rata"
-              value="8.2 menit"
-              trend={{
-                value: -2.1, // Contoh nilai negatif
-                label: "dari bulan lalu",
-              }}
-              icon={<Clock className="h-4 w-4" />}
+              colors={{ scheme: "category10" }}
+              pointSize={10}
+              pointColor={{ theme: "background" }}
+              pointBorderWidth={2}
+              pointBorderColor={{ from: "serieColor" }}
+              pointLabelYOffset={-12}
+              useMesh={true}
+              legends={[
+                {
+                  anchor: "top-right",
+                  direction: "row",
+                  justify: false,
+                  translateX: 0,
+                  translateY: -20,
+                  itemsSpacing: 0,
+                  itemDirection: "left-to-right",
+                  itemWidth: 80,
+                  itemHeight: 20,
+                  itemOpacity: 0.75,
+                  symbolSize: 12,
+                  symbolShape: "circle",
+                  symbolBorderColor: "rgba(0, 0, 0, .5)",
+                },
+              ]}
             />
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Grafik Utama */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pertumbuhan Pengguna</CardTitle>
-                <CardDescription>Jumlah pendaftaran pengguna baru per hari (30 hari terakhir)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={userSignupData}>
-                      <defs>
-                        <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0088FE" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#0088FE" stopOpacity={0.1} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), "dd MMM")} />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [value, "Pengguna Baru"]}
-                        labelFormatter={(date) => format(new Date(date), "dd MMMM yyyy", { locale: id })}
-                      />
-                      <Area type="monotone" dataKey="count" stroke="#0088FE" fillOpacity={1} fill="url(#colorUsers)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Aktivitas Pesan</CardTitle>
-                <CardDescription>Jumlah pesan yang dikirim per hari (30 hari terakhir)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={messageActivityData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), "dd MMM")} />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [value, "Pesan"]}
-                        labelFormatter={(date) => format(new Date(date), "dd MMMM yyyy", { locale: id })}
-                      />
-                      <Bar dataKey="count" fill="#00C49F" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Grafik Tambahan */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sumber Traffic</CardTitle>
-                <CardDescription>Distribusi sumber traffic pengguna</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={trafficSourceData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {trafficSourceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [value, "Pengguna"]} />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Transaksi Premium</CardTitle>
-                <CardDescription>Jumlah transaksi premium berhasil per hari (30 hari terakhir)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={premiumTransactionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), "dd MMM")} />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [value, "Transaksi"]}
-                        labelFormatter={(date) => format(new Date(date), "dd MMMM yyyy", { locale: id })}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="count"
-                        stroke="#FFBB28"
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="users" className="space-y-4">
-          {/* Konten tab pengguna akan ditambahkan di sini */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Analisis Pengguna</CardTitle>
-              <CardDescription>Detail statistik dan analisis pengguna</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Tab ini akan berisi analisis mendalam tentang pengguna.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="messages" className="space-y-4">
-          {/* Konten tab pesan akan ditambahkan di sini */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Analisis Pesan</CardTitle>
-              <CardDescription>Detail statistik dan analisis pesan</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Tab ini akan berisi analisis mendalam tentang aktivitas pesan.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="premium" className="space-y-4">
-          {/* Konten tab premium akan ditambahkan di sini */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Analisis Premium</CardTitle>
-              <CardDescription>Detail statistik dan analisis pengguna premium</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Tab ini akan berisi analisis mendalam tentang pengguna premium dan transaksi.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Grafik Tambahan */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Transaksi Premium</CardTitle>
+            <CardDescription>Transaksi premium dalam 30 hari terakhir</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="h-[300px]">
+              <ResponsiveBar
+                data={premiumTransactionData.map((item) => ({
+                  date: item.x,
+                  jumlah: item.y,
+                }))}
+                keys={["jumlah"]}
+                indexBy="date"
+                margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+                padding={0.3}
+                valueScale={{ type: "linear" }}
+                indexScale={{ type: "band", round: true }}
+                colors={{ scheme: "nivo" }}
+                axisTop={null}
+                axisRight={null}
+                axisBottom={{
+                  tickSize: 5,
+                  tickPadding: 5,
+                  tickRotation: -45,
+                  legend: "Tanggal",
+                  legendPosition: "middle",
+                  legendOffset: 45,
+                }}
+                axisLeft={{
+                  tickSize: 5,
+                  tickPadding: 5,
+                  tickRotation: 0,
+                  legend: "Jumlah",
+                  legendPosition: "middle",
+                  legendOffset: -40,
+                }}
+                labelSkipWidth={12}
+                labelSkipHeight={12}
+                labelTextColor={{
+                  from: "color",
+                  modifiers: [["darker", 1.6]],
+                }}
+                animate={true}
+                motionStiffness={90}
+                motionDamping={15}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sumber Traffic</CardTitle>
+            <CardDescription>Distribusi sumber traffic pengguna</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="h-[300px]">
+              <ResponsivePie
+                data={trafficSourceData}
+                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                innerRadius={0.5}
+                padAngle={0.7}
+                cornerRadius={3}
+                colors={{ scheme: "nivo" }}
+                borderWidth={1}
+                borderColor={{
+                  from: "color",
+                  modifiers: [["darker", 0.2]],
+                }}
+                radialLabelsSkipAngle={10}
+                radialLabelsTextColor="#333333"
+                radialLabelsLinkColor={{ from: "color" }}
+                sliceLabelsSkipAngle={10}
+                sliceLabelsTextColor="#333333"
+                legends={[
+                  {
+                    anchor: "bottom",
+                    direction: "row",
+                    translateY: 30,
+                    itemWidth: 100,
+                    itemHeight: 18,
+                    itemTextColor: "#999",
+                    symbolSize: 18,
+                    symbolShape: "circle",
+                  },
+                ]}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
 
-// Komponen untuk kartu statistik
-function StatCard({
-  title,
-  value,
-  trend,
-  icon,
-}: {
-  title: string
-  value: string
-  trend?: { value: number; label: string }
-  icon: React.ReactNode
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className="h-4 w-4 text-muted-foreground">{icon}</div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {trend && (
-          <div className="mt-2 flex items-center text-xs">
-            {trend.value > 0 ? (
-              <TrendingUp className="mr-1 h-3 w-3 text-green-600" />
-            ) : (
-              <TrendingDown className="mr-1 h-3 w-3 text-red-600" />
-            )}
-            <span className={trend.value > 0 ? "text-green-600" : "text-red-600"}>
-              {trend.value > 0 ? "+" : ""}
-              {trend.value.toFixed(1)}%
-            </span>
-            <span className="ml-1 text-muted-foreground">{trend.label}</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+// Fungsi untuk memproses data berdasarkan tanggal
+function processDateData(data: any[], dateField: string) {
+  if (!data || data.length === 0) return []
 
-// Fungsi untuk mempersiapkan data time series
-function prepareTimeSeriesData(data: any[], dateField: string) {
-  // Buat objek untuk menyimpan jumlah per hari
-  const countsByDay: Record<string, number> = {}
+  // Kelompokkan data berdasarkan tanggal
+  const groupedData = data.reduce((acc, item) => {
+    const date = format(new Date(item[dateField]), "dd MMM", { locale: id })
+    if (!acc[date]) {
+      acc[date] = 0
+    }
+    acc[date]++
+    return acc
+  }, {})
 
-  // Hitung jumlah per hari
-  data.forEach((item) => {
-    const date = format(parseISO(item[dateField]), "yyyy-MM-dd")
-    countsByDay[date] = (countsByDay[date] || 0) + 1
-  })
-
-  // Pastikan semua hari dalam rentang 30 hari terakhir ada
-  const result = []
-  const today = new Date()
-
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    const dateStr = format(date, "yyyy-MM-dd")
-
-    result.push({
-      date: dateStr,
-      count: countsByDay[dateStr] || 0,
-    })
-  }
-
-  return result
-}
-
-// Fungsi untuk mempersiapkan data heatmap
-function prepareHeatmapData(data: { created_at: string }[]) {
-  // Buat array 2D untuk menyimpan jumlah aktivitas per jam per hari dalam seminggu
-  const heatmapData = Array(7)
-    .fill(0)
-    .map(() => Array(24).fill(0))
-
-  // Hitung jumlah aktivitas per jam per hari
-  data.forEach((item) => {
-    const date = parseISO(item.created_at)
-    const dayOfWeek = date.getDay() // 0 = Minggu, 1 = Senin, dst.
-    const hour = date.getHours()
-
-    heatmapData[dayOfWeek][hour]++
-  })
-
-  return heatmapData
+  // Konversi ke format yang dibutuhkan oleh Nivo
+  return Object.entries(groupedData).map(([date, count]) => ({
+    x: date,
+    y: count,
+  }))
 }

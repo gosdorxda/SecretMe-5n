@@ -1,6 +1,5 @@
 import RateLimitConfig from "../components/rate-limit-config"
 import BlockedIPs from "../components/blocked-ips"
-import AuthMonitoring from "../components/auth-monitoring"
 
 export const dynamic = "force-dynamic"
 
@@ -15,7 +14,6 @@ export default async function SecurityPage() {
       <div className="grid gap-6">
         <RateLimitConfig />
         <BlockedIPs />
-        <AuthMonitoring />
       </div>
     </div>
   )

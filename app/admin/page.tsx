@@ -26,6 +26,13 @@ export default async function AdminPage() {
     .order("created_at", { ascending: false })
     .limit(5)
 
+  // Ambil transaksi premium terbaru
+  const { data: recentTransactions } = await supabase
+    .from("premium_transactions")
+    .select("id, user_id, reference_id, amount, status, payment_method, created_at, user_email")
+    .order("created_at", { ascending: false })
+    .limit(5)
+
   return (
     <AdminDashboard
       stats={{
@@ -35,6 +42,7 @@ export default async function AdminPage() {
         premiumPercentage: userCount ? Math.round(((premiumCount || 0) / userCount) * 100) : 0,
       }}
       recentUsers={recentUsers || []}
+      recentTransactions={recentTransactions || []}
     />
   )
 }
