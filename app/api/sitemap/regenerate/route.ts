@@ -1,11 +1,37 @@
 import { createClient } from "@/lib/supabase/server"
-import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function GET(request: NextRequest) {
+// Mendukung metode GET dan POST untuk fleksibilitas
+export async function GET(request: Request) {
+  return handleSitemapRegeneration(request)
+}
+
+export async function POST(request: Request) {
+  return handleSitemapRegeneration(request)
+}
+
+async function handleSitemapRegeneration(request: Request) {
+  // Ekstrak secret dari URL atau body tergantung metode
+  let secret = ""
+
+  try {
+    // Coba dapatkan secret dari URL (untuk GET)
+    const url = new URL(request.url)
+    secret = url.searchParams.get("secret") || ""
+
+    // Jika tidak ada di URL dan ini adalah POST, coba dapatkan dari body
+    if (!secret && request.method === "POST") {
+      const body = await request.json().catch(() => ({}))
+      secret = body.secret || ""
+    }
+  } catch (error) {
+    console.error("Error parsing request:", error)
+  }
+
   // Verifikasi secret key untuk keamanan
-  const secretKey = request.nextUrl.searchParams.get("secret")
-  if (secretKey !== process.env.CRON_SECRET) {
-    return new Response("Unauthorized", { status: 401 })
+  if (secret !== process.env.CRON_SECRET) {
+    console.error("Unauthorized attempt to regenerate sitemap")
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   try {
@@ -18,36 +44,43 @@ export async function GET(request: NextRequest) {
 
     if (countError) {
       console.error("Error menghitung pengguna:", countError)
-      return new Response("Error menghitung pengguna", { status: 500 })
+      return NextResponse.json({ error: "Error menghitung pengguna" }, { status: 500 })
     }
+
+    // Mendapatkan waktu pembaruan terakhir
+    const { data: latestUser, error: latestError } = await supabase
+      .from("users")
+      .select("updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .single()
+
+    const lastUpdated = latestUser?.updated_at || new Date().toISOString()
 
     // Mencatat regenerasi sitemap
     const { error: logError } = await supabase.from("sitemap_logs").insert({
       triggered_at: new Date().toISOString(),
       user_count: userCount || 0,
-      triggered_by: "cron",
+      last_updated: lastUpdated,
+      triggered_by: "manual",
     })
 
     if (logError) {
       console.error("Error mencatat log sitemap:", logError)
-      return new Response("Error mencatat log sitemap", { status: 500 })
+      // Lanjutkan meskipun ada error logging
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Sitemap berhasil diregenerasi",
-        timestamp: new Date().toISOString(),
+    return NextResponse.json({
+      success: true,
+      message: "Sitemap berhasil diregenerasi",
+      timestamp: new Date().toISOString(),
+      stats: {
         userCount,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        lastUpdated,
       },
-    )
+    })
   } catch (error) {
     console.error("Error regenerasi sitemap:", error)
-    return new Response("Error regenerasi sitemap", { status: 500 })
+    return NextResponse.json({ error: "Error regenerasi sitemap" }, { status: 500 })
   }
 }

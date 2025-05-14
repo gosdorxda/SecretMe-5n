@@ -1,66 +1,77 @@
-import { createClient } from "@/lib/supabase/server"
-import type { NextRequest } from "next/server"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
 
-export async function GET(request: NextRequest) {
+export async function POST(request: Request) {
+  const supabase = createRouteHandlerClient({ cookies })
+
+  // Cek session dan verifikasi user
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  if (sessionError || !session) {
+    console.error("Error getting session:", sessionError)
+    return NextResponse.json({ error: "Authentication error" }, { status: 401 })
+  }
+
+  // Verifikasi user dengan getUser()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    console.error("Error verifying user:", userError)
+    return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
+  }
+
+  // Verifikasi apakah user adalah admin
+  const { data: adminData } = await supabase.from("users").select("email").eq("id", user.id).single()
+
+  const adminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
+
+  if (!adminEmails.includes(adminData?.email)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   try {
-    const supabase = createClient()
+    // Panggil API regenerasi sitemap
+    const regenerateUrl = new URL("/api/sitemap/regenerate", request.url)
+    regenerateUrl.searchParams.set("secret", process.env.CRON_SECRET || "")
 
-    // Verifikasi apakah pengguna adalah admin
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) {
-      return new Response("Unauthorized", { status: 401 })
-    }
-
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", session.user.id)
-      .single()
-
-    if (userError || userData?.role !== "admin") {
-      return new Response("Forbidden", { status: 403 })
-    }
-
-    // Mendapatkan jumlah pengguna untuk statistik
-    const { count: userCount, error: countError } = await supabase
-      .from("users")
-      .select("*", { count: "exact", head: true })
-
-    if (countError) {
-      console.error("Error menghitung pengguna:", countError)
-      return new Response("Error menghitung pengguna", { status: 500 })
-    }
-
-    // Mencatat regenerasi sitemap
-    const { error: logError } = await supabase.from("sitemap_logs").insert({
-      triggered_at: new Date().toISOString(),
-      user_count: userCount || 0,
-      triggered_by: "manual",
-      admin_id: session.user.id,
+    const response = await fetch(regenerateUrl, {
+      method: "POST", // Gunakan POST untuk konsistensi
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        secret: process.env.CRON_SECRET,
+        triggeredBy: "admin",
+        adminId: user.id,
+      }),
     })
 
-    if (logError) {
-      console.error("Error mencatat log sitemap:", logError)
-      return new Response("Error mencatat log sitemap", { status: 500 })
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Gagal meregenerasi sitemap" }))
+      throw new Error(errorData.error || "Gagal meregenerasi sitemap")
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Sitemap berhasil diregenerasi",
-        timestamp: new Date().toISOString(),
-        userCount,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    )
+    const data = await response.json()
+
+    return NextResponse.json({
+      success: true,
+      message: "Sitemap telah berhasil diregenerasi",
+      data,
+    })
   } catch (error) {
-    console.error("Error regenerasi sitemap:", error)
-    return new Response("Error regenerasi sitemap", { status: 500 })
+    console.error("Error meregenerasi sitemap:", error)
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Tidak dapat meregenerasi sitemap",
+      },
+      { status: 500 },
+    )
   }
 }
