@@ -3,10 +3,22 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
-import { BarChart, LineChart } from "lucide-react"
-import { ResponsiveBar } from "@nivo/bar"
-import { ResponsiveLine } from "@nivo/line"
-import { ResponsivePie } from "@nivo/pie"
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts"
+import { Users } from "lucide-react"
 
 interface AnalyticsDashboardProps {
   userSignups: any[]
@@ -47,10 +59,12 @@ export default function AnalyticsDashboard({
 
   // Data untuk grafik pie sumber traffic
   const trafficSourceData = trafficSources.map((source) => ({
-    id: source.source,
-    label: source.source,
+    name: source.source,
     value: source.count,
   }))
+
+  // Warna untuk grafik pie
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
 
   // Hitung persentase pertumbuhan bulanan
   const monthlyGrowth = monthlyComparison.lastMonth
@@ -101,7 +115,7 @@ export default function AnalyticsDashboard({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pengguna Baru Bulan Ini</CardTitle>
-            <LineChart className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{monthlyComparison.currentMonth}</div>
@@ -118,70 +132,25 @@ export default function AnalyticsDashboard({
         </CardHeader>
         <CardContent className="pt-2">
           <div className="h-[300px]">
-            <ResponsiveLine
-              data={[
-                {
-                  id: "Pendaftaran",
-                  data: userSignupData,
-                },
-                {
-                  id: "Pesan",
-                  data: messageActivityData,
-                },
-              ]}
-              margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
-              xScale={{ type: "point" }}
-              yScale={{
-                type: "linear",
-                min: "auto",
-                max: "auto",
-                stacked: false,
-                reverse: false,
-              }}
-              curve="monotoneX"
-              axisTop={null}
-              axisRight={null}
-              axisBottom={{
-                tickSize: 5,
-                tickPadding: 5,
-                tickRotation: -45,
-                legend: "Tanggal",
-                legendOffset: 45,
-                legendPosition: "middle",
-              }}
-              axisLeft={{
-                tickSize: 5,
-                tickPadding: 5,
-                tickRotation: 0,
-                legend: "Jumlah",
-                legendOffset: -50,
-                legendPosition: "middle",
-              }}
-              colors={{ scheme: "category10" }}
-              pointSize={10}
-              pointColor={{ theme: "background" }}
-              pointBorderWidth={2}
-              pointBorderColor={{ from: "serieColor" }}
-              pointLabelYOffset={-12}
-              useMesh={true}
-              legends={[
-                {
-                  anchor: "top-right",
-                  direction: "row",
-                  justify: false,
-                  translateX: 0,
-                  translateY: -20,
-                  itemsSpacing: 0,
-                  itemDirection: "left-to-right",
-                  itemWidth: 80,
-                  itemHeight: 20,
-                  itemOpacity: 0.75,
-                  symbolSize: 12,
-                  symbolShape: "circle",
-                  symbolBorderColor: "rgba(0, 0, 0, .5)",
-                },
-              ]}
-            />
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={combineChartData(userSignupData, messageActivityData)}
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 60,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" angle={-45} textAnchor="end" height={60} />
+                <YAxis />
+                <Tooltip formatter={(value, name) => [value, name === "users" ? "Pendaftaran" : "Pesan"]} />
+                <Legend />
+                <Line type="monotone" dataKey="users" name="Pendaftaran" stroke="#0088FE" activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="messages" name="Pesan" stroke="#00C49F" />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
@@ -195,46 +164,23 @@ export default function AnalyticsDashboard({
           </CardHeader>
           <CardContent className="pt-2">
             <div className="h-[300px]">
-              <ResponsiveBar
-                data={premiumTransactionData.map((item) => ({
-                  date: item.x,
-                  jumlah: item.y,
-                }))}
-                keys={["jumlah"]}
-                indexBy="date"
-                margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
-                padding={0.3}
-                valueScale={{ type: "linear" }}
-                indexScale={{ type: "band", round: true }}
-                colors={{ scheme: "nivo" }}
-                axisTop={null}
-                axisRight={null}
-                axisBottom={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: -45,
-                  legend: "Tanggal",
-                  legendPosition: "middle",
-                  legendOffset: 45,
-                }}
-                axisLeft={{
-                  tickSize: 5,
-                  tickPadding: 5,
-                  tickRotation: 0,
-                  legend: "Jumlah",
-                  legendPosition: "middle",
-                  legendOffset: -40,
-                }}
-                labelSkipWidth={12}
-                labelSkipHeight={12}
-                labelTextColor={{
-                  from: "color",
-                  modifiers: [["darker", 1.6]],
-                }}
-                animate={true}
-                motionStiffness={90}
-                motionDamping={15}
-              />
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={premiumTransactionData}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 60,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" angle={-45} textAnchor="end" height={60} />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [value, "Transaksi"]} />
+                  <Bar dataKey="count" name="Transaksi" fill="#FFBB28" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -245,36 +191,27 @@ export default function AnalyticsDashboard({
           </CardHeader>
           <CardContent className="pt-2">
             <div className="h-[300px]">
-              <ResponsivePie
-                data={trafficSourceData}
-                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                innerRadius={0.5}
-                padAngle={0.7}
-                cornerRadius={3}
-                colors={{ scheme: "nivo" }}
-                borderWidth={1}
-                borderColor={{
-                  from: "color",
-                  modifiers: [["darker", 0.2]],
-                }}
-                radialLabelsSkipAngle={10}
-                radialLabelsTextColor="#333333"
-                radialLabelsLinkColor={{ from: "color" }}
-                sliceLabelsSkipAngle={10}
-                sliceLabelsTextColor="#333333"
-                legends={[
-                  {
-                    anchor: "bottom",
-                    direction: "row",
-                    translateY: 30,
-                    itemWidth: 100,
-                    itemHeight: 18,
-                    itemTextColor: "#999",
-                    symbolSize: 18,
-                    symbolShape: "circle",
-                  },
-                ]}
-              />
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={trafficSourceData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {trafficSourceData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name, props) => [value, props.payload.name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -288,18 +225,51 @@ function processDateData(data: any[], dateField: string) {
   if (!data || data.length === 0) return []
 
   // Kelompokkan data berdasarkan tanggal
-  const groupedData = data.reduce((acc, item) => {
-    const date = format(new Date(item[dateField]), "dd MMM", { locale: id })
-    if (!acc[date]) {
-      acc[date] = 0
-    }
-    acc[date]++
-    return acc
-  }, {})
+  const groupedData = data.reduce(
+    (acc, item) => {
+      const date = format(new Date(item[dateField]), "dd MMM", { locale: id })
+      if (!acc[date]) {
+        acc[date] = 0
+      }
+      acc[date]++
+      return acc
+    },
+    {} as Record<string, number>,
+  )
 
-  // Konversi ke format yang dibutuhkan oleh Nivo
+  // Konversi ke format yang dibutuhkan oleh Recharts
   return Object.entries(groupedData).map(([date, count]) => ({
-    x: date,
-    y: count,
+    date,
+    count,
+  }))
+}
+
+// Fungsi untuk menggabungkan data dari dua sumber untuk grafik garis
+function combineChartData(userData: any[], messageData: any[]) {
+  // Buat set tanggal unik dari kedua sumber data
+  const allDates = new Set([...userData.map((item) => item.date), ...messageData.map((item) => item.date)])
+
+  // Buat objek untuk lookup cepat
+  const userMap = userData.reduce(
+    (acc, item) => {
+      acc[item.date] = item.count
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  const messageMap = messageData.reduce(
+    (acc, item) => {
+      acc[item.date] = item.count
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  // Gabungkan data
+  return Array.from(allDates).map((date) => ({
+    date,
+    users: userMap[date] || 0,
+    messages: messageMap[date] || 0,
   }))
 }
