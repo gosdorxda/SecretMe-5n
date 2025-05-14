@@ -1,112 +1,53 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import type { NextRequest } from "next/server"
 
-export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies })
-
-  // Cek session dan verifikasi user dengan cara yang lebih aman
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession()
-
-  if (sessionError) {
-    console.error("Error getting session:", sessionError)
-    return NextResponse.json({ error: "Authentication error" }, { status: 401 })
+export async function GET(request: NextRequest) {
+  // Verifikasi secret key untuk keamanan
+  const secretKey = request.nextUrl.searchParams.get("secret")
+  if (secretKey !== process.env.CRON_SECRET) {
+    return new Response("Unauthorized", { status: 401 })
   }
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  // Verifikasi user dengan getUser() yang lebih aman
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError) {
-    console.error("Error verifying user:", userError)
-    return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
-  }
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 401 })
-  }
-
-  // Verifikasi apakah user adalah admin
-  const { data: adminData } = await supabase.from("users").select("email").eq("id", user.id).single()
-
-  const adminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
-
-  if (!adminEmails.includes(adminData?.email)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
-  // Proses request
   try {
-    // Verifikasi rahasia untuk memastikan hanya cron job yang berwenang yang dapat memanggil API ini
-    const { searchParams } = new URL(request.url)
-    const secret = searchParams.get("secret")
+    const supabase = createClient()
 
-    if (secret !== process.env.CRON_SECRET) {
-      console.error("Upaya regenerasi sitemap tidak sah dengan rahasia yang salah")
-      return NextResponse.json({ error: "Tidak diizinkan" }, { status: 401 })
-    }
-
-    // Dapatkan statistik saat ini
-    // const supabase = createClient() // Use supabase from auth-helpers
-
-    // Hitung jumlah pengguna
-    const { count: userCount, error: userError } = await supabase
+    // Mendapatkan jumlah pengguna untuk statistik
+    const { count: userCount, error: countError } = await supabase
       .from("users")
       .select("*", { count: "exact", head: true })
 
-    if (userError) {
-      console.error("Error menghitung pengguna:", userError)
+    if (countError) {
+      console.error("Error menghitung pengguna:", countError)
+      return new Response("Error menghitung pengguna", { status: 500 })
     }
 
-    // Dapatkan waktu pembaruan terakhir
-    const { data: latestUser, error: latestError } = await supabase
-      .from("users")
-      .select("updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .single()
-
-    const lastUpdated = latestUser?.updated_at || new Date().toISOString()
-
-    // Catat informasi regenerasi
-    const timestamp = new Date().toISOString()
-    console.log(`Regenerasi sitemap dipicu pada ${timestamp}`)
-    console.log(`Jumlah pengguna dalam sitemap: ${userCount || "tidak diketahui"}`)
-    console.log(`Pembaruan terakhir: ${lastUpdated}`)
-
-    // Opsional: Simpan log regenerasi di database
-    try {
-      await supabase.from("sitemap_logs").insert({
-        triggered_at: timestamp,
-        user_count: userCount || 0,
-        last_updated: lastUpdated,
-        triggered_by: "cron",
-      })
-    } catch (logError) {
-      // Jika tabel tidak ada, abaikan error
-      console.warn("Tidak dapat mencatat regenerasi sitemap:", logError)
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Regenerasi sitemap berhasil dipicu",
-      stats: {
-        timestamp,
-        userCount,
-        lastUpdated,
-      },
+    // Mencatat regenerasi sitemap
+    const { error: logError } = await supabase.from("sitemap_logs").insert({
+      triggered_at: new Date().toISOString(),
+      user_count: userCount || 0,
+      triggered_by: "cron",
     })
+
+    if (logError) {
+      console.error("Error mencatat log sitemap:", logError)
+      return new Response("Error mencatat log sitemap", { status: 500 })
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Sitemap berhasil diregenerasi",
+        timestamp: new Date().toISOString(),
+        userCount,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    )
   } catch (error) {
-    console.error("Error meregenerasi sitemap:", error)
-    return NextResponse.json({ error: "Kesalahan server internal" }, { status: 500 })
+    console.error("Error regenerasi sitemap:", error)
+    return new Response("Error regenerasi sitemap", { status: 500 })
   }
 }

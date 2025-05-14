@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
           lastmod: user.updated_at || new Date().toISOString(),
           changefreq: "daily",
           priority: 0.6,
-          name: user.name,
+          name: user.name ? encodeXML(user.name) : "Pengguna", // Encode nama untuk XML
           username: user.username || user.numeric_id,
         }
       }) || []
@@ -44,13 +44,13 @@ export async function GET(request: NextRequest) {
     .map(
       (page) => `
   <url>
-    <loc>${page.url}</loc>
+    <loc>${encodeXML(page.url)}</loc>
     <lastmod>${page.lastmod}</lastmod>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
     <image:image>
-      <image:loc>${baseUrl}/api/og?username=${page.username}&name=${encodeURIComponent(page.name || "")}</image:loc>
-      <image:title>Profil ${page.name || "Pengguna"} di SecretMe</image:title>
+      <image:loc>${encodeXML(`${baseUrl}/api/og?username=${encodeURIComponent(page.username)}&name=${encodeURIComponent(page.name)}`)}</image:loc>
+      <image:title>Profil ${encodeXML(page.name)} di SecretMe</image:title>
     </image:image>
   </url>`,
     )
@@ -72,4 +72,15 @@ export async function GET(request: NextRequest) {
     console.error("Error membuat sitemap profil:", error)
     return new Response("Error membuat sitemap", { status: 500 })
   }
+}
+
+// Fungsi untuk mengenkode karakter khusus dalam XML
+function encodeXML(str: string): string {
+  if (!str) return ""
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
 }

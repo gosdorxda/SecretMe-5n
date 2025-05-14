@@ -7,11 +7,11 @@ export async function GET(request: NextRequest) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
-    <loc>${baseUrl}/api/sitemap/static</loc>
+    <loc>${encodeXML(`${baseUrl}/api/sitemap/static`)}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
   </sitemap>
   <sitemap>
-    <loc>${baseUrl}/api/sitemap/profiles</loc>
+    <loc>${encodeXML(`${baseUrl}/api/sitemap/profiles`)}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
   </sitemap>
 </sitemapindex>`
@@ -24,4 +24,15 @@ export async function GET(request: NextRequest) {
       "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
     },
   })
+}
+
+// Fungsi untuk mengenkode karakter khusus dalam XML
+function encodeXML(str: string): string {
+  if (!str) return ""
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
 }

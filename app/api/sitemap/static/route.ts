@@ -1,40 +1,21 @@
 import type { NextRequest } from "next/server"
 
+// Pastikan route ini selalu dirender secara dinamis
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${request.headers.get("host") || "localhost:3000"}`
 
-  // Mendefinisikan halaman statis
+  // Daftar halaman statis dengan prioritas dan frekuensi perubahan
   const staticPages = [
-    {
-      url: `${baseUrl}/`,
-      lastmod: new Date().toISOString(),
-      changefreq: "weekly",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/login`,
-      lastmod: new Date().toISOString(),
-      changefreq: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/register`,
-      lastmod: new Date().toISOString(),
-      changefreq: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/premium`,
-      lastmod: new Date().toISOString(),
-      changefreq: "monthly",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/statistics`,
-      lastmod: new Date().toISOString(),
-      changefreq: "daily",
-      priority: 0.7,
-    },
+    { url: "/", changefreq: "daily", priority: 1.0 },
+    { url: "/login", changefreq: "monthly", priority: 0.8 },
+    { url: "/register", changefreq: "monthly", priority: 0.8 },
+    { url: "/about", changefreq: "monthly", priority: 0.7 },
+    { url: "/features", changefreq: "weekly", priority: 0.9 },
+    { url: "/contact", changefreq: "monthly", priority: 0.7 },
+    { url: "/privacy", changefreq: "monthly", priority: 0.6 },
+    { url: "/terms", changefreq: "monthly", priority: 0.6 },
   ]
 
   // Membuat XML
@@ -44,8 +25,8 @@ export async function GET(request: NextRequest) {
     .map(
       (page) => `
   <url>
-    <loc>${page.url}</loc>
-    <lastmod>${page.lastmod}</lastmod>
+    <loc>${encodeXML(`${baseUrl}${page.url}`)}</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
   </url>`,
@@ -61,4 +42,15 @@ export async function GET(request: NextRequest) {
       "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
     },
   })
+}
+
+// Fungsi untuk mengenkode karakter khusus dalam XML
+function encodeXML(str: string): string {
+  if (!str) return ""
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
 }

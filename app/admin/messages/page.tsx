@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatDistanceToNow } from "date-fns"
-import { id } from "date-fns/locale"
+import { format } from "date-fns"
 import { Pagination } from "@/components/pagination"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -88,32 +88,42 @@ export default async function MessagesPage({
             </div>
           )}
 
-          <div className="space-y-6">
-            {messagesWithUsers && messagesWithUsers.length > 0 ? (
-              messagesWithUsers.map((message) => (
-                <div key={message.id} className="border-b pb-4 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-medium">
-                        Kepada: {message.user?.name || "Unknown"}
+          {messagesWithUsers && messagesWithUsers.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[180px]">Penerima</TableHead>
+                    <TableHead>Isi Pesan</TableHead>
+                    <TableHead className="w-[150px]">Tanggal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {messagesWithUsers.map((message) => (
+                    <TableRow key={message.id}>
+                      <TableCell className="font-medium">
+                        {message.user?.name || "Unknown"}
                         {message.user?.username && (
-                          <span className="text-muted-foreground ml-1">@{message.user.username}</span>
+                          <div className="text-xs text-muted-foreground">@{message.user.username}</div>
                         )}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true, locale: id })}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-muted-foreground py-4">
-                {messagesError ? "Error saat memuat pesan." : "Tidak ada pesan yang ditemukan."}
-              </p>
-            )}
-          </div>
+                      </TableCell>
+                      <TableCell className="max-w-md">
+                        <div className="truncate">{message.content}</div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        <div>{format(new Date(message.created_at), "dd MMM yyyy")}</div>
+                        <div>{format(new Date(message.created_at), "HH:mm")}</div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">
+              {messagesError ? "Error saat memuat pesan." : "Tidak ada pesan yang ditemukan."}
+            </p>
+          )}
 
           {/* Pagination */}
           {count && count > perPage && (
