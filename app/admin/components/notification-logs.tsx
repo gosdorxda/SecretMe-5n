@@ -18,6 +18,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface NotificationLog {
   id: string
@@ -38,31 +48,58 @@ export default function NotificationLogs() {
   const [channelFilter, setChannelFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedLog, setSelectedLog] = useState<NotificationLog | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   const supabase = createClient()
   const { toast } = useToast()
 
   useEffect(() => {
     fetchNotificationLogs()
-  }, [typeFilter, channelFilter, statusFilter])
+  }, [typeFilter, channelFilter, statusFilter, currentPage, itemsPerPage])
 
   const fetchNotificationLogs = async () => {
     setLoadingLogs(true)
     try {
-      let query = supabase.from("notification_logs").select("*").order("created_at", { ascending: false }).limit(100)
+      // Buat query dasar
+      let baseQuery = supabase.from("notification_logs").select("*", { count: "exact" })
 
+      // Tambahkan filter jika dipilih
       if (typeFilter !== "all") {
-        query = query.eq("notification_type", typeFilter)
+        baseQuery = baseQuery.eq("notification_type", typeFilter)
       }
 
       if (channelFilter !== "all") {
-        query = query.eq("channel", channelFilter)
+        baseQuery = baseQuery.eq("channel", channelFilter)
       }
 
       if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter)
+        baseQuery = baseQuery.eq("status", statusFilter)
       }
 
-      const { data, error } = await query
+      // Hitung total untuk pagination
+      const { count, error: countError } = await baseQuery
+
+      if (countError) {
+        throw countError
+      }
+
+      // Set total count dan hitung total halaman
+      const total = count || 0
+      setTotalCount(total)
+      setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)))
+
+      // Jika halaman saat ini lebih besar dari total halaman, reset ke halaman 1
+      if (currentPage > Math.max(1, Math.ceil(total / itemsPerPage)) && total > 0) {
+        setCurrentPage(1)
+      }
+
+      // Ambil data dengan pagination
+      const from = (currentPage - 1) * itemsPerPage
+      const to = from + itemsPerPage - 1
+
+      const { data, error } = await baseQuery.order("created_at", { ascending: false }).range(from, to)
 
       if (error) {
         if (error.message?.includes("does not exist")) {
@@ -127,6 +164,80 @@ export default function NotificationLogs() {
       default:
         return status || "Tidak diketahui"
     }
+  }
+
+  // Fungsi untuk merender pagination
+  const renderPagination = () => {
+    if (totalPages <= 1) return null
+
+    return (
+      <Pagination className="mt-4">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            />
+          </PaginationItem>
+
+          {/* Render halaman pertama */}
+          {currentPage > 3 && (
+            <PaginationItem>
+              <PaginationLink onClick={() => setCurrentPage(1)}>1</PaginationLink>
+            </PaginationItem>
+          )}
+
+          {/* Render ellipsis jika perlu */}
+          {currentPage > 4 && (
+            <PaginationItem>
+              <PaginationEllipsis />
+            </PaginationItem>
+          )}
+
+          {/* Render halaman sebelum halaman saat ini */}
+          {currentPage > 2 && (
+            <PaginationItem>
+              <PaginationLink onClick={() => setCurrentPage(currentPage - 1)}>{currentPage - 1}</PaginationLink>
+            </PaginationItem>
+          )}
+
+          {/* Render halaman saat ini */}
+          <PaginationItem>
+            <PaginationLink isActive>{currentPage}</PaginationLink>
+          </PaginationItem>
+
+          {/* Render halaman setelah halaman saat ini */}
+          {currentPage < totalPages - 1 && (
+            <PaginationItem>
+              <PaginationLink onClick={() => setCurrentPage(currentPage + 1)}>{currentPage + 1}</PaginationLink>
+            </PaginationItem>
+          )}
+
+          {/* Render ellipsis jika perlu */}
+          {currentPage < totalPages - 3 && (
+            <PaginationItem>
+              <PaginationEllipsis />
+            </PaginationItem>
+          )}
+
+          {/* Render halaman terakhir */}
+          {currentPage < totalPages - 2 && (
+            <PaginationItem>
+              <PaginationLink onClick={() => setCurrentPage(totalPages)}>{totalPages}</PaginationLink>
+            </PaginationItem>
+          )}
+
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    )
   }
 
   return (
@@ -194,6 +305,29 @@ export default function NotificationLogs() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="items-per-page" className="text-xs whitespace-nowrap">
+                  Per halaman:
+                </Label>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value))
+                    setCurrentPage(1) // Reset ke halaman pertama saat mengubah jumlah item per halaman
+                  }}
+                >
+                  <SelectTrigger id="items-per-page" className="w-[80px]">
+                    <SelectValue placeholder="10" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Button
@@ -218,9 +352,28 @@ export default function NotificationLogs() {
           </div>
 
           {loadingLogs ? (
-            <div className="text-center py-8">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400 mb-2" />
-              <p className="text-sm text-gray-500">Memuat log notifikasi...</p>
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center space-x-4 p-4 border rounded-md">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[100px]" />
+                    <Skeleton className="h-4 w-[80px]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[80px]" />
+                    <Skeleton className="h-4 w-[60px]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[70px]" />
+                    <Skeleton className="h-4 w-[50px]" />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-[150px]" />
+                    <Skeleton className="h-4 w-[120px]" />
+                  </div>
+                  <Skeleton className="h-8 w-[60px]" />
+                </div>
+              ))}
             </div>
           ) : notificationLogs.length === 0 ? (
             <div className="text-center py-8 border rounded-md bg-gray-50">
@@ -415,6 +568,15 @@ export default function NotificationLogs() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Pagination */}
+              {renderPagination()}
+
+              {/* Info pagination */}
+              <div className="px-4 py-3 bg-gray-50 text-xs text-gray-500 border-t">
+                Menampilkan {notificationLogs.length} dari {totalCount} log
+                {totalPages > 1 ? ` (Halaman ${currentPage} dari ${totalPages})` : ""}
               </div>
             </div>
           )}

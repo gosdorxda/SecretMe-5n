@@ -5,6 +5,7 @@ import { id } from "date-fns/locale"
 import { Pagination } from "@/components/pagination"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export default async function MessagesPage({
   searchParams,
@@ -20,23 +21,36 @@ export default async function MessagesPage({
   const to = from + perPage - 1
 
   // Ambil total jumlah pesan
-  const { count } = await supabase.from("messages").select("*", { count: "exact", head: true })
+  const { count, error: countError } = await supabase.from("messages").select("*", { count: "exact", head: true })
 
-  // Ambil pesan dengan pagination
-  const { data: messages } = await supabase
+  if (countError) {
+    console.error("Error fetching message count:", countError)
+  }
+
+  // Ambil pesan dengan pagination - perbaikan query
+  const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select(`
       id, 
       content, 
       created_at,
-      users!recipient_id (
+      recipient_id,
+      profiles:recipient_id (
         id,
-        name,
+        full_name,
         username
       )
     `)
     .order("created_at", { ascending: false })
     .range(from, to)
+
+  if (messagesError) {
+    console.error("Error fetching messages:", messagesError)
+  }
+
+  // Debug info
+  console.log("Messages count:", count)
+  console.log("Messages data sample:", messages?.slice(0, 2))
 
   return (
     <div className="space-y-6">
@@ -49,10 +63,17 @@ export default async function MessagesPage({
         <CardHeader>
           <CardTitle>Daftar Pesan</CardTitle>
           <CardDescription>
-            Menampilkan {from + 1}-{Math.min(to + 1, count || 0)} dari {count || 0} pesan
+            {count ? `Menampilkan ${from + 1}-${Math.min(to + 1, count)} dari ${count} pesan` : "Memuat data pesan..."}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {messagesError && (
+            <div className="bg-red-50 text-red-800 p-4 mb-4 rounded-md">
+              <p className="font-medium">Error saat memuat pesan:</p>
+              <p className="text-sm">{messagesError.message}</p>
+            </div>
+          )}
+
           <div className="space-y-6">
             {messages && messages.length > 0 ? (
               messages.map((message) => (
@@ -60,9 +81,9 @@ export default async function MessagesPage({
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className="font-medium">
-                        Kepada: {message.users?.name || "Unknown"}
-                        {message.users?.username && (
-                          <span className="text-muted-foreground ml-1">@{message.users.username}</span>
+                        Kepada: {message.profiles?.full_name || "Unknown"}
+                        {message.profiles?.username && (
+                          <span className="text-muted-foreground ml-1">@{message.profiles.username}</span>
                         )}
                       </h3>
                       <p className="text-xs text-muted-foreground">
@@ -74,14 +95,16 @@ export default async function MessagesPage({
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-4">Tidak ada pesan yang ditemukan.</p>
+              <p className="text-center text-muted-foreground py-4">
+                {messagesError ? "Error saat memuat pesan." : "Tidak ada pesan yang ditemukan."}
+              </p>
             )}
           </div>
 
           {/* Pagination */}
           {count && count > perPage && (
             <div className="mt-6">
-              <Pagination currentPage={page} totalPages={Math.ceil((count || 0) / perPage)} baseUrl="/admin/messages" />
+              <Pagination currentPage={page} totalPages={Math.ceil(count / perPage)} baseUrl="/admin/messages" />
             </div>
           )}
         </CardContent>
