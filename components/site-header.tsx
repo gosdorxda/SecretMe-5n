@@ -19,7 +19,7 @@ export function SiteHeader() {
           <div className="flex h-8 w-8 items-center justify-center rounded-[var(--border-radius)] bg-[var(--main)] border-2 border-[var(--border)] shadow-neo-sm">
             <MessageSquare className="h-4 w-4 text-[var(--mtext)]" />
           </div>
-          <span className="font-bold text-lg">Secretme</span>
+          <span className="font-bold text-lg text-[var(--text)]">Secretme</span>
         </Link>
 
         <div className="flex items-center gap-4">
