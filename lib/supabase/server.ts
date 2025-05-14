@@ -1,4 +1,5 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
@@ -10,8 +11,9 @@ export const createClient = () => {
 
     if (isBrowser) {
       // For client-side, we'll use a different approach
-      // This is a placeholder that should be replaced with proper client-side auth
       console.warn("Server client being called from browser context - this may not work as expected")
+
+      // Return a dummy client that won't make actual requests
       return {
         auth: {
           getSession: async () => ({ data: { session: null }, error: null }),
@@ -37,8 +39,6 @@ export const createClient = () => {
     }
 
     // Only import cookies() in server context
-    const { cookies } = require("next/headers")
-
     let cookieStore
     try {
       cookieStore = cookies()

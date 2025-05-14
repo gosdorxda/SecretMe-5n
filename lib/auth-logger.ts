@@ -19,7 +19,7 @@ const inMemoryLogs: AuthLogEntry[] = []
 const MAX_IN_MEMORY_LOGS = 1000
 
 // Fungsi untuk mendeteksi perangkat mobile
-function isMobileDevice(): boolean {
+export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }

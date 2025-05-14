@@ -53,7 +53,7 @@ let totalRequests = 0
 let errorRequests = 0
 
 // Fungsi untuk mendeteksi perangkat mobile
-function isMobileDevice(): boolean {
+export function isMobileDevice(): boolean {
   if (typeof navigator === "undefined") return false
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
@@ -189,15 +189,17 @@ function checkRateLimitWarning(stats: AuthRequestStats[]) {
     )
 
     // Kirim event untuk UI
-    const event = new CustomEvent("auth-rate-limit-warning", {
-      detail: {
-        type: "minute",
-        current: lastMinute,
-        limit: RATE_LIMITS.requestsPerMinute,
-        ratio: minuteRatio,
-      },
-    })
-    window.dispatchEvent(event)
+    if (typeof window !== "undefined") {
+      const event = new CustomEvent("auth-rate-limit-warning", {
+        detail: {
+          type: "minute",
+          current: lastMinute,
+          limit: RATE_LIMITS.requestsPerMinute,
+          ratio: minuteRatio,
+        },
+      })
+      window.dispatchEvent(event)
+    }
   }
 
   if (hourRatio > RATE_LIMIT_THRESHOLD) {
@@ -206,15 +208,17 @@ function checkRateLimitWarning(stats: AuthRequestStats[]) {
     )
 
     // Kirim event untuk UI
-    const event = new CustomEvent("auth-rate-limit-warning", {
-      detail: {
-        type: "hour",
-        current: lastHour,
-        limit: RATE_LIMITS.requestsPerHour,
-        ratio: hourRatio,
-      },
-    })
-    window.dispatchEvent(event)
+    if (typeof window !== "undefined") {
+      const event = new CustomEvent("auth-rate-limit-warning", {
+        detail: {
+          type: "hour",
+          current: lastHour,
+          limit: RATE_LIMITS.requestsPerHour,
+          ratio: hourRatio,
+        },
+      })
+      window.dispatchEvent(event)
+    }
   }
 
   if (dayRatio > RATE_LIMIT_THRESHOLD) {
@@ -223,21 +227,25 @@ function checkRateLimitWarning(stats: AuthRequestStats[]) {
     )
 
     // Kirim event untuk UI
-    const event = new CustomEvent("auth-rate-limit-warning", {
-      detail: {
-        type: "day",
-        current: lastDay,
-        limit: RATE_LIMITS.requestsPerDay,
-        ratio: dayRatio,
-      },
-    })
-    window.dispatchEvent(event)
+    if (typeof window !== "undefined") {
+      const event = new CustomEvent("auth-rate-limit-warning", {
+        detail: {
+          type: "day",
+          current: lastDay,
+          limit: RATE_LIMITS.requestsPerDay,
+          ratio: dayRatio,
+        },
+      })
+      window.dispatchEvent(event)
+    }
   }
 }
 
 // Fungsi untuk membersihkan statistik
 export function clearAuthStats() {
-  localStorage.removeItem(AUTH_STATS_KEY)
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(AUTH_STATS_KEY)
+  }
 }
 
 // Fungsi untuk mengekspor statistik sebagai JSON

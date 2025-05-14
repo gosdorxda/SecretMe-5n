@@ -4,17 +4,13 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
-// Client-side Supabase client
+// Client-side Supabase client - singleton pattern
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
 // Throttle auth requests to prevent rate limiting
 const AUTH_REQUEST_LIMIT = 5 // Maximum requests per minute
 const AUTH_REQUEST_WINDOW = 60000 // 1 minute window (in ms)
 const authRequestTimestamps: number[] = []
-
-// Throttling untuk permintaan auth
-const AUTH_REQUEST_LIMIT_OLD = 3 // Maksimum 3 permintaan
-const AUTH_REQUEST_WINDOW_OLD = 60000 // dalam jendela 1 menit (60000ms)
 
 // Debounce untuk mencegah multiple calls
 let authDebounceTimer: NodeJS.Timeout | null = null
@@ -60,32 +56,8 @@ function shouldThrottleAuthRequest(): boolean {
   return authRequestTimestamps.length >= AUTH_REQUEST_LIMIT
 }
 
-// Add this function after shouldThrottleAuthRequest
 // Record a new auth request timestamp
 function recordAuthRequestTimestamp() {
-  authRequestTimestamps.push(Date.now())
-}
-
-// Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
-function shouldThrottleAuthRequest_OLD(): boolean {
-  const now = Date.now()
-
-  // Jika sudah pernah hit rate limit, throttle lebih agresif
-  if (hasHitRateLimit && now < rateLimitResetTime) {
-    return true
-  }
-
-  // Hapus timestamp yang lebih lama dari jendela waktu
-  while (authRequestTimestamps.length > 0 && authRequestTimestamps[0] < now - AUTH_REQUEST_WINDOW_OLD) {
-    authRequestTimestamps.shift()
-  }
-
-  // Jika jumlah permintaan dalam jendela waktu melebihi batas, throttle
-  return authRequestTimestamps.length >= AUTH_REQUEST_LIMIT_OLD
-}
-
-// Fungsi untuk mencatat permintaan auth baru
-function recordAuthRequestTimestamp_OLD() {
   authRequestTimestamps.push(Date.now())
 }
 
@@ -387,19 +359,7 @@ function handleRateLimitError(error: any) {
   return false
 }
 
-// Fungsi untuk mendapatkan nama endpoint dari URL
-function getEndpointName(url: string): string {
-  if (url.includes("/auth/v1/token")) return "refreshToken"
-  if (url.includes("/auth/v1/logout")) return "signOut"
-  if (url.includes("/auth/v1/user")) return "getUser"
-  if (url.includes("/auth/v1/session")) return "getSession"
-
-  // Ekstrak bagian terakhir dari path
-  const parts = url.split("/")
-  return parts[parts.length - 1] || url
-}
-
-// Modify the createClient function to implement throttling
+// Modify the createClient function to implement throttling and use singleton pattern
 export const createClient = () => {
   // If we already have a client, return it
   if (supabaseClient) {

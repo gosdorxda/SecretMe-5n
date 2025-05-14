@@ -1,5 +1,5 @@
-import { getSessionCache } from "@/lib/auth-cache"
-import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { redirect } from "next/navigation"
 import { DashboardClient } from "./client"
 
@@ -7,19 +7,30 @@ import { DashboardClient } from "./client"
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  // Gunakan cache untuk mendapatkan session
-  const { session, user, error } = await getSessionCache()
+  // Gunakan createServerComponentClient langsung dengan cookies
+  const supabase = createServerComponentClient({ cookies })
+
+  // Dapatkan session
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  // Log untuk debugging
+  console.log("Dashboard page session check:", !!session, sessionError ? "Error: " + sessionError.message : "")
 
   // Redirect ke login jika tidak ada session
-  if (!session || !user) {
+  if (!session || !session.user) {
+    console.log("No session found, redirecting to login")
     redirect("/login?redirect=/dashboard")
   }
 
-  // Gunakan user dari session tanpa memanggil getUser()
-  const supabase = createClient()
-
   // Ambil data pengguna
-  const { data: userData, error: userDataError } = await supabase.from("users").select("*").eq("id", user.id).single()
+  const { data: userData, error: userDataError } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", session.user.id)
+    .single()
 
   if (userDataError || !userData) {
     console.error("Error fetching user data:", userDataError)
@@ -30,7 +41,7 @@ export default async function DashboardPage() {
   const { data: messages, error: messagesError } = await supabase
     .from("messages")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", session.user.id)
     .order("created_at", { ascending: false })
 
   if (messagesError) {
@@ -41,7 +52,7 @@ export default async function DashboardPage() {
   const { data: profileViews, error: viewsError } = await supabase
     .from("profile_views")
     .select("count")
-    .eq("user_id", user.id)
+    .eq("user_id", session.user.id)
     .maybeSingle()
 
   const viewCount = profileViews?.count || 0
