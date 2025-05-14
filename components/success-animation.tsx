@@ -7,15 +7,24 @@ import { CheckCircle, Mail, Loader2 } from "lucide-react"
 interface SuccessAnimationProps {
   onComplete?: () => void
   message?: string
+  skipSending?: boolean
 }
 
 export const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
   onComplete,
   message = "Pesan berhasil dikirim!",
+  skipSending = false,
 }) => {
-  const [stage, setStage] = useState<"sending" | "success">("sending")
+  const [stage, setStage] = useState<"sending" | "success">(skipSending ? "success" : "sending")
 
   useEffect(() => {
+    if (skipSending) {
+      const completeTimer = setTimeout(() => {
+        if (onComplete) onComplete()
+      }, 2500)
+      return () => clearTimeout(completeTimer)
+    }
+
     const timer = setTimeout(() => {
       setStage("success")
 
@@ -25,10 +34,10 @@ export const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
       }, 2500)
 
       return () => clearTimeout(completeTimer)
-    }, 1500)
+    }, 1000) // Reduced from 1500ms to 1000ms for faster feedback
 
     return () => clearTimeout(timer)
-  }, [onComplete])
+  }, [onComplete, skipSending])
 
   return (
     <div className="success-animation flex flex-col items-center justify-center py-8 px-4 text-center">
@@ -53,6 +62,7 @@ export const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
             </div>
           </div>
           <p className="success-message text-lg font-medium">{message}</p>
+          <p className="text-sm text-gray-500 mt-2">Terima kasih atas pesan Anda!</p>
         </div>
       )}
     </div>

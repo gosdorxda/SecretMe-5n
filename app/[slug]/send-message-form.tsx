@@ -2,14 +2,15 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Send, Sparkles } from "lucide-react"
+import { Send, Sparkles, AlertCircle, RefreshCw } from "lucide-react"
 import { SuccessAnimation } from "@/components/success-animation"
+import { SkeletonMessageForm } from "@/components/skeleton-message-form"
 
 interface User {
   id: string
@@ -48,19 +49,40 @@ const RATE_LIMIT_CACHE_DURATION = 5000
 export function SendMessageForm({ user }: SendMessageFormProps) {
   const [message, setMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [characterCount, setCharacterCount] = useState(0)
   const [rateLimitError, setRateLimitError] = useState<string | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const [rateLimitCache, setRateLimitCache] = useState<RateLimitCache | null>(null)
+  const [isFormLoaded, setIsFormLoaded] = useState(false)
+  const [optimisticSuccess, setOptimisticSuccess] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const lastMessageRef = useRef<string>("")
   const maxLength = 500
   const supabase = createClient()
   const { toast } = useToast()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Simulasi loading form untuk mengurangi persepsi waktu tunggu
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsFormLoaded(true)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Reset rate limit cache when component mounts or user changes
   useEffect(() => {
     setRateLimitCache(null)
   }, [user.id])
+
+  // Focus textarea when form is loaded
+  useEffect(() => {
+    if (isFormLoaded && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [isFormLoaded])
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
@@ -74,6 +96,9 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     setMessage(template)
     setCharacterCount(template.length)
     setShowTemplates(false)
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
   }
 
   const checkRateLimit = async (): Promise<boolean> => {
@@ -93,6 +118,9 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       }
 
       console.log("Checking rate limit from server")
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
       const response = await fetch("/api/rate-limit/check", {
         method: "POST",
         headers: {
@@ -101,7 +129,8 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         body: JSON.stringify({
           recipientId: user.id,
         }),
-      })
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId))
 
       const data = await response.json()
 
@@ -131,6 +160,9 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
   // Fungsi untuk memicu notifikasi
   const triggerNotification = async (messageId: string) => {
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
       const response = await fetch("/api/notifications/trigger", {
         method: "POST",
         headers: {
@@ -141,13 +173,15 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
           messageId: messageId,
           type: "new_message",
         }),
-      })
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId))
 
       if (!response.ok) {
         console.error("Failed to trigger notification:", await response.text())
       }
     } catch (error) {
       console.error("Error triggering notification:", error)
+      // Non-critical error, continue
     }
   }
 
@@ -163,21 +197,24 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     }
 
     setIsSending(true)
+    setSendError(null)
+    lastMessageRef.current = message
+
+    // Show optimistic success feedback after a short delay
+    // This creates the perception of faster response
+    const optimisticTimer = setTimeout(() => {
+      if (isSending) {
+        setOptimisticSuccess(true)
+      }
+    }, 800)
 
     try {
-      // Verifikasi user terlebih dahulu jika ada session
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-
-      // Jika ada error dalam verifikasi user, log error tapi tetap lanjutkan
-      // karena pengiriman pesan anonim tidak memerlukan autentikasi
-      if (userError) {
-        console.error("User verification error:", userError.message)
-      }
-
       // Periksa rate limit sebelum mengirim pesan
       const isAllowed = await checkRateLimit()
 
       if (!isAllowed) {
+        clearTimeout(optimisticTimer)
+        setOptimisticSuccess(false)
         toast({
           title: "Gagal mengirim pesan",
           description: rateLimitError || "Anda telah mencapai batas pengiriman pesan. Coba lagi nanti.",
@@ -203,33 +240,34 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         throw error
       }
 
-      // Trigger notifikasi jika pesan berhasil dikirim
+      // Trigger notifikasi jika pesan berhasil dikirim (non-blocking)
       if (data && data.id) {
-        await triggerNotification(data.id)
+        triggerNotification(data.id).catch(console.error)
       }
 
-      // Laporkan rate limit
-      try {
-        await fetch("/api/rate-limit/report", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            recipientId: user.id,
-          }),
-        })
+      // Laporkan rate limit (non-blocking)
+      fetch("/api/rate-limit/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientId: user.id,
+        }),
+      }).catch(console.error)
 
-        // Invalidate rate limit cache after successful send
-        setRateLimitCache(null)
-      } catch (error) {
-        console.error("Error reporting rate limit:", error)
-      }
+      // Invalidate rate limit cache after successful send
+      setRateLimitCache(null)
 
-      // Tampilkan animasi sukses
+      // Clear optimistic timer and show real success
+      clearTimeout(optimisticTimer)
+      setOptimisticSuccess(false)
       setShowSuccess(true)
     } catch (error: any) {
+      clearTimeout(optimisticTimer)
+      setOptimisticSuccess(false)
       console.error(error)
+      setSendError(error.message || "Terjadi kesalahan saat mengirim pesan")
       toast({
         title: "Gagal mengirim pesan",
         description: error.message || "Terjadi kesalahan saat mengirim pesan",
@@ -239,6 +277,17 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     }
   }
 
+  const handleRetry = useCallback(() => {
+    setIsRetrying(true)
+    setSendError(null)
+
+    // Simulate a brief delay before retrying
+    setTimeout(() => {
+      setIsRetrying(false)
+      setIsSending(false)
+    }, 500)
+  }, [])
+
   const handleAnimationComplete = () => {
     setShowSuccess(false)
     setIsSending(false)
@@ -246,6 +295,31 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     setCharacterCount(0)
   }
 
+  // Show skeleton loading while form is loading
+  if (!isFormLoaded) {
+    return <SkeletonMessageForm />
+  }
+
+  // Show optimistic success feedback
+  if (optimisticSuccess) {
+    return (
+      <Card className="neo-card">
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+            <div className="relative mb-4">
+              <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full border-2 border-gray-300 border-t-transparent animate-spin"></div>
+              </div>
+            </div>
+            <p className="text-lg font-medium">Mengirim pesan...</p>
+            <p className="text-sm text-gray-500 mt-2">Pesan Anda sedang diproses</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show success animation
   if (showSuccess) {
     return (
       <Card className="neo-card">
@@ -267,11 +341,13 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
           <div className="space-y-2">
             <div className="relative">
               <Textarea
+                ref={textareaRef}
                 placeholder="Tulis pesan anonim Anda di sini..."
                 value={message}
                 onChange={handleMessageChange}
                 className="min-h-[120px] resize-none"
                 maxLength={maxLength}
+                disabled={isSending}
               />
               <Button
                 type="button"
@@ -280,6 +356,7 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
                 className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
                 onClick={() => setShowTemplates(!showTemplates)}
                 title="Gunakan template pesan"
+                disabled={isSending}
               >
                 <Sparkles className="h-4 w-4" />
               </Button>
@@ -311,10 +388,52 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
               </span>
             </div>
           </div>
-          {rateLimitError && <div className="text-sm text-red-500 p-2 bg-red-50 rounded-md">{rateLimitError}</div>}
-          <Button type="submit" className="w-full neo-btn" disabled={isSending || !message.trim()}>
+
+          {rateLimitError && (
+            <div className="text-sm text-red-500 p-2 bg-red-50 rounded-md flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>{rateLimitError}</span>
+            </div>
+          )}
+
+          {sendError && (
+            <div className="text-sm text-red-500 p-3 bg-red-50 rounded-md flex items-start">
+              <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium">Gagal mengirim pesan</p>
+                <p className="mt-1">{sendError}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 text-xs h-8"
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                >
+                  {isRetrying ? (
+                    <>
+                      <div className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                      Mencoba ulang...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                      Coba lagi
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full neo-btn transition-all duration-200 relative overflow-hidden"
+            disabled={isSending || !message.trim()}
+          >
             {isSending ? (
               <>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                 Mengirim...
               </>
