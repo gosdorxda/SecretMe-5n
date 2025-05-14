@@ -6,8 +6,15 @@ export const dynamic = "force-dynamic"
 export default async function UsersPage() {
   const supabase = createClient()
 
-  // Ambil data pengguna dengan pagination
-  const { data: users } = await supabase.from("users").select("*").order("created_at", { ascending: false }).limit(10)
+  // Kita hanya mengambil total count untuk pagination
+  const { count } = await supabase.from("users").select("*", { count: "exact", head: true })
+
+  // Ambil data pengguna awal (halaman pertama)
+  const { data: initialUsers } = await supabase
+    .from("users")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .range(0, 19) // 20 pengguna per halaman
 
   return (
     <div className="space-y-6">
@@ -16,7 +23,7 @@ export default async function UsersPage() {
         <p className="text-muted-foreground">Kelola semua pengguna yang terdaftar di platform.</p>
       </div>
 
-      <UsersManagement initialUsers={users || []} />
+      <UsersManagement initialUsers={initialUsers || []} totalUsers={count || 0} />
     </div>
   )
 }

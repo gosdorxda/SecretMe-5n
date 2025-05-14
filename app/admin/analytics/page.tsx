@@ -41,25 +41,26 @@ export default async function AnalyticsPage() {
     .gte("created_at", last30Days)
     .order("created_at", { ascending: true })
 
-  // Ambil statistik pengguna berdasarkan status premium
-  const { data: premiumStats } = await supabase.from("users").select("is_premium, count").eq("is_premium", true).count()
-
-  const { data: totalUsers } = await supabase.from("users").select("count").count()
-
-  // Ambil statistik pengguna bulan ini vs bulan lalu
-  const { data: currentMonthUsers } = await supabase
+  // Ambil statistik pengguna berdasarkan status premium - PERBAIKAN SYNTAX COUNT
+  const { count: premiumUsersCount } = await supabase
     .from("users")
-    .select("count")
+    .select("*", { count: "exact", head: true })
+    .eq("is_premium", true)
+
+  const { count: totalUsersCount } = await supabase.from("users").select("*", { count: "exact", head: true })
+
+  // Ambil statistik pengguna bulan ini vs bulan lalu - PERBAIKAN SYNTAX COUNT
+  const { count: currentMonthUsersCount } = await supabase
+    .from("users")
+    .select("*", { count: "exact", head: true })
     .gte("created_at", currentMonthStart)
     .lte("created_at", currentMonthEnd)
-    .count()
 
-  const { data: lastMonthUsers } = await supabase
+  const { count: lastMonthUsersCount } = await supabase
     .from("users")
-    .select("count")
+    .select("*", { count: "exact", head: true })
     .gte("created_at", lastMonthStart)
     .lte("created_at", lastMonthEnd)
-    .count()
 
   // Ambil data untuk peta panas aktivitas
   const { data: hourlyActivity } = await supabase
@@ -83,12 +84,12 @@ export default async function AnalyticsPage() {
       messageActivity={messageActivity || []}
       premiumTransactions={premiumTransactions || []}
       premiumStats={{
-        premiumUsers: premiumStats?.count || 0,
-        totalUsers: totalUsers?.count || 0,
+        premiumUsers: premiumUsersCount || 0,
+        totalUsers: totalUsersCount || 0,
       }}
       monthlyComparison={{
-        currentMonth: currentMonthUsers?.count || 0,
-        lastMonth: lastMonthUsers?.count || 0,
+        currentMonth: currentMonthUsersCount || 0,
+        lastMonth: lastMonthUsersCount || 0,
       }}
       hourlyActivity={hourlyActivity || []}
       trafficSources={trafficSources}

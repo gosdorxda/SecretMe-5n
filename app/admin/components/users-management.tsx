@@ -20,7 +20,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Search, UserCheck, UserX, Calendar, RefreshCw, Trash2, AlertTriangle, Crown } from "lucide-react"
+import { Search, UserCheck, UserX, Calendar, RefreshCw, Trash2, AlertTriangle, Crown, Download } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Definisikan interface User
 interface User {
@@ -37,9 +39,10 @@ interface User {
 
 interface UsersManagementProps {
   initialUsers: User[]
+  totalUsers: number
 }
 
-export default function UsersManagement({ initialUsers }: UsersManagementProps) {
+export default function UsersManagement({ initialUsers, totalUsers }: UsersManagementProps) {
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -47,12 +50,14 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [filterPremium, setFilterPremium] = useState<boolean | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [userToToggle, setUserToToggle] = useState<User | null>(null)
   const [isToggleDialogOpen, setIsToggleDialogOpen] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
   const [toggleAction, setToggleAction] = useState<"add" | "remove">("add")
+  const [isSearching, setIsSearching] = useState(false)
+  const [filteredTotal, setFilteredTotal] = useState(totalUsers)
 
   // State untuk dialog hapus akun
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
@@ -62,51 +67,69 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
   const supabase = createClient()
   const { toast } = useToast()
 
-  // Hitung total halaman berdasarkan jumlah pengguna yang difilter
-  const calculateTotalPages = (filteredCount: number) => {
-    return Math.ceil(filteredCount / itemsPerPage)
+  // Hitung total halaman berdasarkan jumlah pengguna
+  useEffect(() => {
+    setTotalPages(Math.ceil(filteredTotal / itemsPerPage))
+  }, [filteredTotal, itemsPerPage])
+
+  // Load users dengan pagination
+  const loadUsers = async (page: number, perPage: number, search = searchTerm, premiumFilter = filterPremium) => {
+    setIsLoading(true)
+    try {
+      let query = supabase
+        .from("users")
+        .select("*", { count: "exact" })
+        .order(sortField, { ascending: sortDirection === "asc" })
+
+      // Apply premium filter if set
+      if (premiumFilter !== null) {
+        query = query.eq("is_premium", premiumFilter)
+      }
+
+      // Apply search filter if set
+      if (search) {
+        query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,username.ilike.%${search}%`)
+      }
+
+      // Get total count for pagination
+      const { count } = await query.select("*", { count: "exact", head: true })
+      setFilteredTotal(count || 0)
+
+      // Get paginated data
+      const from = (page - 1) * perPage
+      const to = from + perPage - 1
+      const { data, error } = await query.range(from, to)
+
+      if (error) throw error
+
+      setUsers(data || [])
+    } catch (error: any) {
+      console.error("Error loading users:", error)
+      toast({
+        title: "Gagal memuat data",
+        description: error.message || "Terjadi kesalahan saat mengambil data pengguna",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  // Filter dan sort users
-  const filteredUsers = users
-    .filter((user) => {
-      // Filter berdasarkan pencarian
-      const searchMatch =
-        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()))
-
-      // Filter berdasarkan status premium
-      const premiumMatch = filterPremium === null || user.is_premium === filterPremium
-
-      return searchMatch && premiumMatch
-    })
-    .sort((a, b) => {
-      // Sort berdasarkan field yang dipilih
-      if (a[sortField] < b[sortField]) {
-        return sortDirection === "asc" ? -1 : 1
-      }
-      if (a[sortField] > b[sortField]) {
-        return sortDirection === "asc" ? 1 : -1
-      }
-      return 0
-    })
-
-  // Hitung total halaman berdasarkan hasil filter
-  const totalFilteredUsers = filteredUsers.length
-  const calculatedTotalPages = calculateTotalPages(totalFilteredUsers)
-
-  // Update state totalPages jika berubah
+  // Load users when page, itemsPerPage, or filters change
   useEffect(() => {
-    setTotalPages(calculatedTotalPages)
-    // Reset ke halaman pertama jika filter berubah dan total halaman kurang dari halaman saat ini
-    if (currentPage > calculatedTotalPages) {
-      setCurrentPage(1)
-    }
-  }, [totalFilteredUsers, itemsPerPage, currentPage, calculatedTotalPages])
+    loadUsers(currentPage, itemsPerPage)
+  }, [currentPage, itemsPerPage, sortField, sortDirection])
 
-  // Terapkan pagination pada hasil filter
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  // Handle search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1) // Reset to first page on new search
+      loadUsers(1, itemsPerPage, searchTerm, filterPremium)
+      setIsSearching(false)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, filterPremium])
 
   // Handle perubahan halaman
   const handlePageChange = (page: number) => {
@@ -114,35 +137,15 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
   }
 
   // Handle perubahan jumlah item per halaman
-  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newItemsPerPage = Number.parseInt(e.target.value)
+  const handleItemsPerPageChange = (value: string) => {
+    const newItemsPerPage = Number.parseInt(value)
     setItemsPerPage(newItemsPerPage)
     setCurrentPage(1) // Reset ke halaman pertama saat mengubah jumlah item per halaman
   }
 
   // Refresh data pengguna
   const refreshUsers = async () => {
-    setIsLoading(true)
-    try {
-      const { data, error } = await supabase.from("users").select("*").order("created_at", { ascending: false })
-
-      if (error) throw error
-
-      setUsers(data || [])
-      toast({
-        title: "Data berhasil diperbarui",
-        description: `${data?.length || 0} pengguna ditemukan`,
-      })
-    } catch (error) {
-      console.error("Error refreshing users:", error)
-      toast({
-        title: "Gagal memperbarui data",
-        description: "Terjadi kesalahan saat mengambil data pengguna",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    loadUsers(currentPage, itemsPerPage)
   }
 
   // Fungsi untuk membuka dialog konfirmasi toggle premium
@@ -232,6 +235,7 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
 
       // Update state lokal
       setUsers(users.filter((user) => user.id !== userToDelete.id))
+      setFilteredTotal((prev) => prev - 1)
 
       toast({
         title: "Akun berhasil dihapus",
@@ -253,29 +257,73 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
 
   // Export data pengguna ke CSV
   const exportToCSV = () => {
-    const headers = ["ID", "Nama", "Username", "Email", "Tanggal Daftar", "Premium", "Premium Berakhir"]
+    setIsLoading(true)
 
-    const csvData = filteredUsers.map((user) => [
-      user.id,
-      user.name,
-      user.username || "-",
-      user.email,
-      format(new Date(user.created_at), "dd MMMM yyyy HH:mm", { locale: id }),
-      user.is_premium ? "Ya" : "Tidak",
-      user.premium_expires_at ? format(new Date(user.premium_expires_at), "dd MMMM yyyy", { locale: id }) : "-",
-    ])
+    // Fungsi untuk mengekspor semua data
+    const exportAllData = async () => {
+      try {
+        let query = supabase
+          .from("users")
+          .select("*")
+          .order(sortField, { ascending: sortDirection === "asc" })
 
-    const csvContent = [headers.join(","), ...csvData.map((row) => row.map((cell) => `"${cell}"`).join(","))].join("\n")
+        // Apply premium filter if set
+        if (filterPremium !== null) {
+          query = query.eq("is_premium", filterPremium)
+        }
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute("download", `users-${format(new Date(), "yyyy-MM-dd")}.csv`)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+        // Apply search filter if set
+        if (searchTerm) {
+          query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+
+        const headers = ["ID", "Nama", "Username", "Email", "Tanggal Daftar", "Premium", "Premium Berakhir"]
+
+        const csvData = (data || []).map((user) => [
+          user.id,
+          user.name || "-",
+          user.username || "-",
+          user.email,
+          format(new Date(user.created_at), "dd MMMM yyyy HH:mm", { locale: id }),
+          user.is_premium ? "Ya" : "Tidak",
+          user.premium_expires_at ? format(new Date(user.premium_expires_at), "dd MMMM yyyy", { locale: id }) : "-",
+        ])
+
+        const csvContent = [headers.join(","), ...csvData.map((row) => row.map((cell) => `"${cell}"`).join(","))].join(
+          "\n",
+        )
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.setAttribute("href", url)
+        link.setAttribute("download", `users-${format(new Date(), "yyyy-MM-dd")}.csv`)
+        link.style.visibility = "hidden"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        toast({
+          title: "Export Berhasil",
+          description: `${data?.length || 0} data pengguna berhasil diekspor ke CSV`,
+        })
+      } catch (error: any) {
+        console.error("Error exporting users:", error)
+        toast({
+          title: "Gagal mengekspor data",
+          description: error.message || "Terjadi kesalahan saat mengekspor data pengguna",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    exportAllData()
   }
 
   // Handle sort
@@ -286,6 +334,13 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
       setSortField(field)
       setSortDirection("asc")
     }
+  }
+
+  // Reset filter
+  const resetFilters = () => {
+    setSearchTerm("")
+    setFilterPremium(null)
+    setCurrentPage(1)
   }
 
   return (
@@ -308,22 +363,14 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
                 <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                 <span>{isLoading ? "Memuat..." : "Refresh"}</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={exportToCSV} className="flex items-center gap-1">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportToCSV}
+                disabled={isLoading}
+                className="flex items-center gap-1"
+              >
+                <Download className="h-4 w-4" />
                 <span>Export CSV</span>
               </Button>
             </div>
@@ -337,7 +384,10 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
                 <Input
                   placeholder="Cari pengguna..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setIsSearching(true)
+                  }}
                   className="pl-10"
                 />
               </div>
@@ -410,12 +460,47 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedUsers.length === 0 ? (
+                {isLoading ? (
+                  // Skeleton loading
+                  Array.from({ length: itemsPerPage }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-8 w-8 rounded-full" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-40" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-20" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-28" />
+                          <Skeleton className="h-8 w-20" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : users.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {searchTerm ? (
+                      {searchTerm || filterPremium !== null ? (
                         <>
-                          Tidak ada pengguna yang cocok dengan pencarian "<strong>{searchTerm}</strong>"
+                          Tidak ada pengguna yang cocok dengan filter yang dipilih
+                          <div className="mt-2">
+                            <Button variant="outline" size="sm" onClick={resetFilters}>
+                              Reset Filter
+                            </Button>
+                          </div>
                         </>
                       ) : (
                         "Tidak ada data pengguna"
@@ -423,14 +508,14 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedUsers.map((user) => (
+                  users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                            {user.name?.charAt(0).toUpperCase()}
+                            {user.name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
                           </div>
-                          <span>{user.name}</span>
+                          <span>{user.name || "Tidak diatur"}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -501,22 +586,23 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
         </CardContent>
       </Card>
 
-      {filteredUsers.length > 0 && (
+      {/* Pagination */}
+      {!isLoading && filteredTotal > 0 && (
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Menampilkan</span>
-            <select
-              value={itemsPerPage}
-              onChange={handleItemsPerPageChange}
-              className="h-8 w-16 rounded-md border border-input bg-background px-2 text-xs"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-            <span className="text-sm text-muted-foreground">dari {totalFilteredUsers} pengguna</span>
+            <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+              <SelectTrigger className="h-8 w-16">
+                <SelectValue placeholder={itemsPerPage.toString()} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">dari {filteredTotal} pengguna</span>
           </div>
 
           <div className="flex items-center gap-1">
@@ -524,7 +610,7 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(1)}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || isLoading}
               className="h-8 w-8 p-0"
             >
               <span className="sr-only">Halaman pertama</span>
@@ -548,7 +634,7 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || isLoading}
               className="h-8 w-8 p-0"
             >
               <span className="sr-only">Halaman sebelumnya</span>
@@ -588,6 +674,7 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
                       onClick={() => handlePageChange(page)}
+                      disabled={isLoading}
                       className="h-8 w-8 p-0"
                     >
                       {page}
@@ -600,7 +687,7 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || isLoading}
               className="h-8 w-8 p-0"
             >
               <span className="sr-only">Halaman berikutnya</span>
@@ -623,7 +710,7 @@ export default function UsersManagement({ initialUsers }: UsersManagementProps) 
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(totalPages)}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || isLoading}
               className="h-8 w-8 p-0"
             >
               <span className="sr-only">Halaman terakhir</span>
