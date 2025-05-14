@@ -7,10 +7,14 @@ import { logAuthRequest } from "@/lib/auth-logger"
 // Client-side Supabase client
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
-// Throttling untuk permintaan auth
+// Throttle auth requests to prevent rate limiting
+const AUTH_REQUEST_LIMIT = 5 // Maximum requests per minute
+const AUTH_REQUEST_WINDOW = 60000 // 1 minute window (in ms)
 const authRequestTimestamps: number[] = []
-const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan
-const AUTH_REQUEST_WINDOW = 60000 // dalam jendela 1 menit (60000ms)
+
+// Throttling untuk permintaan auth
+const AUTH_REQUEST_LIMIT_OLD = 3 // Maksimum 3 permintaan
+const AUTH_REQUEST_WINDOW_OLD = 60000 // dalam jendela 1 menit (60000ms)
 
 // Debounce untuk mencegah multiple calls
 let authDebounceTimer: NodeJS.Timeout | null = null
@@ -47,22 +51,41 @@ const sessionCache = {
 function shouldThrottleAuthRequest(): boolean {
   const now = Date.now()
 
+  // Remove timestamps older than the window
+  while (authRequestTimestamps.length > 0 && authRequestTimestamps[0] < now - AUTH_REQUEST_WINDOW) {
+    authRequestTimestamps.shift()
+  }
+
+  // If we've made too many requests in the window, throttle
+  return authRequestTimestamps.length >= AUTH_REQUEST_LIMIT
+}
+
+// Add this function after shouldThrottleAuthRequest
+// Record a new auth request timestamp
+function recordAuthRequestTimestamp() {
+  authRequestTimestamps.push(Date.now())
+}
+
+// Fungsi untuk memeriksa apakah kita perlu throttle permintaan auth
+function shouldThrottleAuthRequest_OLD(): boolean {
+  const now = Date.now()
+
   // Jika sudah pernah hit rate limit, throttle lebih agresif
   if (hasHitRateLimit && now < rateLimitResetTime) {
     return true
   }
 
   // Hapus timestamp yang lebih lama dari jendela waktu
-  while (authRequestTimestamps.length > 0 && authRequestTimestamps[0] < now - AUTH_REQUEST_WINDOW) {
+  while (authRequestTimestamps.length > 0 && authRequestTimestamps[0] < now - AUTH_REQUEST_WINDOW_OLD) {
     authRequestTimestamps.shift()
   }
 
   // Jika jumlah permintaan dalam jendela waktu melebihi batas, throttle
-  return authRequestTimestamps.length >= AUTH_REQUEST_LIMIT
+  return authRequestTimestamps.length >= AUTH_REQUEST_LIMIT_OLD
 }
 
 // Fungsi untuk mencatat permintaan auth baru
-function recordAuthRequestTimestamp() {
+function recordAuthRequestTimestamp_OLD() {
   authRequestTimestamps.push(Date.now())
 }
 
@@ -376,8 +399,47 @@ function getEndpointName(url: string): string {
   return parts[parts.length - 1] || url
 }
 
+// Modify the createClient function to implement throttling
 export const createClient = () => {
-  return createClientComponentClient<Database>()
+  // If we already have a client, return it
+  if (supabaseClient) {
+    return supabaseClient
+  }
+
+  // Check if we should throttle
+  if (shouldThrottleAuthRequest()) {
+    console.warn("Auth request throttled to prevent rate limiting")
+
+    // If we're throttling, return a client with modified auth methods
+    const throttledClient = createClientComponentClient<Database>()
+
+    // Override auth methods to prevent excessive requests
+    const originalAuth = throttledClient.auth
+    throttledClient.auth = {
+      ...originalAuth,
+      getSession: async () => {
+        // Use cached session if available
+        if (sessionCache.has()) {
+          return { data: sessionCache.get(), error: null }
+        }
+
+        // Otherwise, return empty session to prevent rate limiting
+        return { data: { session: null }, error: null }
+      },
+      getUser: async () => {
+        return { data: { user: null }, error: null }
+      },
+    } as typeof originalAuth
+
+    return throttledClient
+  }
+
+  // Record this auth request
+  recordAuthRequestTimestamp()
+
+  // Create and cache the client
+  supabaseClient = createClientComponentClient<Database>()
+  return supabaseClient
 }
 
 // Function to reset the client (useful for handling auth errors)

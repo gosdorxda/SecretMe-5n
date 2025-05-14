@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Session, User } from "@supabase/supabase-js"
@@ -102,9 +102,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  // Fungsi refreshSession yang dioptimasi
+  // Modify the refreshSession function to prevent excessive requests
+  const lastRefreshTimeRef = useRef(0)
   const refreshSession = useCallback(async () => {
     try {
+      // Add throttling to prevent excessive requests
+      const now = Date.now()
+      const MIN_REFRESH_INTERVAL = 60000 // 1 minute minimum between refreshes
+
+      // Use a ref to track last refresh time
+
+      // Skip refresh if we've refreshed recently
+      if (now - lastRefreshTimeRef.current < MIN_REFRESH_INTERVAL) {
+        return
+      }
+
+      lastRefreshTimeRef.current = now
+
       const { data, error } = await supabase.auth.getSession()
 
       if (error) {
@@ -116,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.session?.user || null)
       setIsAuthenticated(!!data.session)
 
-      // Jika token akan segera kedaluwarsa, refresh token
+      // Only refresh token if it's expiring soon and we have a session
       if (data.session && isTokenExpiringSoon(data.session)) {
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
 
