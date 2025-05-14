@@ -3,7 +3,20 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Crown, Shield, Bell, Globe, Settings, BarChart3, Lock, AlertTriangle, Menu, X } from "lucide-react"
+import {
+  Users,
+  Crown,
+  Shield,
+  Bell,
+  Globe,
+  Settings,
+  BarChart3,
+  Lock,
+  AlertTriangle,
+  Menu,
+  X,
+  LineChart,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
@@ -12,6 +25,11 @@ const navItems = [
     title: "Dashboard",
     href: "/admin",
     icon: BarChart3,
+  },
+  {
+    title: "Analitik",
+    href: "/admin/analytics",
+    icon: LineChart,
   },
   {
     title: "Pengguna",
