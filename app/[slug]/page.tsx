@@ -198,7 +198,7 @@ export default async function ProfilePage({ params }: { params: { slug: string }
               bio={user.bio || ""}
               avatarUrl={user.avatar_url}
               isPremium={user.is_premium}
-              variant="ghost" // Ubah ke variant ghost
+              variant="ghost" // Menggunakan variant ghost
             />
           </div>
         </div>
