@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation"
 import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
-import { Crown } from "lucide-react"
+import { Crown, Info } from "lucide-react"
 import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
 import { ProfileSchema } from "@/components/profile-schema"
@@ -14,12 +14,17 @@ import { ProfileImageButton } from "@/components/profile-image-button"
 import { TruncatedBio } from "@/components/truncated-bio"
 import { PremiumFeatureTeaser } from "@/components/premium-feature-teaser"
 import { LazyAvatar } from "@/components/lazy-avatar"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 // Modifikasi metadata statis untuk SEO dasar
 export const metadata = {
   title: "Profil Pengguna | SecretMe",
   description: "Kirim pesan anonim melalui SecretMe",
 }
+
+// Daftar username demo yang tidak bisa menerima pesan
+const DEMO_USERNAMES = ["anitawijaya"]
 
 export default async function ProfilePage({ params }: { params: { slug: string } }) {
   const { slug } = params
@@ -114,6 +119,9 @@ export default async function ProfilePage({ params }: { params: { slug: string }
   // For owner or if the profile is public
   const isOwner = userId === user.id
 
+  // Cek apakah ini adalah profil demo
+  const isDemo = user.username && DEMO_USERNAMES.includes(user.username)
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
       {/* Tambahkan komponen SEO */}
@@ -201,9 +209,36 @@ export default async function ProfilePage({ params }: { params: { slug: string }
           </div>
         )}
 
-        {/* Send Message Form */}
+        {/* Send Message Form atau Demo Notice */}
         <div className="px-0 sm:px-0">
-          <SendMessageForm user={user} />
+          {isDemo ? (
+            <Card className="neo-card">
+              <CardContent className="p-6">
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <div className="bg-amber-100 p-3 rounded-full">
+                    <Info className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">Ini adalah Profil Demo</h3>
+                    <p className="text-sm text-gray-600">
+                      Pengiriman pesan dinonaktifkan untuk akun demo ini. Daftar sekarang untuk mendapatkan profil Anda
+                      sendiri!
+                    </p>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a href="/features">Lihat Fitur</a>
+                    </Button>
+                    <Button className="bg-amber-500 hover:bg-amber-600" size="sm" asChild>
+                      <a href="/register">Daftar Sekarang</a>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <SendMessageForm user={user} />
+          )}
         </div>
 
         {/* Messages Section */}
