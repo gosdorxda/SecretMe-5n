@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { Github, Twitter, Instagram } from "lucide-react"
 
 export function Footer({ className, minimal = false }: { className?: string; minimal?: boolean }) {
   const currentYear = new Date().getFullYear()
@@ -31,35 +30,37 @@ export function Footer({ className, minimal = false }: { className?: string; min
             <p className="text-sm text-muted-foreground italic">"Bagikan pesan rahasia dengan aman dan menyenangkan"</p>
           </div>
 
-          {/* Right: Social Media Links */}
-          <div className="flex space-x-3">
-            <Link
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[var(--bw)] p-2 rounded-[var(--border-radius)] border-2 border-[var(--border)] hover:shadow-none transition-all duration-200"
-              aria-label="GitHub"
-            >
-              <Github size={18} />
-            </Link>
-            <Link
-              href="https://twitter.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[var(--bw)] p-2 rounded-[var(--border-radius)] border-2 border-[var(--border)] hover:shadow-none transition-all duration-200"
-              aria-label="Twitter"
-            >
-              <Twitter size={18} />
-            </Link>
-            <Link
-              href="https://instagram.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[var(--bw)] p-2 rounded-[var(--border-radius)] border-2 border-[var(--border)] hover:shadow-none transition-all duration-200"
-              aria-label="Instagram"
-            >
-              <Instagram size={18} />
-            </Link>
+          {/* Right: Telegram Mini Form - Smaller with border */}
+          <div className="flex items-center">
+            <div className="bg-white border-2 border-[#0088cc] rounded-md shadow-sm overflow-hidden flex items-center">
+              <div className="bg-[#0088cc] p-1.5 flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="telegram-icon"
+                >
+                  <path d="M21.5 4.5L2.5 12.5L11.5 14.5L14.5 21.5L21.5 4.5Z"></path>
+                  <path d="M11.5 14.5L14.5 21.5"></path>
+                  <path d="M11.5 14.5L16.5 9.5"></path>
+                </svg>
+              </div>
+              <Link
+                href="https://linktr.ee/maskripto"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2 py-1 text-xs text-gray-700 hover:text-[#0088cc] transition-colors"
+                aria-label="Telegram"
+              >
+                @maskripto
+              </Link>
+            </div>
           </div>
         </div>
 
