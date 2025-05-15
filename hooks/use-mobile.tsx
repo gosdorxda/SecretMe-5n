@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 
-export default function useMobile() {
+export function useMobile() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -21,3 +21,6 @@ export default function useMobile() {
 
 // Alias untuk kompatibilitas
 export const useIsMobile = useMobile
+
+// Default export untuk backward compatibility
+export default useMobile

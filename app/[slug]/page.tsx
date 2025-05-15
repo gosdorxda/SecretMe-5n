@@ -221,16 +221,12 @@ export default async function ProfilePage({ params }: { params: { slug: string }
                   <div className="space-y-2">
                     <h3 className="text-lg font-medium">Ini adalah Profil Demo</h3>
                     <p className="text-sm text-gray-600">
-                      Pengiriman pesan dinonaktifkan untuk akun demo ini. Daftar sekarang untuk mendapatkan profil Anda
-                      sendiri!
+                      Pengiriman pesan dinonaktifkan untuk akun demo ini. Lihat fitur premium yang tersedia!
                     </p>
                   </div>
-                  <div className="flex gap-3 pt-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <a href="/features">Lihat Fitur</a>
-                    </Button>
+                  <div className="pt-2">
                     <Button className="bg-amber-500 hover:bg-amber-600" size="sm" asChild>
-                      <a href="/register">Daftar Sekarang</a>
+                      <a href="/features">Lihat Fitur Premium</a>
                     </Button>
                   </div>
                 </div>

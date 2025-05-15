@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Crown, Zap, X, Eye, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Database } from "@/lib/supabase/database.types"
+import { useMobile } from "@/hooks/use-mobile"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 
@@ -14,6 +15,7 @@ interface PremiumBannerProps {
 
 export function PremiumBanner({ user }: PremiumBannerProps) {
   const [isDismissed, setIsDismissed] = useState(false)
+  const isMobile = useMobile()
 
   if (user.is_premium || isDismissed) return null
 
@@ -25,7 +27,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             <div className="flex-shrink-0 bg-amber-400 p-1.5 rounded-full">
               <Crown className="h-3.5 w-3.5 text-white" />
             </div>
-            <span className="text-xs font-medium text-amber-800">Fitur Eksklusif</span>
+            {!isMobile && <span className="text-xs font-medium text-amber-800">Fitur Eksklusif</span>}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -53,7 +55,12 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               </Link>
             </Button>
 
-            <Button asChild variant="warning" size="sm" className="h-7 px-3 text-xs">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs bg-amber-500 border-amber-500 text-white hover:bg-amber-600 hover:border-amber-600"
+            >
               <Link href="/premium">
                 <Zap className="h-3 w-3 mr-1" />
                 <span>Upgrade</span>
