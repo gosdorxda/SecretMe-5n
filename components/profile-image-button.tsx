@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ProfileImageDialog } from "@/components/profile-image-dialog"
 import { FileText } from "lucide-react"
 
+// Ubah interface ProfileImageButtonProps untuk mendukung variant "ghost"
 interface ProfileImageButtonProps {
   username: string
   displayName: string
@@ -14,7 +15,7 @@ interface ProfileImageButtonProps {
   avatarUrl?: string | null
   isPremium?: boolean
   children?: React.ReactNode
-  variant?: "default" | "blue" // Tambahkan prop variant untuk style yang berbeda
+  variant?: "default" | "blue" | "ghost" // Tambahkan variant "ghost"
 }
 
 export function ProfileImageButton({
@@ -28,11 +29,13 @@ export function ProfileImageButton({
 }: ProfileImageButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  // Style berdasarkan variant
+  // Ubah logika style berdasarkan variant
   const buttonStyle =
     variant === "blue"
       ? "h-6 px-2 text-xs bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
-      : "h-6 px-2 text-xs border border-gray-300 bg-white text-gray-700" // Style sederhana dengan outline saja
+      : variant === "ghost"
+        ? "h-6 px-2 text-xs hover:bg-gray-100 text-gray-700" // Style ghost
+        : "h-6 px-2 text-xs border border-gray-300 bg-white text-gray-700" // Style default
 
   return (
     <>
