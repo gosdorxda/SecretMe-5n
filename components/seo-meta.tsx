@@ -1,6 +1,7 @@
-"use server"
+"use client"
 
-import { createClient } from "@/lib/supabase/server"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 import Script from "next/script"
 
 interface SeoConfig {
@@ -29,20 +30,33 @@ const defaultSeoConfig: SeoConfig = {
   custom_head_tags: "",
 }
 
-export async function SeoMeta() {
-  let config = defaultSeoConfig
+export function SeoMeta() {
+  const [config, setConfig] = useState<SeoConfig>(defaultSeoConfig)
+  const [isLoading, setIsLoading] = useState(true)
 
-  try {
-    const supabase = createClient()
-    const { data, error } = await supabase.from("site_config").select("*").eq("type", "seo").single()
+  useEffect(() => {
+    const fetchSeoConfig = async () => {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase.from("site_config").select("*").eq("type", "seo").single()
 
-    if (error) {
-      console.log("No SEO config found or table doesn't exist, using default")
-    } else if (data?.config) {
-      config = { ...defaultSeoConfig, ...data.config }
+        if (error) {
+          console.log("No SEO config found or table doesn't exist, using default")
+        } else if (data?.config) {
+          setConfig({ ...defaultSeoConfig, ...data.config })
+        }
+      } catch (error) {
+        console.error("Error in SEO config:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-  } catch (error) {
-    console.error("Error in SEO config:", error)
+
+    fetchSeoConfig()
+  }, [])
+
+  if (isLoading) {
+    return null
   }
 
   return (
@@ -53,12 +67,14 @@ export async function SeoMeta() {
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content="website" />
+      <meta property="og:url" content={typeof window !== "undefined" ? window.location.origin : ""} />
       <meta property="og:title" content={config.og_title} />
       <meta property="og:description" content={config.og_description} />
       {config.og_image_url && <meta property="og:image" content={config.og_image_url} />}
 
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />
+      <meta property="twitter:url" content={typeof window !== "undefined" ? window.location.origin : ""} />
       <meta property="twitter:title" content={config.og_title} />
       <meta property="twitter:description" content={config.og_description} />
       {config.og_image_url && <meta property="twitter:image" content={config.og_image_url} />}
@@ -69,31 +85,30 @@ export async function SeoMeta() {
 
       {/* Google Analytics 4 (GA4) Configuration */}
       {config.google_analytics_id && (
-        <Script
-          id="google-analytics"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              
-              gtag('config', '${config.google_analytics_id}', {
-                page_path: window.location.pathname,
-                cookie_flags: 'samesite=none;secure',
-                anonymize_ip: true
-              });
-            `,
-          }}
-        />
-      )}
-
-      {/* Google Analytics Script */}
-      {config.google_analytics_id && (
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}
-          strategy="afterInteractive"
-        />
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}
+            strategy="afterInteractive"
+          />
+          <Script
+            id="google-analytics"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                
+                gtag('config', '${config.google_analytics_id}', {
+                  page_path: window.location.pathname,
+                  cookie_flags: 'samesite=none;secure',
+                  anonymize_ip: true,
+                  debug_mode: true
+                });
+              `,
+            }}
+          />
+        </>
       )}
 
       {/* Custom Head Tags */}

@@ -29,6 +29,7 @@ export default function RootLayout({
     <html lang="id">
       <head>
         <link rel="icon" href="/favicon.ico" />
+        {/* SeoMeta tetap di sini, tapi sekarang menggunakan client-side rendering */}
         <SeoMeta />
       </head>
       <body className={inter.className}>
