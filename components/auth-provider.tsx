@@ -100,15 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  // Modify the refreshSession function to prevent excessive requests
+  // Modifikasi refreshSession untuk mengurangi permintaan berlebihan
   const lastRefreshTimeRef = useRef(0)
   const refreshSession = useCallback(async () => {
     try {
       // Add throttling to prevent excessive requests
       const now = Date.now()
-      const MIN_REFRESH_INTERVAL = 60000 // 1 minute minimum between refreshes
-
-      // Use a ref to track last refresh time
+      const MIN_REFRESH_INTERVAL = 300000 // 5 minutes minimum between refreshes (dari 1 menit)
 
       // Skip refresh if we've refreshed recently
       if (now - lastRefreshTimeRef.current < MIN_REFRESH_INTERVAL) {
@@ -128,12 +126,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data.session?.user || null)
       setIsAuthenticated(!!data.session)
 
-      // Only refresh token if it's expiring soon and we have a session
+      // Only refresh token if it's expiring soon (within 30 minutes) and we have a session
       if (data.session && isTokenExpiringSoon(data.session)) {
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
 
         if (refreshError) {
           console.error("Error refreshing token:", refreshError)
+
+          // If rate limit error, back off for longer
+          if (refreshError.status === 429) {
+            lastRefreshTimeRef.current = now + 1800000 // Back off for 30 minutes on rate limit
+            console.warn("Rate limit hit, backing off for 30 minutes")
+          }
         } else if (refreshData.session) {
           setSession(refreshData.session)
           setUser(refreshData.session.user)
@@ -144,12 +148,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase])
 
-  // Fungsi untuk memeriksa apakah token akan segera kedaluwarsa
+  // Modifikasi fungsi untuk memeriksa apakah token akan segera kedaluwarsa
   const isTokenExpiringSoon = (session: Session) => {
     if (!session.expires_at) return false
     const expiresAt = session.expires_at * 1000 // Convert to milliseconds
-    const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000
-    return expiresAt < fiveMinutesFromNow
+    const thirtyMinutesFromNow = Date.now() + 30 * 60 * 1000 // 30 menit (dari 5 menit)
+    return expiresAt < thirtyMinutesFromNow
   }
 
   // Fetch session dan setup auth listener

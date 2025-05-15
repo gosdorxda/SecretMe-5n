@@ -65,15 +65,50 @@ function isStaticAsset(pathname: string): boolean {
   )
 }
 
-// Cache untuk mengurangi permintaan autentikasi
-const AUTH_CACHE_TTL = 60 * 1000 // 1 menit
+// Ubah durasi cache untuk mengurangi permintaan autentikasi
+const AUTH_CACHE_TTL = 5 * 60 * 1000 // Tingkatkan menjadi 5 menit (dari 1 menit)
+
+// Tambahkan throttling untuk permintaan auth
+const AUTH_REQUEST_LIMIT = 10 // Maksimum 10 permintaan per menit
+const AUTH_REQUEST_WINDOW = 60 * 1000 // 1 menit
+const authRequestTimestamps = new Map<string, number[]>()
+
+// In-memory cache untuk menyimpan hasil autentikasi
 const authCache = new Map<string, { data: any; timestamp: number }>()
 
+// Fungsi untuk memeriksa apakah perlu throttle permintaan auth
+function shouldThrottleAuthRequest(ip: string): boolean {
+  const now = Date.now()
+
+  // Dapatkan timestamps untuk IP ini
+  const timestamps = authRequestTimestamps.get(ip) || []
+
+  // Hapus timestamps yang lebih lama dari jendela waktu
+  const recentTimestamps = timestamps.filter((t) => t > now - AUTH_REQUEST_WINDOW)
+
+  // Update timestamps
+  authRequestTimestamps.set(ip, recentTimestamps)
+
+  // Jika terlalu banyak permintaan dalam jendela waktu, throttle
+  return recentTimestamps.length >= AUTH_REQUEST_LIMIT
+}
+
+// Catat timestamp permintaan auth baru
+function recordAuthRequestTimestamp(ip: string) {
+  const timestamps = authRequestTimestamps.get(ip) || []
+  timestamps.push(Date.now())
+  authRequestTimestamps.set(ip, timestamps)
+}
+
+// Modifikasi middleware untuk menerapkan throttling
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const userAgent = request.headers.get("user-agent") || ""
   // Tidak perlu deteksi mobile lagi
   const isMobile = false
+
+  // Dapatkan IP pengguna
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
 
   // Skip middleware untuk aset statis
   if (isStaticAsset(pathname)) {
@@ -84,6 +119,35 @@ export async function middleware(request: NextRequest) {
   if (!isProtectedRoute(pathname)) {
     return NextResponse.next()
   }
+
+  // Terapkan throttling untuk permintaan auth
+  if (shouldThrottleAuthRequest(ip)) {
+    logAuthRequest({
+      endpoint: pathname,
+      method: request.method,
+      source: "middleware",
+      success: false,
+      duration: 0,
+      cached: false,
+      error: "Auth request throttled",
+      details: { isMobile, reason: "rate_limit" },
+    })
+
+    // Jika throttled, gunakan cache jika ada atau redirect ke login
+    const cacheKey = `auth:${request.cookies.toString()}:${pathname}`
+    const cachedAuth = authCache.get(cacheKey)
+
+    if (cachedAuth && cachedAuth.data.session) {
+      return NextResponse.next()
+    }
+
+    const redirectUrl = new URL("/login", request.url)
+    redirectUrl.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // Catat permintaan auth
+  recordAuthRequestTimestamp(ip)
 
   // Mulai pengukuran waktu
   const startTime = Date.now()
@@ -200,7 +264,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Simpan ke cache
+    // Simpan ke cache dengan TTL yang lebih lama
     authCache.set(cacheKey, {
       data: { session, isAdmin },
       timestamp: Date.now(),

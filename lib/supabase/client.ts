@@ -7,19 +7,26 @@ import { logAuthRequest } from "@/lib/auth-logger"
 // Client-side Supabase client - singleton pattern
 let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
+// Modifikasi konstanta untuk mengurangi permintaan auth
+const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan per menit (lebih ketat)
+const AUTH_REQUEST_WINDOW = 60000 // 1 menit window (dalam ms)
+const MIN_REFRESH_INTERVAL = 600000 // 10 menit untuk semua perangkat (dari 5 menit)
+const AUTH_CACHE_TTL = 600000 // 10 menit (dari 5 menit)
+const AUTH_DEBOUNCE_DELAY = 5000 // 5 detik (dari 2 detik)
+
 // Throttle auth requests to prevent rate limiting
-const AUTH_REQUEST_LIMIT = 5 // Maximum requests per minute
-const AUTH_REQUEST_WINDOW = 60000 // 1 minute window (in ms)
+// const AUTH_REQUEST_LIMIT = 5 // Maximum requests per minute
+// const AUTH_REQUEST_WINDOW = 60000 // 1 minute window (in ms)
 const authRequestTimestamps: number[] = []
 
 // Debounce untuk mencegah multiple calls
 let authDebounceTimer: NodeJS.Timeout | null = null
-const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
+// const AUTH_DEBOUNCE_DELAY = 2000 // 2 detik
 
 // Flag untuk mencegah multiple refresh
 let isRefreshingToken = false
 let lastRefreshTime = 0
-const MIN_REFRESH_INTERVAL = 300000 // 5 menit untuk semua perangkat
+// const MIN_REFRESH_INTERVAL = 300000 // 5 menit untuk semua perangkat
 
 // Flag untuk mendeteksi error rate limit
 let hasHitRateLimit = false
@@ -61,9 +68,34 @@ function recordAuthRequestTimestamp() {
   authRequestTimestamps.push(Date.now())
 }
 
+// Tambahkan fungsi untuk mencegah refresh token berlebihan
+function shouldSkipTokenRefresh(): boolean {
+  // Jika kita telah mencapai batas rate limit, skip refresh
+  if (hasHitRateLimit && Date.now() < rateLimitResetTime) {
+    return true
+  }
+
+  // Jika kita baru saja me-refresh token, skip refresh
+  if (Date.now() - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+    return true
+  }
+
+  // Jika kita sedang dalam proses refresh, skip refresh
+  if (isRefreshingToken) {
+    return true
+  }
+
+  return false
+}
+
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
 async function repairSessionIfNeeded(client: ReturnType<typeof createClientComponentClient<Database>>) {
   try {
+    // Skip jika kita harus melewati refresh token
+    if (shouldSkipTokenRefresh()) {
+      return false
+    }
+
     // Hindari multiple repair attempts
     if (isRefreshingToken) {
       return false
@@ -147,6 +179,12 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
       },
     })
 
+    // Jika sudah ada sesi valid, tidak perlu repair
+    if (sessionData?.session) {
+      isRefreshingToken = false
+      return true
+    }
+
     // Jika tidak ada sesi valid tetapi ada token di localStorage
     if (!sessionData?.session && typeof window !== "undefined") {
       // Coba ambil token dari localStorage
@@ -157,6 +195,15 @@ async function repairSessionIfNeeded(client: ReturnType<typeof createClientCompo
 
           // Jika ada token di localStorage, coba set session secara manual
           if (parsedData?.currentSession?.access_token && parsedData?.currentSession?.refresh_token) {
+            // Periksa apakah token sudah kedaluwarsa berdasarkan expires_at
+            const expiresAt = parsedData.currentSession.expires_at
+            if (expiresAt && new Date(expiresAt * 1000) < new Date()) {
+              console.log("Token sudah kedaluwarsa, tidak mencoba refresh")
+              localStorage.removeItem("supabase.auth.token")
+              isRefreshingToken = false
+              return false
+            }
+
             logAuthRequest({
               endpoint: "setSession",
               method: "POST",
@@ -327,7 +374,7 @@ if (typeof console !== "undefined" && console.warn) {
 
 // Cache untuk menyimpan hasil auth requests
 const authRequestCache = new Map<string, { data: any; timestamp: number }>()
-const AUTH_CACHE_TTL = 300000 // 5 menit
+// const AUTH_CACHE_TTL = 300000 // 5 menit
 
 // Fungsi debounce untuk auth requests
 function debounceAuthRequest(fn: Function): Promise<any> {
