@@ -3,18 +3,7 @@ import Image from "next/image"
 import type { Metadata } from "next"
 import { SeoMeta } from "@/components/seo-meta"
 import { Button } from "@/components/ui/button"
-import {
-  Crown,
-  AtSign,
-  User,
-  FileText,
-  Link2,
-  MessageSquare,
-  BarChart2,
-  ChevronRight,
-  Check,
-  ArrowLeft,
-} from "lucide-react"
+import { Crown, AtSign, User, FileText, Link2, MessageSquare, BarChart2, ChevronRight, Check } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Fitur Premium SecretMe - Tingkatkan Pengalaman Pesan Anonim Anda",
@@ -31,17 +20,6 @@ export default function FeaturesPage() {
       />
 
       <div className="container py-4 md:py-8">
-        {/* Breadcrumb */}
-        <div className="mb-4">
-          <div className="flex items-center text-sm text-gray-500">
-            <Link href="/" className="hover:text-amber-600 transition-colors">
-              Beranda
-            </Link>
-            <span className="mx-2">/</span>
-            <span className="text-gray-900 font-medium">Fitur Premium</span>
-          </div>
-        </div>
-
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center p-2 bg-amber-100 rounded-full mb-3">
@@ -52,16 +30,6 @@ export default function FeaturesPage() {
             Tingkatkan pengalaman pesan anonim Anda dengan berbagai fitur eksklusif yang hanya tersedia untuk pengguna
             premium.
           </p>
-        </div>
-
-        {/* Back Button */}
-        <div className="mb-6">
-          <Button variant="outline" size="sm" asChild className="group text-sm">
-            <Link href="/">
-              <ArrowLeft className="h-3 w-3 mr-1 group-hover:-translate-x-1 transition-transform" />
-              Kembali ke Beranda
-            </Link>
-          </Button>
         </div>
 
         {/* Feature Cards */}
@@ -164,7 +132,7 @@ export default function FeaturesPage() {
                     <div className="flex flex-col items-center">
                       <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-blue-100 flex items-center justify-center mb-3 relative overflow-hidden border-2 border-white shadow-md">
                         <Image
-                          src="/placeholder.svg?key=d1u3u"
+                          src="/diverse-profile-avatars.png"
                           alt="Profile Preview"
                           width={200}
                           height={200}
@@ -502,195 +470,6 @@ export default function FeaturesPage() {
           </div>
         </div>
 
-        {/* Feature Comparison - Mobile Optimized */}
-        <div className="mt-8 md:mt-16">
-          <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Perbandingan Fitur</h2>
-          <div className="overflow-x-auto -mx-4 px-4">
-            <div className="inline-block min-w-full align-middle">
-              <div className="overflow-hidden border border-gray-200 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      <th
-                        scope="col"
-                        className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b"
-                      >
-                        Fitur
-                      </th>
-                      <th
-                        scope="col"
-                        className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b"
-                      >
-                        Gratis
-                      </th>
-                      <th
-                        scope="col"
-                        className="py-3 px-4 text-center text-xs font-medium text-amber-700 uppercase tracking-wider bg-amber-50 border-b border-amber-200"
-                      >
-                        Premium
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td className="py-2 px-4 text-xs md:text-sm font-medium text-gray-900">Username Kustom</td>
-                      <td className="py-2 px-4 text-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </td>
-                      <td className="py-2 px-4 text-center bg-amber-50">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-green-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-xs md:text-sm font-medium text-gray-900">Foto Profil Kustom</td>
-                      <td className="py-2 px-4 text-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </td>
-                      <td className="py-2 px-4 text-center bg-amber-50">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-green-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-xs md:text-sm font-medium text-gray-900">Bio Profil Lengkap</td>
-                      <td className="py-2 px-4 text-center">
-                        <span className="text-xs text-gray-500">Terbatas</span>
-                      </td>
-                      <td className="py-2 px-4 text-center bg-amber-50">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-green-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-xs md:text-sm font-medium text-gray-900">Link Sosial Media</td>
-                      <td className="py-2 px-4 text-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </td>
-                      <td className="py-2 px-4 text-center bg-amber-50">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-green-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-xs md:text-sm font-medium text-gray-900">
-                        Notifikasi WhatsApp & Telegram
-                      </td>
-                      <td className="py-2 px-4 text-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </td>
-                      <td className="py-2 px-4 text-center bg-amber-50">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-green-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-4 text-xs md:text-sm font-medium text-gray-900">Statistik Lengkap</td>
-                      <td className="py-2 px-4 text-center">
-                        <span className="text-xs text-gray-500">Terbatas</span>
-                      </td>
-                      <td className="py-2 px-4 text-center bg-amber-50">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mx-auto text-green-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td className="py-3 px-4"></td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="text-xs font-medium">Gratis</span>
-                      </td>
-                      <td className="py-3 px-4 text-center bg-amber-50">
-                        <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs py-1">
-                          <Link href="/premium">
-                            <Crown className="h-3 w-3 mr-1" />
-                            Rp 99.000
-                          </Link>
-                        </Button>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* FAQ Section - Mobile Optimized */}
         <div className="mt-8 md:mt-16">
           <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Pertanyaan Umum</h2>
@@ -729,52 +508,6 @@ export default function FeaturesPage() {
                 Ya. Sebagai pengguna premium, Anda dapat mengubah username Anda kapan saja melalui pengaturan profil di
                 dashboard Anda.
               </p>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA Section - Mobile Optimized */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl overflow-hidden shadow-xl mt-8 md:mt-16">
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="p-4 md:p-8 flex flex-col justify-center">
-              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">Tingkatkan Pengalaman SecretMe Anda</h2>
-              <p className="text-xs md:text-base text-white/90 mb-4">
-                Dapatkan akses ke semua fitur premium dengan harga terjangkau. Bayar sekali, akses selamanya.
-              </p>
-              <div className="bg-white/20 p-3 md:p-4 rounded-lg backdrop-blur-sm mb-4">
-                <div className="flex items-center justify-between mb-1 md:mb-2">
-                  <span className="text-white text-xs md:text-sm font-medium">Harga Normal</span>
-                  <span className="text-white text-xs md:text-sm line-through">Rp 199.000</span>
-                </div>
-                <div className="flex items-center justify-between mb-1 md:mb-2">
-                  <span className="text-white text-xs md:text-sm font-medium">Harga Promo</span>
-                  <span className="text-white text-xs md:text-sm font-bold">Rp 99.000</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white text-xs md:text-sm font-medium">Anda Hemat</span>
-                  <span className="text-white text-xs md:text-sm font-bold">Rp 100.000</span>
-                </div>
-              </div>
-              <Button
-                asChild
-                className="bg-white text-orange-600 hover:bg-white/90 hover:text-orange-700 font-bold text-xs md:text-sm py-1.5 md:py-2"
-              >
-                <Link href="/premium">
-                  <Crown className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                  Upgrade ke Premium Sekarang
-                </Link>
-              </Button>
-            </div>
-            <div className="relative hidden md:block">
-              <div className="absolute inset-0">
-                <Image
-                  src="/placeholder.svg?key=ilxmn"
-                  alt="Premium Features"
-                  width={600}
-                  height={400}
-                  className="object-cover w-full h-full"
-                />
-              </div>
             </div>
           </div>
         </div>

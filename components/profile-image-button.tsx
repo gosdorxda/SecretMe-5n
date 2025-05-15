@@ -32,7 +32,7 @@ export function ProfileImageButton({
   const buttonStyle =
     variant === "blue"
       ? "h-6 px-2 text-xs bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
-      : "h-6 px-2 text-xs border border-gray-300 bg-white text-gray-700"
+      : "h-6 px-2 text-xs border border-gray-300 bg-white text-gray-700" // Style sederhana dengan outline saja
 
   return (
     <>
@@ -40,7 +40,7 @@ export function ProfileImageButton({
         <div onClick={() => setDialogOpen(true)}>{children}</div>
       ) : (
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           className={buttonStyle}
           onClick={() => setDialogOpen(true)}
