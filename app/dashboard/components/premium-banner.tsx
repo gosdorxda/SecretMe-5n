@@ -21,7 +21,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
 
   return (
     <div className="w-full mb-6">
-      <div className="relative bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-lg p-3 shadow-sm">
+      <div className="relative bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-lg p-3">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="flex-shrink-0 bg-amber-400 p-1.5 rounded-full">
