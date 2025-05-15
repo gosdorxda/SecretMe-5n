@@ -1,7 +1,7 @@
-"use client"
+"use server"
 
-import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
+import Script from "next/script"
 
 interface SeoConfig {
   site_title: string
@@ -29,42 +29,20 @@ const defaultSeoConfig: SeoConfig = {
   custom_head_tags: "",
 }
 
-export function SeoMeta() {
-  const [config, setConfig] = useState<SeoConfig>(defaultSeoConfig)
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+export async function SeoMeta() {
+  let config = defaultSeoConfig
 
-  useEffect(() => {
-    // Modificar la función fetchSeoConfig para manejar mejor el caso cuando la tabla no existe
-    const fetchSeoConfig = async () => {
-      try {
-        // Intentar obtener la configuración SEO
-        const { data, error } = await supabase.from("site_config").select("*").eq("type", "seo").single()
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase.from("site_config").select("*").eq("type", "seo").single()
 
-        if (error) {
-          // Si el error es porque la tabla no existe o no hay datos, usar la configuración predeterminada
-          if (error.code === "PGRST116" || error.message?.includes("does not exist")) {
-            console.log("No SEO config found or table doesn't exist, using default")
-            // No lanzar error, simplemente usar valores predeterminados
-          } else {
-            console.error("Error fetching SEO config:", error)
-          }
-        } else if (data?.config) {
-          setConfig({ ...defaultSeoConfig, ...data.config })
-        }
-      } catch (error) {
-        // Capturar cualquier otro error sin interrumpir el renderizado
-        console.error("Error in SEO config:", error)
-      } finally {
-        setIsLoading(false)
-      }
+    if (error) {
+      console.log("No SEO config found or table doesn't exist, using default")
+    } else if (data?.config) {
+      config = { ...defaultSeoConfig, ...data.config }
     }
-
-    fetchSeoConfig()
-  }, [])
-
-  if (isLoading) {
-    return null
+  } catch (error) {
+    console.error("Error in SEO config:", error)
   }
 
   return (
@@ -75,14 +53,12 @@ export function SeoMeta() {
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content="website" />
-      <meta property="og:url" content={typeof window !== "undefined" ? window.location.origin : ""} />
       <meta property="og:title" content={config.og_title} />
       <meta property="og:description" content={config.og_description} />
       {config.og_image_url && <meta property="og:image" content={config.og_image_url} />}
 
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content={typeof window !== "undefined" ? window.location.origin : ""} />
       <meta property="twitter:title" content={config.og_title} />
       <meta property="twitter:description" content={config.og_description} />
       {config.og_image_url && <meta property="twitter:image" content={config.og_image_url} />}
@@ -93,26 +69,31 @@ export function SeoMeta() {
 
       {/* Google Analytics 4 (GA4) Configuration */}
       {config.google_analytics_id && (
-        <>
-          <script async src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}></script>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
+        <Script
+          id="google-analytics"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
               
-              // GA4 configuration with recommended settings
               gtag('config', '${config.google_analytics_id}', {
-                send_page_view: true,
+                page_path: window.location.pathname,
                 cookie_flags: 'samesite=none;secure',
-                cookie_domain: 'auto',
                 anonymize_ip: true
               });
             `,
-            }}
-          />
-        </>
+          }}
+        />
+      )}
+
+      {/* Google Analytics Script */}
+      {config.google_analytics_id && (
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}
+          strategy="afterInteractive"
+        />
       )}
 
       {/* Custom Head Tags */}
