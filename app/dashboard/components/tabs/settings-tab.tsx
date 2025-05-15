@@ -45,6 +45,7 @@ export function SettingsTab({ user }: SettingsTabProps) {
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-lg flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-500" />
               Pengaturan Akun
             </CardTitle>
           </div>
