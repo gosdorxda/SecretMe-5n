@@ -265,9 +265,9 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   isPremium={user.is_premium}
                 >
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="w-full text-xs h-9 border border-gray-200 hover:bg-gray-50"
+                    className="w-full text-xs h-9 bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
                   >
                     <FileText className="h-3.5 w-3.5 mr-1.5" />
                     Bagikan Kartu Profil
