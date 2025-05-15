@@ -6,7 +6,6 @@ import { createClient, getVerifiedUser } from "@/lib/supabase/server"
 import { SendMessageForm } from "./send-message-form"
 import { MessageList } from "@/components/message-list"
 import { Crown } from "lucide-react"
-import Image from "next/image"
 import { ProfileCta } from "@/components/profile-cta"
 import { ProfileSeo } from "@/components/profile-seo"
 import { ProfileSchema } from "@/components/profile-schema"
@@ -14,6 +13,7 @@ import { CustomSocialIcons } from "@/components/custom-social-icons"
 import { ProfileImageButton } from "@/components/profile-image-button"
 import { TruncatedBio } from "@/components/truncated-bio"
 import { PremiumFeatureTeaser } from "@/components/premium-feature-teaser"
+import { LazyAvatar } from "@/components/lazy-avatar"
 
 // Modifikasi metadata statis untuk SEO dasar
 export const metadata = {
@@ -127,14 +127,11 @@ export default async function ProfilePage({ params }: { params: { slug: string }
           <div className="relative mb-4">
             <div className="relative h-24 w-24 md:h-32 md:w-32 overflow-hidden rounded-full border-2 border-black bg-white">
               {user.is_premium && user.avatar_url ? (
-                <Image
-                  src={user.avatar_url || "/placeholder.svg"}
-                  alt={user.name}
-                  className="h-full w-full object-cover"
-                  width={128}
-                  height={128}
-                  priority={user.is_premium} // Preload avatar for premium users
-                  loading={user.is_premium ? "eager" : "lazy"} // Eager loading for premium users
+                <LazyAvatar
+                  src={user.avatar_url}
+                  alt={user.name || "User avatar"}
+                  isPremium={user.is_premium}
+                  fallbackText={user.name}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gray-100 text-4xl font-bold text-gray-600">
