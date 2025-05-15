@@ -35,7 +35,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               asChild
               variant="outline"
               size="sm"
-              className="h-7 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+              className="h-7 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 shadow-none"
             >
               <Link href="https://secretme.site/anitawijaya" target="_blank" rel="noopener noreferrer">
                 <Eye className="h-3 w-3 mr-1" />
@@ -47,7 +47,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               asChild
               variant="outline"
               size="sm"
-              className="h-7 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+              className="h-7 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 shadow-none"
             >
               <Link href="/features">
                 <Sparkles className="h-3 w-3 mr-1" />
@@ -59,7 +59,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               asChild
               variant="outline"
               size="sm"
-              className="h-7 text-xs bg-amber-500 border-amber-500 text-white hover:bg-amber-600 hover:border-amber-600"
+              className="h-7 text-xs bg-amber-500 border-amber-500 text-white hover:bg-amber-600 hover:border-amber-600 shadow-none"
             >
               <Link href="/premium">
                 <Zap className="h-3 w-3 mr-1" />
