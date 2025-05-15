@@ -30,14 +30,14 @@ export function Footer({ className, minimal = false }: { className?: string; min
             <p className="text-sm text-muted-foreground italic">"Bagikan pesan rahasia dengan aman dan menyenangkan"</p>
           </div>
 
-          {/* Right: Telegram Mini Form - Smaller with border */}
+          {/* Right: Telegram Mini Form - Even smaller */}
           <div className="flex items-center">
-            <div className="bg-white border-2 border-[#0088cc] rounded-md shadow-sm overflow-hidden flex items-center">
-              <div className="bg-[#0088cc] p-1.5 flex items-center justify-center">
+            <div className="bg-white border border-[#0088cc] rounded-sm shadow-sm overflow-hidden flex items-center h-5">
+              <div className="bg-[#0088cc] p-0.5 flex items-center justify-center h-full">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
+                  width="10"
+                  height="10"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="white"
@@ -55,7 +55,7 @@ export function Footer({ className, minimal = false }: { className?: string; min
                 href="https://linktr.ee/maskripto"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-1 text-xs text-gray-700 hover:text-[#0088cc] transition-colors"
+                className="px-1.5 text-[10px] text-gray-700 hover:text-[#0088cc] transition-colors h-full flex items-center"
                 aria-label="Telegram"
               >
                 @maskripto
