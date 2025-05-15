@@ -40,7 +40,7 @@ export function ProfileImageButton({
         <div onClick={() => setDialogOpen(true)}>{children}</div>
       ) : (
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           className={buttonStyle}
           onClick={() => setDialogOpen(true)}
