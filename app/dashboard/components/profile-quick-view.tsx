@@ -263,6 +263,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   bio={user.bio}
                   avatarUrl={user.avatar_url}
                   isPremium={user.is_premium}
+                  variant="blue"
                 >
                   <Button
                     variant="outline"

@@ -14,6 +14,7 @@ interface ProfileImageButtonProps {
   avatarUrl?: string | null
   isPremium?: boolean
   children?: React.ReactNode
+  variant?: "default" | "blue" // Tambahkan prop variant untuk style yang berbeda
 }
 
 export function ProfileImageButton({
@@ -23,8 +24,15 @@ export function ProfileImageButton({
   avatarUrl,
   isPremium,
   children,
+  variant = "default", // Default ke style original
 }: ProfileImageButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
+
+  // Style berdasarkan variant
+  const buttonStyle =
+    variant === "blue"
+      ? "h-6 px-2 text-xs bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
+      : "h-6 px-2 text-xs" // Style default/original
 
   return (
     <>
@@ -34,7 +42,7 @@ export function ProfileImageButton({
         <Button
           variant="outline"
           size="sm"
-          className="h-6 px-2 text-xs bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
+          className={buttonStyle}
           onClick={() => setDialogOpen(true)}
           aria-label="Bagikan profil sebagai gambar"
         >
