@@ -33,7 +33,7 @@ export function logAuthRequest(data: {
   // Format log message
   const timestamp = new Date().toISOString()
   const cachedIndicator = data.cached ? "🔄 [CACHED] " : " "
-  const statusIndicator = data.success ? "✅" : "❌"
+  const statusIndicator = data.success ? "���" : "❌"
   const durationText = data.duration > 0 ? `${data.duration}ms` : "-"
   const userIdText = data.userId ? `| User: ${data.userId}` : ""
   const errorText = data.error ? `| Error: ${data.error}` : ""
