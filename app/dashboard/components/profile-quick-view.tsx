@@ -252,7 +252,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   }}
                 >
                   <Share2 className="h-3.5 w-3.5 mr-1.5" />
-                  Bagika
+                  Bagikan
                 </Button>
               </div>
 
