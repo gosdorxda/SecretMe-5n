@@ -91,17 +91,24 @@ export function SeoMeta() {
       {/* Favicon */}
       <link rel="icon" href={config.favicon_url} />
 
-      {/* Google Analytics */}
+      {/* Google Analytics 4 (GA4) Configuration */}
       {config.google_analytics_id && (
         <>
-          <script async src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}></script>
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
           <script
             dangerouslySetInnerHTML={{
               __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${config.google_analytics_id}');
+              
+              // GA4 configuration with recommended settings
+              gtag('config', '${config.google_analytics_id}', {
+                send_page_view: true,
+                cookie_flags: 'samesite=none;secure',
+                cookie_domain: 'auto',
+                anonymize_ip: true
+              });
             `,
             }}
           />
