@@ -94,7 +94,7 @@ export function SeoMeta() {
       {/* Google Analytics 4 (GA4) Configuration */}
       {config.google_analytics_id && (
         <>
-          <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+          <script async src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}></script>
           <script
             dangerouslySetInnerHTML={{
               __html: `
