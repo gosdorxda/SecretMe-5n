@@ -53,7 +53,9 @@ type PremiumClientProps = {
   activeGateway: string
 }
 
-// Definisi metode pembayaran untuk Duitku
+// Ubah definisi metode pembayaran untuk Duitku dan TriPay agar hanya berisi QRIS
+
+// Ganti definisi duitkuPaymentMethods dengan ini:
 const duitkuPaymentMethods = [
   {
     id: "qris",
@@ -69,42 +71,9 @@ const duitkuPaymentMethods = [
       },
     ],
   },
-  {
-    id: "bank",
-    name: "Transfer Bank",
-    methods: [
-      {
-        id: "BC",
-        name: "BCA Virtual Account",
-        icon: "/payment-icons/bca.png",
-        description: "Transfer melalui ATM, m-Banking, atau internet banking",
-        features: ["Verifikasi otomatis", "Aman & terpercaya"],
-      },
-    ],
-  },
-  {
-    id: "ewallet",
-    name: "E-Wallet",
-    methods: [
-      {
-        id: "OV",
-        name: "OVO",
-        icon: "/payment-icons/ovo.png",
-        description: "Bayar langsung dari saldo OVO Anda",
-        features: ["Proses instan", "Tanpa biaya tambahan"],
-      },
-      {
-        id: "DA",
-        name: "DANA",
-        icon: "/payment-icons/dana.png",
-        description: "Bayar langsung dari saldo DANA Anda",
-        features: ["Proses instan", "Tanpa biaya tambahan"],
-      },
-    ],
-  },
 ]
 
-// Definisi metode pembayaran untuk TriPay
+// Ganti definisi tripayPaymentMethods dengan ini:
 const tripayPaymentMethods = [
   {
     id: "qris",
@@ -117,19 +86,6 @@ const tripayPaymentMethods = [
         recommended: true,
         description: "Bayar dengan aplikasi e-wallet favorit Anda",
         features: ["Proses instan", "Tersedia 24/7", "Tanpa biaya tambahan"],
-      },
-    ],
-  },
-  {
-    id: "bank",
-    name: "Transfer Bank",
-    methods: [
-      {
-        id: "BC",
-        name: "BCA Virtual Account",
-        icon: "https://qieadczmickhkzyywdwg.supabase.co/storage/v1/object/public/logo.channel.payment//BCA.webp",
-        description: "Transfer melalui ATM, m-Banking, atau internet banking",
-        features: ["Aman & terpercaya"],
       },
     ],
   },
@@ -822,7 +778,12 @@ export function PremiumClient({
   // Render metode pembayaran
   const renderPaymentMethods = () => {
     // Urutkan metode pembayaran: QRIS, E-Wallet, Transfer Bank
-    const orderedCategories = ["qris", "ewallet", "bank"]
+    // Ubah juga orderedCategories agar hanya berisi "qris"
+    // Cari bagian renderPaymentMethods dan ubah orderedCategories:
+    // Dari:
+    // const orderedCategories = ["qris", "ewallet", "bank"]
+    // Menjadi:
+    const orderedCategories = ["qris"]
 
     // Flatten semua metode pembayaran dari semua kategori
     const allMethods = []
