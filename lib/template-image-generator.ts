@@ -267,9 +267,8 @@ export async function generateTemplateImage({
 
         // Draw reply button at the bottom right
         const buttonWidth = 48 // Dikurangi dari 120
-        const buttonHeight = 20 // Dikurangi dari 50
+        const buttonY = cardTop + cardHeight - padding - 20 // Dikurangi dari 50
         const buttonX = cardLeft + cardWidth - padding - buttonWidth
-        const buttonY = cardTop + cardHeight - padding - buttonHeight
 
         // Button background
         ctx.fillStyle = "#ffffff"
@@ -279,7 +278,7 @@ export async function generateTemplateImage({
         ctx.shadowBlur = 1
         ctx.shadowOffsetX = 1 // Dikurangi dari 3
         ctx.shadowOffsetY = 1 // Dikurangi dari 3
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 4, true, false) // Radius dikurangi dari 8
+        roundRect(ctx, buttonX, buttonY, buttonWidth, 20, 4, true, false) // Radius dikurangi dari 8
 
         // Button border
         ctx.shadowColor = "transparent"
@@ -287,14 +286,14 @@ export async function generateTemplateImage({
         ctx.shadowOffsetY = 0
         ctx.strokeStyle = "#000000"
         ctx.lineWidth = 1 // Dikurangi dari 3
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 4, false, true)
+        roundRect(ctx, buttonX, buttonY, buttonWidth, 20, 4, false, true)
 
         // Button text
         ctx.fillStyle = "#000000"
         ctx.font = `bold 11px ${PRIMARY_FONT}` // Dikurangi dari 28px
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
-        ctx.fillText("Balas", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
+        ctx.fillText("Balas", buttonX + buttonWidth / 2, buttonY + 10)
 
         // Draw SecretMe branding at the bottom
         ctx.fillStyle = "#6b7280"
@@ -523,14 +522,33 @@ export async function generateProfileImage({
         ctx.font = `15px ${PRIMARY_FONT}`
         ctx.fillText(`@${username}`, cardLeft + cardWidth / 2, usernameY)
 
+        // Draw bio if available
+        let bioButtonY = usernameY + 30
+        if (bio && bio.trim().length > 0) {
+          const bioY = usernameY + 25
+          ctx.fillStyle = "#000000"
+          ctx.font = `14px ${PRIMARY_FONT}`
+
+          // Calculate how many lines the bio will take
+          const bioWidth = cardWidth - padding * 4
+          const bioLines = calculateTextLines(ctx, bio, bioWidth, 2) // Max 2 lines for bio
+
+          // Draw each line of the bio
+          bioLines.forEach((line, index) => {
+            ctx.fillText(line, cardLeft + cardWidth / 2, bioY + index * 20)
+          })
+
+          // Adjust button position based on bio length
+          bioButtonY = bioY + bioLines.length * 20 + 15
+        }
+
         // Draw CTA button dengan border selaras proyek
-        const buttonY = usernameY + 30
         const buttonWidth = 220
         const buttonHeight = 40
         const buttonX = cardLeft + cardWidth / 2 - buttonWidth / 2
 
         // Button gradient
-        const buttonGradient = ctx.createLinearGradient(buttonX, buttonY, buttonX, buttonY + buttonHeight)
+        const buttonGradient = ctx.createLinearGradient(buttonX, bioButtonY, buttonX, bioButtonY + buttonHeight)
         buttonGradient.addColorStop(0, "#fd9745")
         buttonGradient.addColorStop(1, "#f87f1d")
 
@@ -541,7 +559,7 @@ export async function generateProfileImage({
         ctx.shadowOffsetY = 3
 
         ctx.fillStyle = buttonGradient
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, true, false)
+        roundRect(ctx, buttonX, bioButtonY, buttonWidth, buttonHeight, 8, true, false)
 
         // Reset shadow
         ctx.shadowColor = "transparent"
@@ -552,14 +570,14 @@ export async function generateProfileImage({
         // Button border yang selaras dengan proyek
         ctx.strokeStyle = "#000000"
         ctx.lineWidth = 2
-        roundRect(ctx, buttonX, buttonY, buttonWidth, buttonHeight, 8, false, true)
+        roundRect(ctx, buttonX, bioButtonY, buttonWidth, buttonHeight, 8, false, true)
 
         // Button text (tanpa bayangan)
         ctx.fillStyle = "#ffffff"
         ctx.font = `bold 16px ${PRIMARY_FONT}`
         ctx.textAlign = "center"
         ctx.textBaseline = "middle"
-        ctx.fillText("Kirimi Saya Pesan Anonim", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2)
+        ctx.fillText("Kirimi Saya Pesan Anonim", buttonX + buttonWidth / 2, bioButtonY + buttonHeight / 2)
 
         // Draw decorative elements around the button
         ctx.strokeStyle = "rgba(253, 151, 69, 0.3)"
@@ -567,14 +585,14 @@ export async function generateProfileImage({
 
         // Left decorative element
         ctx.beginPath()
-        ctx.moveTo(buttonX - 15, buttonY + buttonHeight / 2)
-        ctx.lineTo(buttonX - 5, buttonY + buttonHeight / 2)
+        ctx.moveTo(buttonX - 15, bioButtonY + buttonHeight / 2)
+        ctx.lineTo(buttonX - 5, bioButtonY + buttonHeight / 2)
         ctx.stroke()
 
         // Right decorative element
         ctx.beginPath()
-        ctx.moveTo(buttonX + buttonWidth + 15, buttonY + buttonHeight / 2)
-        ctx.lineTo(buttonX + buttonWidth + 5, buttonY + buttonHeight / 2)
+        ctx.moveTo(buttonX + buttonWidth + 15, bioButtonY + buttonHeight / 2)
+        ctx.lineTo(buttonX + buttonWidth + 5, bioButtonY + buttonHeight / 2)
         ctx.stroke()
 
         // Draw SecretMe branding at the bottom
