@@ -8,21 +8,12 @@ import { MessageSquare, Trash2, Share } from "lucide-react"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { PublicRepliesList } from "./public-replies-list"
 import { ShareImageDialog } from "./share-image-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DeleteMessageDrawer } from "./delete-message-drawer"
 
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -375,28 +366,15 @@ export function MessageList({
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent className="max-w-[90vw] w-[400px] neo-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Pesan</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus pesan ini? Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-9 px-4 text-sm">
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => messageToDelete && handleDeleteMessage(messageToDelete)}
-              className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-[var(--border-radius)] h-9 px-4 text-sm"
-            >
-              Hapus
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete Confirmation Drawer */}
+      {messageToDelete && (
+        <DeleteMessageDrawer
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          onDelete={() => messageToDelete && handleDeleteMessage(messageToDelete)}
+          isDeleting={!!isDeleting}
+        />
+      )}
 
       {/* Share Image Dialog */}
       {messageToShare && (
