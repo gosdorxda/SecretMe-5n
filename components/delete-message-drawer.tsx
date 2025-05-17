@@ -43,18 +43,18 @@ export function DeleteMessageDrawer({ open, onOpenChange, onDelete, isDeleting }
             <li>Pesan yang dihapus tidak dapat dipulihkan</li>
           </ul>
         </div>
-        <DrawerFooter className="flex-row justify-end gap-3 mt-6 mb-2">
+        <DrawerFooter className="flex-col gap-3 mt-6 mb-2">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-10 px-5 text-base font-medium border-2 border-black rounded-md bg-white hover:bg-gray-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            className="w-full h-12 text-base font-medium border-2 border-black rounded-md bg-white hover:bg-gray-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
           >
             Batal
           </Button>
           <Button
             onClick={onDelete}
             variant="destructive"
-            className="h-10 px-5 text-base font-medium border-2 border-black rounded-md bg-red-500 hover:bg-red-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+            className="w-full h-12 text-base font-medium border-2 border-black rounded-md bg-red-500 hover:bg-red-600 text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
           >
             {isDeleting ? (
               <>
