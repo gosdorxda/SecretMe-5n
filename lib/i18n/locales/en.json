@@ -1,0 +1,155 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "or": "OR",
+    "yes": "Yes",
+    "no": "No",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "username": "Username",
+    "phone": "Phone",
+    "address": "Address",
+    "city": "City",
+    "country": "Country",
+    "zipCode": "Zip Code",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "all": "All",
+    "none": "None",
+    "selectAll": "Select All",
+    "selectNone": "Select None",
+    "processing": "Processing..."
+  },
+  "home": {
+    "title": "Send and Receive Anonymous Messages",
+    "subtitle": "A platform to receive anonymous messages from anyone without them needing to register",
+    "getStarted": "Get Started",
+    "features": {
+      "title": "Key Features",
+      "anonymous": {
+        "title": "Anonymous Messages",
+        "description": "Receive messages from anyone without them needing to register"
+      },
+      "customProfile": {
+        "title": "Custom Profile",
+        "description": "Create a unique profile with a custom URL to share"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Get notified when you receive new messages"
+      },
+      "privacy": {
+        "title": "Privacy Guaranteed",
+        "description": "We don't store sender data"
+      }
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "step1": "Register a free account",
+      "step2": "Get your unique profile link",
+      "step3": "Share the link with friends",
+      "step4": "Receive anonymous messages"
+    },
+    "testimonials": {
+      "title": "User Testimonials",
+      "user1": {
+        "name": "Andy",
+        "text": "This app is really helpful for getting honest feedback from friends"
+      },
+      "user2": {
+        "name": "Bob",
+        "text": "I love the notification feature that instantly alerts me when I get new messages"
+      },
+      "user3": {
+        "name": "Cindy",
+        "text": "Simple and easy-to-use interface, highly recommended!"
+      }
+    },
+    "cta": {
+      "title": "Ready to Receive Anonymous Messages?",
+      "subtitle": "Register now and get your unique profile link",
+      "button": "Register Free"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to continue",
+      "subtitle": "Continue your anonymous communication journey",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Forgot password?",
+      "loginButton": "Login",
+      "processingButton": "Processing...",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Register",
+      "googleLogin": "Sign in with Google",
+      "loginFailed": "Login failed",
+      "loginSuccess": "Login successful",
+      "welcomeBack": "Welcome back!",
+      "troubleLogin": "Having trouble logging in?",
+      "resetPassword": "Reset your password",
+      "googleDisabled": "Due to API limits, Google registration is temporarily disabled, please register manually."
+    },
+    "register": {
+      "title": "Register to get started",
+      "subtitle": "Create an account to start receiving anonymous messages",
+      "nameLabel": "Name",
+      "namePlaceholder": "Full Name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "registerButton": "Register",
+      "processingButton": "Processing...",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "googleRegister": "Register with Google",
+      "registerFailed": "Registration failed",
+      "registerSuccess": "Registration successful",
+      "welcome": "Welcome to SecretMe!",
+      "googleDisabled": "Due to API limits, Google registration is temporarily disabled, please register manually."
+    },
+    "forgotPassword": {
+      "title": "Forgot Password",
+      "subtitle": "Enter your email to receive a password reset link",
+      "emailLabel": "Email",
+      "emailPlaceholder": "email@example.com",
+      "submitButton": "Send Reset Link",
+      "processingButton": "Sending...",
+      "backToLogin": "Back to login page",
+      "emailSent": "Email Sent!",
+      "emailSentDesc": "We've sent password reset instructions to your email. Please check your inbox.",
+      "checkSpam": "Didn't receive the email? Check your spam folder or try again in a few minutes.",
+      "tryAgain": "Try Again",
+      "backToLoginButton": "Back to Login",
+      "infoText": "We will send a password reset link to the email address registered in our system."
+    },
+    "errors": {
+      "emailRequired": "Email is required",
+      "invalidEmail": "Invalid email format",
+      "passwordRequired": "Password is required",
+      "nameRequired": "Name is required",
+      "emailExists": "Email already registered",
+      "emailNotFound": "Email not registered",
+      "invalidCredentials": "Incorrect email or password",
+      "networkError": "Internet connection issue. Check your connection and try again.",
+      "tooManyAttempts": "Too many login attempts. Please try again later.",
+      "unknownError": "An unexpected error occurred"
+    }
+  }
+}

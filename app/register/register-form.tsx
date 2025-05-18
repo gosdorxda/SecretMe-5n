@@ -7,8 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useTranslation } from "react-i18next"
 
 export default function RegisterForm() {
+  const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
@@ -55,7 +57,7 @@ export default function RegisterForm() {
             // User ada di database tapi tidak ada di Auth
             // Tampilkan pesan yang lebih informatif
             toast({
-              title: "Email sudah terdaftar",
+              title: t("auth.register.registerFailed"),
               description:
                 "Email ini sudah terdaftar tetapi mungkin telah dihapus dari sistem autentikasi. Silakan hubungi admin atau gunakan email lain.",
               variant: "destructive",
@@ -63,16 +65,16 @@ export default function RegisterForm() {
           } else {
             // User ada di database dan di Auth
             toast({
-              title: "Email sudah terdaftar",
-              description: "Silakan gunakan email lain atau login dengan email ini",
+              title: t("auth.register.registerFailed"),
+              description: t("auth.errors.emailExists"),
               variant: "destructive",
             })
           }
         } catch (error) {
           // Jika terjadi error lain, tampilkan pesan umum
           toast({
-            title: "Email sudah terdaftar",
-            description: "Silakan gunakan email lain atau login dengan email ini",
+            title: t("auth.register.registerFailed"),
+            description: t("auth.errors.emailExists"),
             variant: "destructive",
           })
         }
@@ -124,8 +126,8 @@ export default function RegisterForm() {
       }
 
       toast({
-        title: "Pendaftaran berhasil",
-        description: "Selamat datang di SecretMe!",
+        title: t("auth.register.registerSuccess"),
+        description: t("auth.register.welcome"),
       })
 
       // Redirect ke halaman dashboard
@@ -134,8 +136,8 @@ export default function RegisterForm() {
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Pendaftaran gagal",
-        description: error.message || "Terjadi kesalahan saat mendaftar",
+        title: t("auth.register.registerFailed"),
+        description: error.message || t("auth.errors.unknownError"),
         variant: "destructive",
       })
     } finally {
@@ -168,8 +170,8 @@ export default function RegisterForm() {
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Pendaftaran dengan Google gagal",
-        description: error.message || "Terjadi kesalahan saat mendaftar dengan Google",
+        title: t("auth.register.registerFailed"),
+        description: error.message || t("auth.errors.unknownError"),
         variant: "destructive",
       })
       setIsGoogleLoading(false)
@@ -180,60 +182,58 @@ export default function RegisterForm() {
     <div className="w-full flex items-center justify-center min-h-[calc(100vh-4rem)] py-4 bg-[var(--bg)]">
       <div className="w-full max-w-md mx-auto px-4">
         <div className="text-center mb-4">
-          <h1 className="text-3xl font-bold mb-2">Daftar untuk memulai</h1>
-          <p className="text-gray-600">Buat akun untuk mulai menerima pesan anonim</p>
+          <h1 className="text-3xl font-bold mb-2">{t("auth.register.title")}</h1>
+          <p className="text-gray-600">{t("auth.register.subtitle")}</p>
         </div>
 
         <div className="bg-white p-4 rounded-md border-2 border-black">
           <form onSubmit={onSubmit} className="space-y-6">
             <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 text-sm mb-4">
-              <AlertDescription>
-                Karena limit API, pendaftaran via Google dimatikan sementara, silahkan daftar secara manual.
-              </AlertDescription>
+              <AlertDescription>{t("auth.register.googleDisabled")}</AlertDescription>
             </Alert>
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2">
-                Nama
+                {t("auth.register.nameLabel")}
               </label>
               <input
                 id="name"
                 name="name"
                 required
-                placeholder="Nama Lengkap"
+                placeholder={t("auth.register.namePlaceholder")}
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
               />
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-2">
-                Email
+                {t("auth.register.emailLabel")}
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
-                placeholder="email@example.com"
+                placeholder={t("auth.register.emailPlaceholder")}
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
               />
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium mb-2">
-                Password
+                {t("auth.register.passwordLabel")}
               </label>
               <input
                 id="password"
                 name="password"
                 type="password"
                 required
-                placeholder="••••••••"
+                placeholder={t("auth.register.passwordPlaceholder")}
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
               />
             </div>
 
             <button type="submit" disabled={isLoading} className="w-full neo-btn">
-              {isLoading ? "Memproses..." : "Pendaftaran"}
+              {isLoading ? t("auth.register.processingButton") : t("auth.register.registerButton")}
             </button>
           </form>
 
@@ -242,7 +242,7 @@ export default function RegisterForm() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">ATAU</span>
+              <span className="px-4 bg-white text-gray-500">{t("common.or")}</span>
             </div>
           </div>
 
@@ -273,15 +273,15 @@ export default function RegisterForm() {
                 />
               </g>
             </svg>
-            {isGoogleLoading ? "Memproses..." : "Daftar dengan Google"}
+            {isGoogleLoading ? t("auth.register.processingButton") : t("auth.register.googleRegister")}
           </button>
         </div>
 
         <div className="text-center mt-6">
           <p>
-            Sudah punya akun?{" "}
+            {t("auth.register.haveAccount")}{" "}
             <Link href="/login" className="font-medium text-black hover:underline">
-              Masuk
+              {t("auth.register.loginLink")}
             </Link>
           </p>
         </div>

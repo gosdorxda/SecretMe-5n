@@ -3,8 +3,10 @@
 import Link from "next/link"
 import { Star } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 
 export default function Home() {
+  const { t } = useTranslation()
   const [typedUsername, setTypedUsername] = useState("")
   const [currentNameIndex, setCurrentNameIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -56,6 +58,28 @@ export default function Home() {
 
     return () => clearTimeout(initialTypingTimeout)
   }, []) // Empty dependency array ensures this runs only once on mount
+
+  // Helper function untuk mengganti tag <highlight> dengan span yang memiliki kelas text-blue-500
+  const renderHighlightedText = (text: string) => {
+    if (!text.includes("<highlight>")) return text
+
+    const parts = text.split(/<highlight>(.*?)<\/highlight>/)
+    return (
+      <>
+        {parts.map((part, i) => {
+          if (i % 2 === 1) {
+            // Ini adalah bagian yang di-highlight
+            return (
+              <span key={i} className="text-blue-500">
+                {part}
+              </span>
+            )
+          }
+          return part
+        })}
+      </>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg)]">
@@ -247,18 +271,15 @@ export default function Home() {
                   </span>
                 </span>
               </div>
-              <span className="text-xs">30.000+ pengguna sudah bergabung!</span>
+              <span className="text-xs">30.000+ {t("home.usersJoined")}</span>
             </div>
 
             {/* Text content above the card */}
             <div className="w-full space-y-4 text-center mb-6">
               <h1 className="text-3xl font-bold leading-tight md:text-4xl lg:text-5xl">
-                Terima Pesan <span className="text-blue-500">Anonim</span> dari Siapapun
+                {renderHighlightedText(t("home.hero.title"))}
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Platform untuk menerima pesan dan umpan balik secara anonim. Dapatkan kejujuran dari teman dan rekan
-                kerja Anda.
-              </p>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{t("home.hero.subtitle")}</p>
 
               {/* Username Promo Form - Moved here to replace the button */}
               <div className="w-full max-w-sm mx-auto mt-12 mb-8 px-4 sm:px-0">
@@ -273,7 +294,7 @@ export default function Home() {
                       href="/register"
                       className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-2 rounded-[var(--border-radius)] border-2 border-black"
                     >
-                      Buat!
+                      {t("home.hero.create")}
                     </Link>
                   </div>
                 </div>
@@ -287,23 +308,22 @@ export default function Home() {
                   <div className="avatar">A</div>
                   <div className="flex-1 message-header">
                     <div className="flex items-center">
-                      <div className="text-sm font-medium">Pesan Anonim</div>
+                      <div className="text-sm font-medium">{t("home.anonymousMessage.title")}</div>
                       <div className="mx-1">•</div>
-                      <div className="text-sm text-gray-500">Baru saja</div>
+                      <div className="text-sm text-gray-500">{t("home.anonymousMessage.justNow")}</div>
                     </div>
                     <div className="text-sm">
-                      Untuk: <span className="font-medium">@budi</span>
+                      {t("home.anonymousMessage.for")} <span className="font-medium">@budi</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4 text-base leading-relaxed message-content">
-                  Presentasimu minggu lalu sangat menginspirasi! Kamu punya cara yang bagus untuk menjelaskan konsep
-                  yang kompleks dengan sederhana.
+                  {t("home.anonymousMessage.content")}
                 </div>
 
                 <div className="mt-4 flex justify-end message-footer">
-                  <button className="reply-button">Balas</button>
+                  <button className="reply-button">{t("home.anonymousMessage.reply")}</button>
                 </div>
               </div>
             </div>
@@ -314,8 +334,8 @@ export default function Home() {
       {/* Testimonials Section */}
       <section className="py-8 md:py-12 bg-[var(--bg)] border-t-[3px] border-black">
         <div className="w-full max-w-[56rem] mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-3">Ulasan Pengguna</h2>
-          <p className="text-gray-600 mb-10">Lihat apa kata pengguna tentang pengalaman mereka menggunakan Secretme</p>
+          <h2 className="text-3xl font-bold mb-3">{t("home.testimonials.title")}</h2>
+          <p className="text-gray-600 mb-10">{t("home.testimonials.subtitle")}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Testimonial 1 */}
@@ -325,14 +345,11 @@ export default function Home() {
                   DP
                 </div>
                 <div className="text-left">
-                  <h3 className="font-bold">Dian Pratama</h3>
-                  <p className="text-gray-500 text-sm">Influencer</p>
+                  <h3 className="font-bold">{t("home.testimonials.users.dian.name")}</h3>
+                  <p className="text-gray-500 text-sm">{t("home.testimonials.users.dian.role")}</p>
                 </div>
               </div>
-              <p className="text-left mb-4 text-gray-700">
-                "Secretme membantu saya mendapatkan feedback jujur dari followers. Fitur premium worth it dengan
-                notifikasi yang memudahkan respon cepat!"
-              </p>
+              <p className="text-left mb-4 text-gray-700">{t("home.testimonials.users.dian.content")}</p>
               <div className="flex text-yellow-400 text-xl">
                 <Star className="fill-yellow-400 h-5 w-5" />
                 <Star className="fill-yellow-400 h-5 w-5" />
@@ -349,14 +366,11 @@ export default function Home() {
                   RS
                 </div>
                 <div className="text-left">
-                  <h3 className="font-bold">Rini Sulistiani</h3>
-                  <p className="text-gray-500 text-sm">Manajer HR</p>
+                  <h3 className="font-bold">{t("home.testimonials.users.rini.name")}</h3>
+                  <p className="text-gray-500 text-sm">{t("home.testimonials.users.rini.role")}</p>
                 </div>
               </div>
-              <p className="text-left mb-4 text-gray-700">
-                "Kami gunakan Secretme untuk feedback anonim karyawan. Hasilnya luar biasa! Banyak masalah tersembunyi
-                akhirnya terungkap."
-              </p>
+              <p className="text-left mb-4 text-gray-700">{t("home.testimonials.users.rini.content")}</p>
               <div className="flex text-yellow-400 text-xl">
                 <Star className="fill-yellow-400 h-5 w-5" />
                 <Star className="fill-yellow-400 h-5 w-5" />
@@ -373,14 +387,11 @@ export default function Home() {
                   FA
                 </div>
                 <div className="text-left">
-                  <h3 className="font-bold">Fajar Aditya</h3>
-                  <p className="text-gray-500 text-sm">Content Creator</p>
+                  <h3 className="font-bold">{t("home.testimonials.users.fajar.name")}</h3>
+                  <p className="text-gray-500 text-sm">{t("home.testimonials.users.fajar.role")}</p>
                 </div>
               </div>
-              <p className="text-left mb-4 text-gray-700">
-                "Game changer untuk konten saya! Dapat ide baru dari pesan anonim dan fitur link sosmed sangat membantu
-                cross-promotion."
-              </p>
+              <p className="text-left mb-4 text-gray-700">{t("home.testimonials.users.fajar.content")}</p>
               <div className="flex text-yellow-400 text-xl">
                 <Star className="fill-yellow-400 h-5 w-5" />
                 <Star className="fill-yellow-400 h-5 w-5" />
@@ -399,19 +410,19 @@ export default function Home() {
           <div className="flex flex-wrap justify-center md:justify-between items-center gap-6 md:gap-4">
             <div className="text-center md:text-left">
               <div className="text-3xl md:text-4xl font-bold">30,000+</div>
-              <div className="text-sm font-medium">Pengguna Terdaftar</div>
+              <div className="text-sm font-medium">{t("home.stats.users")}</div>
             </div>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold">1.2 Juta+</div>
-              <div className="text-sm font-medium">Pesan Terkirim</div>
+              <div className="text-sm font-medium">{t("home.stats.messages")}</div>
             </div>
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold">98%</div>
-              <div className="text-sm font-medium">Kepuasan Pengguna</div>
+              <div className="text-sm font-medium">{t("home.stats.satisfaction")}</div>
             </div>
             <div className="text-center md:text-right">
               <div className="text-3xl md:text-4xl font-bold">5,280+</div>
-              <div className="text-sm font-medium">Pengguna Premium</div>
+              <div className="text-sm font-medium">{t("home.stats.premium")}</div>
             </div>
           </div>
         </div>
@@ -424,26 +435,23 @@ export default function Home() {
             <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="flex-1 space-y-6">
                 <div className="inline-flex items-center justify-center rounded-[var(--border-radius)] border-2 border-[var(--border)] font-semibold bg-[var(--main)] text-[var(--mtext)] text-sm px-4 py-1">
-                  PENAWARAN SPESIAL
+                  {t("home.premium.specialOffer")}
                 </div>
                 <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-                  Sekali Bayar, <span className="text-blue-500">Akses Premium Selamanya</span>!
+                  {renderHighlightedText(t("home.premium.title"))}
                 </h2>
-                <p className="text-lg">
-                  Dapatkan akses ke semua fitur premium Secretme dengan pembayaran satu kali. Tanpa biaya berlangganan
-                  bulanan!
-                </p>
+                <p className="text-lg">{t("home.premium.subtitle")}</p>
                 <div className="bg-white p-4 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-2xl font-bold">Rp 16.500</span>
-                      <span className="text-lg line-through text-gray-500 ml-2">Rp 49.000</span>
+                      <span className="text-2xl font-bold">{t("home.premium.price")}</span>
+                      <span className="text-lg line-through text-gray-500 ml-2">{t("home.premium.originalPrice")}</span>
                     </div>
                     <div className="inline-flex items-center justify-center rounded-[var(--border-radius)] border-2 border-[var(--border)] px-2.5 py-0.5 text-xs font-semibold bg-red-500 text-white">
-                      Hemat 38%
+                      {t("home.premium.discount")}
                     </div>
                   </div>
-                  <p className="text-sm mt-1">Pembayaran sekali, akses seumur hidup ke semua fitur premium</p>
+                  <p className="text-sm mt-1">{t("home.premium.oneTime")}</p>
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
@@ -452,9 +460,9 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Username kustom permanen selamanya</span>
+                    <span className="font-medium">{t("home.premium.features.username")}</span>
                     <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
-                      Populer
+                      {t("home.premium.popular")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -463,7 +471,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Foto profil kustom & bio lengkap</span>
+                    <span className="font-medium">{t("home.premium.features.profile")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -471,7 +479,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Link media sosial (Instagram, Twitter, dll)</span>
+                    <span className="font-medium">{t("home.premium.features.social")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -479,9 +487,9 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Notifikasi WhatsApp & Telegram tanpa batas</span>
+                    <span className="font-medium">{t("home.premium.features.notifications")}</span>
                     <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
-                      Populer
+                      {t("home.premium.popular")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -490,7 +498,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Statistik lengkap kunjungan & pesan</span>
+                    <span className="font-medium">{t("home.premium.features.stats")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -498,7 +506,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Manajemen balasan publik</span>
+                    <span className="font-medium">{t("home.premium.features.replies")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -506,9 +514,9 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Tema profil kustom & kartu pesan</span>
+                    <span className="font-medium">{t("home.premium.features.themes")}</span>
                     <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
-                      Populer
+                      {t("home.premium.popular")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -517,9 +525,9 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Hapus pesan yang tidak diinginkan</span>
+                    <span className="font-medium">{t("home.premium.features.delete")}</span>
                     <span className="inline-flex items-center rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
-                      Populer
+                      {t("home.premium.popular")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -528,7 +536,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Berbagi gambar profil dengan QR code</span>
+                    <span className="font-medium">{t("home.premium.features.share")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -536,7 +544,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Tanpa iklan & prioritas dukungan seumur hidup</span>
+                    <span className="font-medium">{t("home.premium.features.noAds")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--main)] border border-[var(--border)]">
@@ -544,7 +552,7 @@ export default function Home() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                       </svg>
                     </div>
-                    <span className="font-medium">Semua update fitur premium di masa depan</span>
+                    <span className="font-medium">{t("home.premium.features.updates")}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-2">
@@ -556,7 +564,7 @@ export default function Home() {
                       d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                     ></path>
                   </svg>
-                  <span className="text-sm">Garansi 30 hari uang kembali. Tanpa risiko!</span>
+                  <span className="text-sm">{t("home.premium.guarantee")}</span>
                 </div>
               </div>
               <div className="flex-shrink-0 w-full md:w-1/3 relative">
@@ -565,7 +573,7 @@ export default function Home() {
                     <div className="p-4">
                       <div className="flex justify-between items-center mb-2">
                         <div className="inline-flex items-center justify-center rounded-[var(--border-radius)] border-2 border-[var(--border)] px-2.5 py-0.5 text-xs font-semibold bg-blue-500 text-white">
-                          Premium Lifetime
+                          {t("home.premium.badge")}
                         </div>
                         <span className="text-sm font-bold">@username</span>
                       </div>
@@ -592,7 +600,9 @@ export default function Home() {
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs font-medium">120+ pesan</span>
+                        <span className="text-xs font-medium">
+                          120+ {t("home.premium.stats.messages").toLowerCase()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -603,20 +613,20 @@ export default function Home() {
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="text-xs font-medium">Lifetime</span>
                         </div>
-                        <span className="text-xs font-bold">Statistik</span>
+                        <span className="text-xs font-bold">{t("home.premium.stats.messages")}</span>
                       </div>
                       <div className="flex justify-between items-center mt-2">
                         <div className="text-center">
                           <div className="text-sm font-bold">152</div>
-                          <div className="text-xs">Pesan</div>
+                          <div className="text-xs">{t("home.premium.stats.messages")}</div>
                         </div>
                         <div className="text-center">
                           <div className="text-sm font-bold">89%</div>
-                          <div className="text-xs">Positif</div>
+                          <div className="text-xs">{t("home.premium.stats.positive")}</div>
                         </div>
                         <div className="text-center">
                           <div className="text-sm font-bold">320</div>
-                          <div className="text-xs">Views</div>
+                          <div className="text-xs">{t("home.premium.stats.views")}</div>
                         </div>
                       </div>
                     </div>

@@ -1,37 +1,19 @@
-"use client"
-
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { usePathname } from "next/navigation"
-import { useAuth } from "./auth-provider"
-import { useRouter } from "next/navigation"
-import { MessageSquare } from "lucide-react"
+import { LanguageToggle } from "@/components/language-toggle"
 
 export function SiteHeader() {
-  const pathname = usePathname()
-  const { user, session, loading } = useAuth()
-  const router = useRouter()
-
   return (
-    <header className="w-full py-4 bg-[var(--bg)]">
-      <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[var(--border-radius)] bg-[var(--main)] border-2 border-[var(--border)] shadow-neo-sm">
-            <MessageSquare className="h-4 w-4 text-[var(--mtext)]" />
-          </div>
-          <span className="font-bold text-lg text-[var(--text)]">SecretMe</span>
-        </Link>
-
-        <div className="flex items-center gap-4">
-          {!loading && !session ? (
-            <Button className="rounded-full" size="sm" asChild>
-              <Link href="/register">Mulai Sekarang</Link>
-            </Button>
-          ) : (
-            <Button className="rounded-full" size="sm" asChild>
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-          )}
+    <header className="sticky top-0 z-40 w-full border-b bg-background">
+      <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
+        <div className="flex gap-6 md:gap-10">
+          <Link href="/" className="flex items-center space-x-2">
+            <span className="inline-block font-bold">SecretMe</span>
+          </Link>
+        </div>
+        <div className="flex items-center space-x-4">
+          <nav className="flex items-center space-x-1">
+            <LanguageToggle />
+          </nav>
         </div>
       </div>
     </header>
