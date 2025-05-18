@@ -1,42 +1,52 @@
 import type React from "react"
-import "@/app/globals.css"
 import type { Metadata } from "next"
-import { SiteHeader } from "@/components/site-header"
-import { Footer } from "@/components/footer"
+import { Inter } from "next/font/google"
+import "./globals.css"
 import { Toaster } from "@/components/toaster"
+import { EnvironmentDetector } from "@/components/environment-detector"
 import { AuthProvider } from "@/components/auth-provider"
+import { SiteHeader } from "@/components/site-header"
+import { SeoMeta } from "@/components/seo-meta"
 import { StickyNotificationProvider } from "@/components/sticky-notification-provider"
 import { FooterProvider } from "@/components/footer-provider"
-import I18nProvider from "@/components/i18n-provider"
+// Impor AuthTroubleshooter
+import { AuthTroubleshooter } from "@/components/auth-troubleshooter"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "SecretMe - Pesan Anonim",
-  description: "Platform untuk menerima pesan anonim dari siapa saja",
+  title: "SecretMe - Platform Pesan Anonim",
+  description: "Terima pesan anonim dari siapapun dengan mudah dan aman",
     generator: 'v0.dev'
 }
 
-interface RootLayoutProps {
+export default function RootLayout({
+  children,
+}: Readonly<{
   children: React.ReactNode
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+}>) {
   return (
-    <html lang="id" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <I18nProvider>
-          <AuthProvider>
+    <html lang="id">
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+        {/* SeoMeta tetap di sini, tapi sekarang menggunakan client-side rendering */}
+        <SeoMeta />
+      </head>
+      <body className={inter.className}>
+        <AuthProvider>
+          <EnvironmentDetector>
             <StickyNotificationProvider>
+              <AuthTroubleshooter /> {/* Tambahkan komponen ini */}
               <FooterProvider>
                 <div className="relative flex min-h-screen flex-col">
                   <SiteHeader />
-                  <div className="flex-1">{children}</div>
-                  <Footer />
+                  <main className="flex-1 w-full">{children}</main>
                 </div>
-                <Toaster />
               </FooterProvider>
+              <Toaster />
             </StickyNotificationProvider>
-          </AuthProvider>
-        </I18nProvider>
+          </EnvironmentDetector>
+        </AuthProvider>
       </body>
     </html>
   )
