@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { MessageSquare, Share2 } from "lucide-react"
 import { MessageList } from "@/components/message-list"
 import { PublicRepliesToggle } from "@/components/public-replies-toggle"
+import { useLanguage } from "@/lib/i18n/language-context"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -22,6 +23,7 @@ interface MessagesTabProps {
 
 export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabProps) {
   const router = useRouter()
+  const { t, locale } = useLanguage()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "replied" | "unreplied">("all")
   const [allowPublicReplies, setAllowPublicReplies] = useState(user.allow_public_replies || false)
@@ -45,12 +47,25 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
     router.refresh()
   }
 
+  function handleShareProfile() {
+    if (navigator.share) {
+      navigator.share({
+        title: locale === "en" ? "Send me anonymous messages" : "Kirim pesan anonim ke saya",
+        text:
+          locale === "en" ? "Send me anonymous messages via SecretMe" : "Kirim pesan anonim ke saya melalui SecretMe",
+        url: `${window.location.origin}/${user.is_premium && user.username ? user.username : user.numeric_id}`,
+      })
+    } else {
+      onCopyProfileLink()
+    }
+  }
+
   return (
     <Card className="neo-card">
       <CardHeader className="pb-0 pt-4 px-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg">Pesan Anonim</CardTitle>
+            <CardTitle className="text-lg">{t.dashboard.messagesTab.title}</CardTitle>
           </div>
         </div>
 
@@ -59,7 +74,9 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
             <div className="flex items-center gap-2">
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-orange-700">Balasan Publik</span>
+                  <span className="text-sm font-medium text-orange-700">
+                    {t.dashboard.messagesTab.publicReplies.title}
+                  </span>
                   <Badge
                     variant={allowPublicReplies ? "success" : "secondary"}
                     className={
@@ -68,11 +85,15 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
                         : "bg-gray-100 text-gray-800 border-gray-200 text-xs px-1.5 py-0"
                     }
                   >
-                    {allowPublicReplies ? "Aktif" : "Nonaktif"}
+                    {allowPublicReplies
+                      ? t.dashboard.messagesTab.publicReplies.active
+                      : t.dashboard.messagesTab.publicReplies.inactive}
                   </Badge>
                 </div>
                 <p className="text-xs text-orange-600">
-                  {allowPublicReplies ? "Pengunjung dapat membalas pesan Anda" : "Hanya Anda yang dapat membalas pesan"}
+                  {allowPublicReplies
+                    ? t.dashboard.messagesTab.publicReplies.activeDescription
+                    : t.dashboard.messagesTab.publicReplies.inactiveDescription}
                 </p>
               </div>
             </div>
@@ -101,7 +122,7 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
               />
             </svg>
             <Input
-              placeholder="Cari pesan..."
+              placeholder={t.dashboard.messagesTab.search}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 border-2 border-gray-200 h-10 text-sm"
@@ -119,7 +140,7 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
                   : "bg-white text-gray-700 border-2 border-black shadow-none hover:bg-white hover:text-gray-700 hover:shadow-none active:shadow-none focus:shadow-none focus:outline-none focus-visible:ring-0 focus:ring-0 focus:scale-100 active:scale-100"
               }`}
             >
-              Semua
+              {t.dashboard.messagesTab.filters.all}
             </Button>
             <Button
               variant={filterStatus === "replied" ? "default" : "outline"}
@@ -131,7 +152,7 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
                   : "bg-white text-gray-700 border-2 border-black shadow-none hover:bg-white hover:text-gray-700 hover:shadow-none active:shadow-none focus:shadow-none focus:outline-none focus-visible:ring-0 focus:ring-0 focus:scale-100 active:scale-100"
               }`}
             >
-              Dibalas
+              {t.dashboard.messagesTab.filters.replied}
             </Button>
             <Button
               variant={filterStatus === "unreplied" ? "default" : "outline"}
@@ -143,7 +164,7 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
                   : "bg-white text-gray-700 border-2 border-black shadow-none hover:bg-white hover:text-gray-700 hover:shadow-none active:shadow-none focus:shadow-none focus:outline-none focus-visible:ring-0 focus:ring-0 focus:scale-100 active:scale-100"
               }`}
             >
-              Belum Dibalas
+              {t.dashboard.messagesTab.filters.unreplied}
             </Button>
           </div>
         </div>
@@ -156,8 +177,10 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <p className="text-gray-500 mb-1">Tidak ada hasil</p>
-            <p className="text-sm text-gray-400">Tidak ada pesan yang cocok dengan pencarian "{searchTerm}"</p>
+            <p className="text-gray-500 mb-1">{t.dashboard.messagesTab.noResults.title}</p>
+            <p className="text-sm text-gray-400">
+              {t.dashboard.messagesTab.noResults.description} "{searchTerm}"
+            </p>
           </div>
         )}
 
@@ -166,30 +189,11 @@ export function MessagesTab({ user, messages, onCopyProfileLink }: MessagesTabPr
             <div className="mx-auto w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
               <MessageSquare className="h-8 w-8 text-blue-300" />
             </div>
-            <h3 className="text-lg font-medium mb-2">Belum ada pesan</h3>
-            <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Bagikan link profil Anda untuk mulai menerima pesan anonim dari teman dan pengikut Anda.
-            </p>
-            <Button
-              variant="default"
-              size="sm"
-              className="neo-btn"
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: "Kirim pesan anonim ke saya",
-                    text: "Kirim pesan anonim ke saya melalui SecretMe",
-                    url: `${window.location.origin}/${
-                      user.is_premium && user.username ? user.username : user.numeric_id
-                    }`,
-                  })
-                } else {
-                  onCopyProfileLink()
-                }
-              }}
-            >
+            <h3 className="text-lg font-medium mb-2">{t.dashboard.messagesTab.noMessages.title}</h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">{t.dashboard.messagesTab.noMessages.description}</p>
+            <Button variant="default" size="sm" className="neo-btn" onClick={handleShareProfile}>
               <Share2 className="h-4 w-4 mr-2" />
-              Bagikan Profil Anda
+              {t.dashboard.messagesTab.noMessages.shareButton}
             </Button>
           </div>
         )}

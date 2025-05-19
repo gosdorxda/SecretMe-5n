@@ -14,10 +14,10 @@ export default function RegisterForm() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get("redirect") || "/dashboard"
+  const { t, locale } = useLanguage()
+  const redirect = searchParams.get("redirect") || (locale === "en" ? "/en/dashboard" : "/dashboard")
   const supabase = createClient()
   const { toast } = useToast()
-  const { t, locale } = useLanguage()
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

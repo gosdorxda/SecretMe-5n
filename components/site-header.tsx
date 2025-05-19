@@ -3,10 +3,11 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
-import { MessageSquare, Globe } from "lucide-react"
+import { MessageSquare } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function SiteHeader() {
   const { t, locale, changeLocale } = useLanguage()
@@ -33,11 +34,6 @@ export function SiteHeader() {
     }
   }, [supabase.auth])
 
-  // Function to toggle language
-  const toggleLanguage = () => {
-    changeLocale(locale === "id" ? "en" : "id")
-  }
-
   return (
     <header className="w-full py-4 bg-[var(--bg)]">
       <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4">
@@ -49,11 +45,28 @@ export function SiteHeader() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {/* Language Toggle Button */}
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={toggleLanguage}>
-            <Globe className="h-5 w-5 text-[var(--text)]" />
-            <span className="sr-only">{locale === "id" ? "Switch to English" : "Ganti ke Bahasa Indonesia"}</span>
-          </Button>
+          {/* Language Toggle Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="flex items-center gap-2 rounded-full">
+                <span className="text-sm font-medium">{locale === "id" ? "🇮🇩 ID" : "🇬🇧 EN"}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => changeLocale("id")} className={locale === "id" ? "bg-gray-100" : ""}>
+                <span className="flex items-center gap-2">
+                  <span>🇮🇩</span>
+                  <span>Bahasa Indonesia</span>
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => changeLocale("en")} className={locale === "en" ? "bg-gray-100" : ""}>
+                <span className="flex items-center gap-2">
+                  <span>🇬🇧</span>
+                  <span>English</span>
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {!loading && !session ? (
             <Button className="rounded-full" size="sm" asChild>

@@ -12,14 +12,14 @@ import { logAuthRequest } from "@/lib/auth-logger"
 import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function LoginForm() {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [loginAttempts, setLoginAttempts] = useState(0)
   const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get("error")
-  const redirect = searchParams.get("redirect") || "/dashboard"
+  const redirect = searchParams.get("redirect") || (locale === "en" ? "/en/dashboard" : "/dashboard")
   const errorMessage = searchParams.get("message")
   const supabase = createClient()
   const { toast } = useToast()
@@ -363,7 +363,7 @@ export default function LoginForm() {
         },
       })
 
-      // Redirect to dashboard or requested page
+      // Redirect to dashboard or requested page with language preserved
       console.log("✅ LOGIN: Redirecting to:", redirect)
       router.push(redirect)
       router.refresh()
