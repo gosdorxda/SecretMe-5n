@@ -141,6 +141,11 @@ type Translation = {
     emailPlaceholder: string
     passwordLabel: string
     passwordPlaceholder: string
+    voucherLabel: string
+    voucherPlaceholder: string
+    voucherValid: string
+    voucherInvalid: string
+    voucherOptional: string
     registerButton: string
     processingButton: string
     googleButton: string
@@ -567,6 +572,11 @@ export const translations: Record<Locale, Translation> = {
       emailPlaceholder: "email@example.com",
       passwordLabel: "Password",
       passwordPlaceholder: "••••••••",
+      voucherLabel: "Kode Voucher",
+      voucherPlaceholder: "Masukkan kode voucher jika ada",
+      voucherValid: "Voucher valid! Anda akan mendapatkan akses premium.",
+      voucherInvalid: "Voucher tidak valid",
+      voucherOptional: "(opsional)",
       registerButton: "Pendaftaran",
       processingButton: "Memproses...",
       googleButton: "Daftar dengan Google",
@@ -995,6 +1005,11 @@ export const translations: Record<Locale, Translation> = {
       emailPlaceholder: "email@example.com",
       passwordLabel: "Password",
       passwordPlaceholder: "••••••••",
+      voucherLabel: "Voucher Code",
+      voucherPlaceholder: "Enter voucher code if you have one",
+      voucherValid: "Valid voucher! You will get premium access.",
+      voucherInvalid: "Invalid voucher",
+      voucherOptional: "(optional)",
       registerButton: "Register",
       processingButton: "Processing...",
       googleButton: "Register with Google",

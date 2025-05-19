@@ -8,6 +8,15 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/lib/i18n/language-context"
 
+// Ganti konstanta hardcoded dengan environment variable
+// Ubah bagian ini:
+// const PREMIUM_VOUCHER_CODE = "SECRETME2024"
+// const PREMIUM_DURATION_DAYS = 365 // Premium selama 1 tahun
+
+// Menjadi:
+const PREMIUM_VOUCHER_CODE = process.env.NEXT_PUBLIC_PREMIUM_VOUCHER_CODE || ""
+const PREMIUM_DURATION_DAYS = Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_DURATION_DAYS || "365")
+
 export default function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -17,6 +26,38 @@ export default function RegisterForm() {
   const redirect = searchParams.get("redirect") || (locale === "en" ? "/en/dashboard" : "/dashboard")
   const supabase = createClient()
   const { toast } = useToast()
+
+  // Tambahkan state untuk menampilkan pesan validasi voucher
+  const [voucherMessage, setVoucherMessage] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const [voucherValue, setVoucherValue] = useState("")
+
+  // Tambahkan fungsi untuk memvalidasi voucher saat input berubah
+  const handleVoucherChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setVoucherValue(value)
+
+    // Reset pesan jika input kosong
+    if (!value) {
+      setVoucherMessage(null)
+      return
+    }
+
+    // Perbarui penggunaan terjemahan untuk pesan validasi voucher
+    // Ganti kode yang menampilkan pesan validasi dengan kode berikut
+
+    // Validasi voucher
+    if (value === PREMIUM_VOUCHER_CODE) {
+      setVoucherMessage({
+        type: "success",
+        message: t.register.voucherValid || "Voucher valid! Anda akan mendapatkan akses premium.",
+      })
+    } else {
+      setVoucherMessage({
+        type: "error",
+        message: t.register.voucherInvalid || "Voucher tidak valid",
+      })
+    }
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -96,13 +137,21 @@ export default function RegisterForm() {
 
       // Tambahkan user ke tabel users
       if (data.user) {
+        // Tambahkan logika untuk mengatur status premium jika voucher valid
+        const isPremium = voucherValue === PREMIUM_VOUCHER_CODE
+        const premiumExpiresAt = isPremium
+          ? new Date(Date.now() + PREMIUM_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString()
+          : null
+
+        // Modifikasi bagian insert ke tabel users
         const { error: profileError } = await supabase.from("users").insert({
           id: data.user.id,
           name,
           email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          is_premium: false,
+          is_premium: isPremium,
+          premium_expires_at: premiumExpiresAt,
           allow_public_replies: false, // Set default ke false untuk pengguna baru
         })
 
@@ -229,6 +278,32 @@ export default function RegisterForm() {
                 placeholder={t.register.passwordPlaceholder}
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
               />
+            </div>
+
+            <div>
+              <label htmlFor="voucher" className="block text-sm font-medium mb-2">
+                {t.register.voucherLabel} <span className="text-gray-500 text-xs">{t.register.voucherOptional}</span>
+              </label>
+              <input
+                id="voucher"
+                name="voucher"
+                type="text"
+                value={voucherValue}
+                onChange={handleVoucherChange}
+                placeholder={t.register.voucherPlaceholder}
+                className={`w-full px-3 py-2 border-2 ${
+                  voucherMessage?.type === "success"
+                    ? "border-green-500"
+                    : voucherMessage?.type === "error"
+                      ? "border-red-500"
+                      : "border-black"
+                } rounded-md focus:outline-none`}
+              />
+              {voucherMessage && (
+                <p className={`mt-1 text-sm ${voucherMessage.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                  {voucherMessage.message}
+                </p>
+              )}
             </div>
 
             <button type="submit" disabled={isLoading} className="w-full neo-btn">
