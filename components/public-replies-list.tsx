@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { id } from "date-fns/locale"
+import { enUS } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/client"
 import { PublicReplyForm } from "./public-reply-form"
 import { Button } from "@/components/ui/button"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface PublicReply {
   id: string
@@ -26,6 +28,7 @@ export function PublicRepliesList({ messageId, userId }: PublicRepliesListProps)
   const [showAllReplies, setShowAllReplies] = useState(false)
   const [allowPublicReplies, setAllowPublicReplies] = useState(true) // Default to true
   const supabase = createClient()
+  const { locale } = useLanguage()
 
   // Jumlah balasan yang ditampilkan secara default
   const defaultDisplayCount = 3
@@ -150,7 +153,7 @@ export function PublicRepliesList({ messageId, userId }: PublicRepliesListProps)
     return (
       <div className="mt-3 text-center py-3">
         <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent mx-auto"></div>
-        <p className="text-xs text-gray-500 mt-2">Memuat balasan...</p>
+        <p className="text-xs text-gray-500 mt-2">{locale === "en" ? "Loading replies..." : "Memuat balasan..."}</p>
       </div>
     )
   }
@@ -167,7 +170,9 @@ export function PublicRepliesList({ messageId, userId }: PublicRepliesListProps)
   return (
     <div className="mt-3">
       <div className={`flex items-center mb-2 ${replies.length > 0 ? "pb-2 border-b-2 border-gray-200" : ""}`}>
-        <span className="text-xs text-gray-600">Balasan Publik ({replies.length})</span>
+        <span className="text-xs text-gray-600">
+          {locale === "en" ? "Public Replies" : "Balasan Publik"} ({replies.length})
+        </span>
       </div>
 
       <div className="space-y-3">
@@ -176,7 +181,10 @@ export function PublicRepliesList({ messageId, userId }: PublicRepliesListProps)
             <div className="flex justify-between items-start mb-1">
               <span className="font-medium text-sm">{reply.author_name}</span>
               <span className="text-xs text-gray-500">
-                {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true, locale: id })}
+                {formatDistanceToNow(new Date(reply.created_at), {
+                  addSuffix: true,
+                  locale: locale === "en" ? enUS : id,
+                })}
               </span>
             </div>
             <p className="text-sm">{reply.content}</p>
@@ -192,8 +200,12 @@ export function PublicRepliesList({ messageId, userId }: PublicRepliesListProps)
           className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 w-full"
         >
           {showAllReplies
-            ? "Sembunyikan sebagian balasan"
-            : `Lihat ${replies.length - defaultDisplayCount} balasan lainnya`}
+            ? locale === "en"
+              ? "Hide some replies"
+              : "Sembunyikan sebagian balasan"
+            : locale === "en"
+              ? `View ${replies.length - defaultDisplayCount} more ${replies.length - defaultDisplayCount === 1 ? "reply" : "replies"}`
+              : `Lihat ${replies.length - defaultDisplayCount} balasan lainnya`}
         </Button>
       )}
 
