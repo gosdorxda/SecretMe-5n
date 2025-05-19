@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import Script from "next/script"
 
 interface SeoConfig {
   site_title: string
@@ -13,7 +12,6 @@ interface SeoConfig {
   og_image_url: string
   favicon_url: string
   twitter_handle: string
-  google_analytics_id: string
   custom_head_tags: string
 }
 
@@ -26,7 +24,6 @@ const defaultSeoConfig: SeoConfig = {
   og_image_url: "",
   favicon_url: "/favicon.ico",
   twitter_handle: "@secretme",
-  google_analytics_id: "",
   custom_head_tags: "",
 }
 
@@ -82,34 +79,6 @@ export function SeoMeta() {
 
       {/* Favicon */}
       <link rel="icon" href={config.favicon_url} />
-
-      {/* Google Analytics 4 (GA4) Configuration */}
-      {config.google_analytics_id && (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${config.google_analytics_id}`}
-            strategy="afterInteractive"
-          />
-          <Script
-            id="google-analytics"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-              __html: `
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                
-                gtag('config', '${config.google_analytics_id}', {
-                  page_path: window.location.pathname,
-                  cookie_flags: 'samesite=none;secure',
-                  anonymize_ip: true,
-                  debug_mode: true
-                });
-              `,
-            }}
-          />
-        </>
-      )}
 
       {/* Custom Head Tags */}
       {config.custom_head_tags && <div dangerouslySetInnerHTML={{ __html: config.custom_head_tags }} />}

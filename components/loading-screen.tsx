@@ -1,10 +1,20 @@
+"use client"
+
 import { MessageSquare } from "lucide-react"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface LoadingScreenProps {
   message?: string
+  loadingKey?: keyof Translation["loading"]
 }
 
-export function LoadingScreen({ message = "Memuat..." }: LoadingScreenProps) {
+export function LoadingScreen({ message = "Memuat...", loadingKey = "default" }: LoadingScreenProps) {
+  const { locale } = useLanguage()
+
+  // Gunakan terjemahan jika tersedia
+  const displayMessage =
+    loadingKey && translations[locale]?.loading?.[loadingKey] ? translations[locale].loading[loadingKey] : message
+
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-[var(--bg)] z-50">
       <div className="flex flex-col items-center gap-4">
@@ -15,7 +25,7 @@ export function LoadingScreen({ message = "Memuat..." }: LoadingScreenProps) {
 
         {/* Teks loading dengan animasi titik */}
         <div className="text-center mt-4">
-          <p className="text-lg font-medium">{message}</p>
+          <p className="text-lg font-medium">{displayMessage}</p>
         </div>
 
         {/* Loading bar sederhana */}
@@ -26,3 +36,7 @@ export function LoadingScreen({ message = "Memuat..." }: LoadingScreenProps) {
     </div>
   )
 }
+
+// Import translations untuk digunakan dalam komponen
+import { translations } from "@/lib/i18n/translations"
+import type { Translation } from "@/lib/i18n/translations"

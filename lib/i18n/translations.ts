@@ -35,6 +35,14 @@ type Translation = {
     creatingImage: string
     failedToCreate: string
   }
+  loading: {
+    default: string
+    dashboard: string
+    premium: string
+    page: string
+    login: string
+    register: string
+  }
   home: {
     hero: {
       userCount: string
@@ -442,6 +450,14 @@ export const translations: Record<Locale, Translation> = {
       generating: "Membuat gambar...",
       creatingImage: "Membuat gambar...",
       failedToCreate: "Tidak dapat membuat gambar",
+    },
+    loading: {
+      default: "Memuat...",
+      dashboard: "Memuat dashboard",
+      premium: "Memuat halaman premium",
+      page: "Memuat halaman",
+      login: "Mempersiapkan halaman login",
+      register: "Mempersiapkan halaman registrasi",
     },
     home: {
       hero: {
@@ -856,6 +872,14 @@ export const translations: Record<Locale, Translation> = {
       generating: "Generating...",
       creatingImage: "Creating image...",
       failedToCreate: "Failed to create image",
+    },
+    loading: {
+      default: "Loading...",
+      dashboard: "Loading dashboard",
+      premium: "Loading premium page",
+      page: "Loading page",
+      login: "Preparing login page",
+      register: "Preparing registration page",
     },
     home: {
       hero: {
