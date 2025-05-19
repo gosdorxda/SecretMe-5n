@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface TruncatedBioProps {
   bio: string
@@ -12,6 +13,7 @@ interface TruncatedBioProps {
 export function TruncatedBio({ bio, maxLength = 150 }: TruncatedBioProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const isTooLong = bio.length > maxLength
+  const { t } = useLanguage()
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded)
@@ -34,11 +36,11 @@ export function TruncatedBio({ bio, maxLength = 150 }: TruncatedBioProps) {
         >
           {isExpanded ? (
             <>
-              <ChevronUp className="h-3 w-3" /> Tampilkan kurang
+              <ChevronUp className="h-3 w-3" /> {t.common.showLess}
             </>
           ) : (
             <>
-              <ChevronDown className="h-3 w-3" /> Tampilkan lebih
+              <ChevronDown className="h-3 w-3" /> {t.common.showMore}
             </>
           )}
         </Button>

@@ -27,6 +27,14 @@ type Translation = {
     back: string
     next: string
     close: string
+    showMore: string
+    showLess: string
+    download: string
+    share: string
+    generating: string
+    creatingImage: string
+    failedToCreate: string
+    shareProfile: string
   }
   home: {
     hero: {
@@ -300,30 +308,12 @@ type Translation = {
         subtitle: string
         upgradeButton: string
         features: {
-          username: {
-            title: string
-            description: string
-          }
-          name: {
-            title: string
-            description: string
-          }
-          profilePhoto: {
-            title: string
-            description: string
-          }
-          bio: {
-            title: string
-            description: string
-          }
-          socialMedia: {
-            title: string
-            description: string
-          }
-          deleteMessages: {
-            title: string
-            description: string
-          }
+          username: string
+          name: string
+          profilePhoto: string
+          bio: string
+          socialMedia: string
+          deleteMessages: string
         }
         benefits: {
           title: string
@@ -387,6 +377,17 @@ type Translation = {
       linkCopied: string
     }
   }
+  shareImage: {
+    title: string
+    description: string
+    shareText: string
+    downloadButton: string
+    shareButton: string
+    successDownload: string
+    successShare: string
+    errorTitle: string
+    errorDescription: string
+  }
 }
 
 export const translations: Record<Locale, Translation> = {
@@ -417,6 +418,14 @@ export const translations: Record<Locale, Translation> = {
       back: "Kembali",
       next: "Lanjut",
       close: "Tutup",
+      showMore: "Tampilkan lebih",
+      showLess: "Tampilkan kurang",
+      download: "Unduh",
+      share: "Bagikan",
+      generating: "Membuat gambar...",
+      creatingImage: "Membuat gambar...",
+      failedToCreate: "Tidak dapat membuat gambar",
+      shareProfile: "Bagikan Profil",
     },
     home: {
       hero: {
@@ -785,6 +794,17 @@ export const translations: Record<Locale, Translation> = {
         linkCopied: "Link disalin ke clipboard!",
       },
     },
+    shareImage: {
+      title: "Bagikan Sebagai Gambar",
+      description: "Buat dan bagikan gambar pesan Anda dengan mudah",
+      shareText: "Aku baru saja menerima pesan anonim dari seseorang 🤔",
+      downloadButton: "Unduh",
+      shareButton: "Bagikan",
+      successDownload: "Gambar pesan berhasil diunduh",
+      successShare: "Gambar pesan berhasil dibagikan",
+      errorTitle: "Gagal membagikan",
+      errorDescription: "Terjadi kesalahan saat membagikan gambar",
+    },
   },
   en: {
     common: {
@@ -813,6 +833,14 @@ export const translations: Record<Locale, Translation> = {
       back: "Back",
       next: "Next",
       close: "Close",
+      showMore: "Show more",
+      showLess: "Show less",
+      download: "Download",
+      share: "Share",
+      generating: "Generating...",
+      creatingImage: "Creating image...",
+      failedToCreate: "Failed to create image",
+      shareProfile: "Share Profile",
     },
     home: {
       hero: {
@@ -1177,6 +1205,17 @@ export const translations: Record<Locale, Translation> = {
         viewPublic: "View Profile",
         linkCopied: "Link copied to clipboard!",
       },
+    },
+    shareImage: {
+      title: "Share as Image",
+      description: "Create and share your message image easily",
+      shareText: "I just received an anonymous message from someone 🤔",
+      downloadButton: "Download",
+      shareButton: "Share",
+      successDownload: "Message image successfully downloaded",
+      successShare: "Message image successfully shared",
+      errorTitle: "Failed to share",
+      errorDescription: "An error occurred while sharing the image",
     },
   },
 }
