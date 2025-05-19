@@ -34,7 +34,6 @@ type Translation = {
     generating: string
     creatingImage: string
     failedToCreate: string
-    shareProfile: string
   }
   home: {
     hero: {
@@ -308,12 +307,30 @@ type Translation = {
         subtitle: string
         upgradeButton: string
         features: {
-          username: string
-          name: string
-          profilePhoto: string
-          bio: string
-          socialMedia: string
-          deleteMessages: string
+          username: {
+            title: string
+            description: string
+          }
+          name: {
+            title: string
+            description: string
+          }
+          profilePhoto: {
+            title: string
+            description: string
+          }
+          bio: {
+            title: string
+            description: string
+          }
+          socialMedia: {
+            title: string
+            description: string
+          }
+          deleteMessages: {
+            title: string
+            description: string
+          }
         }
         benefits: {
           title: string
@@ -425,7 +442,6 @@ export const translations: Record<Locale, Translation> = {
       generating: "Membuat gambar...",
       creatingImage: "Membuat gambar...",
       failedToCreate: "Tidak dapat membuat gambar",
-      shareProfile: "Bagikan Profil",
     },
     home: {
       hero: {
@@ -840,7 +856,6 @@ export const translations: Record<Locale, Translation> = {
       generating: "Generating...",
       creatingImage: "Creating image...",
       failedToCreate: "Failed to create image",
-      shareProfile: "Share Profile",
     },
     home: {
       hero: {

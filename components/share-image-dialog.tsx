@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Download, Share2 } from "lucide-react"
-import { generateProfileImage, shareTemplateImage } from "@/lib/template-image-generator"
+import { generateTemplateImage, shareTemplateImage } from "@/lib/template-image-generator"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/lib/i18n/language-context"
 
@@ -12,13 +12,10 @@ interface ShareImageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   username: string
-  message?: string
-  date?: string
+  message: string
+  date: string
   avatarUrl?: string | null
   displayName?: string | null
-  bio?: string
-  profileUrl?: string
-  isProfileShare?: boolean
 }
 
 export function ShareImageDialog({
@@ -29,15 +26,12 @@ export function ShareImageDialog({
   date,
   avatarUrl,
   displayName,
-  bio,
-  profileUrl,
-  isProfileShare = true,
 }: ShareImageDialogProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const { toast } = useToast()
-  const { t, locale } = useLanguage()
+  const { t } = useLanguage()
 
   // Generate preview when dialog opens
   useEffect(() => {
@@ -51,13 +45,12 @@ export function ShareImageDialog({
 
     setIsGenerating(true)
     try {
-      // Generate profile image instead of message template
-      const dataUrl = await generateProfileImage({
+      const dataUrl = await generateTemplateImage({
         username,
-        displayName: displayName || "",
-        bio: bio || "",
+        message,
+        date,
         avatarUrl,
-        profileUrl: profileUrl || `${window.location.origin}/${locale === "en" ? "en/" : ""}${username}`,
+        displayName: displayName || "",
       })
       setImagePreview(dataUrl)
     } catch (error) {
@@ -77,37 +70,18 @@ export function ShareImageDialog({
 
     setIsSharing(true)
     try {
-      // Use Web Share API directly if available
-      if (navigator.share) {
-        // Convert data URL to blob
-        const response = await fetch(imagePreview)
-        const blob = await response.blob()
-        const file = new File([blob], `profile-${username.replace(/\s+/g, "-")}.png`, { type: "image/png" })
-
-        await navigator.share({
-          title: t.shareImage.profileShareTitle,
-          text: t.shareImage.profileShareText,
-          files: [file],
-        })
-      } else {
-        // Fallback to custom share function
-        await shareTemplateImage(imagePreview, t.shareImage.profileShareTitle, t.shareImage.profileShareText)
-      }
-
+      await shareTemplateImage(imagePreview, t.shareImage.shareText, t.shareImage.shareText)
       toast({
         title: t.common.success,
         description: t.shareImage.successShare,
       })
     } catch (error) {
       console.error("Error sharing:", error)
-      // Don't show error for AbortError (user cancelled sharing)
-      if (error instanceof Error && error.name !== "AbortError") {
-        toast({
-          title: t.shareImage.errorTitle,
-          description: t.shareImage.errorDescription,
-          variant: "destructive",
-        })
-      }
+      toast({
+        title: t.shareImage.errorTitle,
+        description: t.shareImage.errorDescription,
+        variant: "destructive",
+      })
     } finally {
       setIsSharing(false)
     }
@@ -116,35 +90,25 @@ export function ShareImageDialog({
   const handleDownload = () => {
     if (!imagePreview) return
 
-    try {
-      // Create a temporary link element
-      const link = document.createElement("a")
-      link.href = imagePreview
-      link.download = `profile-${username.replace(/\s+/g, "-")}.png`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+    const link = document.createElement("a")
+    link.href = imagePreview
+    link.download = `pesan-untuk-${username.replace(/\s+/g, "-")}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
-      toast({
-        title: t.common.success,
-        description: t.shareImage.successDownload,
-      })
-    } catch (error) {
-      console.error("Error downloading:", error)
-      toast({
-        title: t.common.error,
-        description: t.shareImage.errorDownload,
-        variant: "destructive",
-      })
-    }
+    toast({
+      title: t.common.success,
+      description: t.shareImage.successDownload,
+    })
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t.shareImage.profileTitle}</DialogTitle>
-          <DialogDescription>{t.shareImage.profileDescription}</DialogDescription>
+          <DialogTitle>{t.shareImage.title}</DialogTitle>
+          <DialogDescription>{t.shareImage.description}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center space-y-4">
@@ -157,7 +121,7 @@ export function ShareImageDialog({
             </div>
           ) : imagePreview ? (
             <div className="relative w-full overflow-hidden border rounded-lg p-2 bg-gray-50 border-black">
-              <img src={imagePreview || "/placeholder.svg"} alt={`Profil ${username}`} className="w-full h-auto" />
+              <img src={imagePreview || "/placeholder.svg"} alt={`Pesan untuk ${username}`} className="w-full h-auto" />
             </div>
           ) : (
             <div className="w-full h-[400px] bg-gray-100 rounded-md flex items-center justify-center">
