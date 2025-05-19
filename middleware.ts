@@ -139,9 +139,11 @@ export async function middleware(request: NextRequest) {
 
     // For admin routes, check if user has admin role
     if (basePath.startsWith("/admin")) {
-      const { data: user } = await supabase.from("users").select("role").eq("id", session.user.id).single()
+      const { data: user } = await supabase.from("users").select("email").eq("id", session.user.id).single()
 
-      if (!user || user.role !== "admin") {
+      // Gunakan daftar email admin yang sama dengan yang ada di lib/auth-cache.ts
+      const adminEmails = ["gosdorxda@gmail.com"]
+      if (!user || !adminEmails.includes(user.email)) {
         // Redirect to dashboard with the appropriate language prefix
         return NextResponse.redirect(new URL(`${languagePrefix}/dashboard`, request.url))
       }

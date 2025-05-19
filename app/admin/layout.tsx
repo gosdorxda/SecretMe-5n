@@ -9,14 +9,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Gunakan cache untuk mendapatkan session
   const { session, user, error } = await getSessionCache()
 
+  // Tambahkan logging untuk debug
+  console.log("Admin layout - Session check:", !!session, error ? "Error: " + error.message : "")
+
   if (error || !session || !user) {
+    console.log("Admin layout - No session, redirecting to login")
     redirect("/login?redirect=/admin")
   }
 
   // Periksa apakah user adalah admin menggunakan cache
   const adminStatus = await isAdminCache(user.id)
 
+  // Tambahkan logging untuk debug
+  console.log("Admin layout - Admin status check:", adminStatus, "for user ID:", user.id)
+
   if (!adminStatus) {
+    console.log("Admin layout - Not admin, redirecting to dashboard")
     redirect("/dashboard?error=unauthorized")
   }
 

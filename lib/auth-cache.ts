@@ -19,7 +19,8 @@ export const getSessionCache = cache(async () => {
   }
 })
 
-// Cache untuk isAdmin menggunakan React server cache
+// Pastikan fungsi isAdminCache menggunakan logika yang sama dengan middleware
+
 export const isAdminCache = cache(async (userId: string) => {
   if (!userId) return false
 
@@ -33,7 +34,8 @@ export const isAdminCache = cache(async (userId: string) => {
       return false
     }
 
-    const adminEmails = ["gosdorxda@gmail.com"] // Email admin
+    // Pastikan daftar email admin konsisten di seluruh aplikasi
+    const adminEmails = ["gosdorxda@gmail.com"]
     return adminEmails.includes(userData?.email || "")
   } catch (error) {
     console.error("Error checking admin status:", error)
