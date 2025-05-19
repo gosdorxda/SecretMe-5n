@@ -13,6 +13,7 @@ import { AvatarUpload } from "@/components/avatar-upload"
 import { TelegramForm } from "@/components/telegram-form"
 import type { Database } from "@/lib/supabase/database.types"
 import { WhatsAppForm } from "@/components/whatsapp-form"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 
@@ -21,6 +22,8 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ user }: ProfileTabProps) {
+  const { locale } = useLanguage()
+
   // Count active social media links
   const socialMediaCount = [
     user.instagram_url,
@@ -34,7 +37,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
     <Card className="neo-card">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <CardTitle className="text-lg">Profil</CardTitle>
+          <CardTitle className="text-lg">{locale === "en" ? "Profile" : "Profil"}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
@@ -49,7 +52,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
               {/* Premium badge */}
               <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 border border-black">
                 <Crown className="h-2.5 w-2.5" />
-                <span>Premium</span>
+                <span>{locale === "en" ? "Premium" : "Premium"}</span>
               </div>
 
               {/* Decorative elements */}
@@ -74,7 +77,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
                   </svg>
                 </div>
-                <span>Foto Profil</span>
+                <span>{locale === "en" ? "Profile Photo" : "Foto Profil"}</span>
               </h3>
 
               <div className="w-full">
@@ -87,7 +90,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
               {/* Premium badge */}
               <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
                 <Crown className="h-2.5 w-2.5" />
-                <span>Premium</span>
+                <span>{locale === "en" ? "Premium" : "Premium"}</span>
               </div>
 
               {/* Decorative elements */}
@@ -111,19 +114,27 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                 </div>
-                <span>Username Kustom</span>
+                <span>{locale === "en" ? "Custom Username" : "Username Kustom"}</span>
               </h3>
 
               <div className="mb-4 p-2 sm:p-3 bg-white/50 rounded-lg border border-blue-100">
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Username saat ini:</span>
+                    <span className="text-xs text-gray-500">
+                      {locale === "en" ? "Current username:" : "Username saat ini:"}
+                    </span>
                     <span className="text-sm font-medium text-blue-700 break-all">
-                      {user.username || "Belum diatur"}
+                      {user.username || (locale === "en" ? "Not set" : "Belum diatur")}
                     </span>
                   </div>
                   <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs mt-1 xs:mt-0 self-start xs:self-auto">
-                    {user.username ? "Aktif" : "Belum diatur"}
+                    {user.username
+                      ? locale === "en"
+                        ? "Active"
+                        : "Aktif"
+                      : locale === "en"
+                        ? "Not set"
+                        : "Belum diatur"}
                   </div>
                 </div>
               </div>
@@ -136,7 +147,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
               {/* Premium badge */}
               <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
                 <Crown className="h-2.5 w-2.5" />
-                <span>Premium</span>
+                <span>{locale === "en" ? "Premium" : "Premium"}</span>
               </div>
 
               {/* Decorative elements */}
@@ -160,17 +171,19 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <circle cx="12" cy="7" r="4"></circle>
                   </svg>
                 </div>
-                <span>Ubah Nama</span>
+                <span>{locale === "en" ? "Change Name" : "Ubah Nama"}</span>
               </h3>
 
               <div className="mb-4 p-2 sm:p-3 bg-white/50 rounded-lg border border-red-100">
                 <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Nama saat ini:</span>
+                    <span className="text-xs text-gray-500">
+                      {locale === "en" ? "Current name:" : "Nama saat ini:"}
+                    </span>
                     <span className="text-sm font-medium text-red-700 break-all">{user.name}</span>
                   </div>
                   <div className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs mt-1 xs:mt-0 self-start xs:self-auto">
-                    Aktif
+                    {locale === "en" ? "Active" : "Aktif"}
                   </div>
                 </div>
               </div>
@@ -183,7 +196,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
               {/* Premium badge */}
               <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
                 <Crown className="h-2.5 w-2.5" />
-                <span>Premium</span>
+                <span>{locale === "en" ? "Premium" : "Premium"}</span>
               </div>
 
               {/* Decorative elements */}
@@ -194,17 +207,19 @@ export function ProfileTab({ user }: ProfileTabProps) {
                 <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg shadow-sm">
                   <FileText className="h-4 w-4" />
                 </div>
-                <span>Bio / Deskripsi Singkat</span>
+                <span>{locale === "en" ? "Bio / Short Description" : "Bio / Deskripsi Singkat"}</span>
               </h3>
 
               <div className="mb-4 p-3 bg-white/50 rounded-lg border border-green-100">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs text-gray-500">Bio saat ini:</span>
-                    <span className="text-sm text-green-700 line-clamp-2">{user.bio || "Belum ada deskripsi"}</span>
+                    <span className="text-xs text-gray-500">{locale === "en" ? "Current bio:" : "Bio saat ini:"}</span>
+                    <span className="text-sm text-green-700 line-clamp-2">
+                      {user.bio || (locale === "en" ? "No description yet" : "Belum ada deskripsi")}
+                    </span>
                   </div>
                   <div className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
-                    {user.bio ? "Terisi" : "Kosong"}
+                    {user.bio ? (locale === "en" ? "Filled" : "Terisi") : locale === "en" ? "Empty" : "Kosong"}
                   </div>
                 </div>
               </div>
@@ -217,7 +232,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
               {/* Premium badge */}
               <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
                 <Crown className="h-2.5 w-2.5" />
-                <span>Premium</span>
+                <span>{locale === "en" ? "Premium" : "Premium"}</span>
               </div>
 
               {/* Decorative elements */}
@@ -228,13 +243,15 @@ export function ProfileTab({ user }: ProfileTabProps) {
                 <div className="flex items-center justify-center bg-purple-100 text-purple-600 p-1.5 rounded-lg shadow-sm">
                   <Link2 className="h-4 w-4" />
                 </div>
-                <span>Link Sosial Media</span>
+                <span>{locale === "en" ? "Social Media Links" : "Link Sosial Media"}</span>
               </h3>
 
               <div className="mb-4 p-2 sm:p-3 bg-white/50 rounded-lg border border-purple-100">
                 <div className="flex flex-col xs:flex-row xs:items-start xs:justify-between gap-2">
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs text-gray-500">Status sosial media:</span>
+                    <span className="text-xs text-gray-500">
+                      {locale === "en" ? "Social media status:" : "Status sosial media:"}
+                    </span>
                     <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
                       {user.instagram_url && (
                         <div className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded-[var(--border-radius)] text-xs flex items-center gap-1">
@@ -293,18 +310,28 @@ export function ProfileTab({ user }: ProfileTabProps) {
                         </div>
                       )}
                       {socialMediaCount === 0 && (
-                        <span className="text-sm text-purple-700">Belum ada sosial media</span>
+                        <span className="text-sm text-purple-700">
+                          {locale === "en" ? "No social media yet" : "Belum ada sosial media"}
+                        </span>
                       )}
                     </div>
                   </div>
                   <div className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs self-start">
-                    {socialMediaCount > 0 ? `${socialMediaCount} Aktif` : "Kosong"}
+                    {socialMediaCount > 0
+                      ? locale === "en"
+                        ? `${socialMediaCount} Active`
+                        : `${socialMediaCount} Aktif`
+                      : locale === "en"
+                        ? "Empty"
+                        : "Kosong"}
                   </div>
                 </div>
               </div>
 
               <p className="text-sm text-gray-600 mb-4">
-                Tambahkan link sosial media Anda untuk ditampilkan di profil publik
+                {locale === "en"
+                  ? "Add your social media links to display on your public profile"
+                  : "Tambahkan link sosial media Anda untuk ditampilkan di profil publik"}
               </p>
               <SocialMediaForm
                 userId={user.id}
@@ -322,7 +349,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                 {/* Premium badge */}
                 <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-[rgb(250,204,21)] text-black text-[10px] px-2 py-0.5 rounded-[var(--border-radius)] flex items-center gap-1 shadow-sm border border-black">
                   <Crown className="h-2.5 w-2.5" />
-                  <span>Premium</span>
+                  <span>{locale === "en" ? "Premium" : "Premium"}</span>
                 </div>
 
                 {/* Decorative elements */}
@@ -345,19 +372,39 @@ export function ProfileTab({ user }: ProfileTabProps) {
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                     </svg>
                   </div>
-                  <span>Notifikasi Telegram</span>
+                  <span>{locale === "en" ? "Telegram Notifications" : "Notifikasi Telegram"}</span>
                 </h3>
 
                 <div className="mb-4 p-3 bg-white/50 rounded-lg border border-blue-100">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs text-gray-500">Status:</span>
+                      <span className="text-xs text-gray-500">{locale === "en" ? "Status:" : "Status:"}</span>
                       <span className="text-sm text-blue-700">
-                        {user.telegram_id ? (user.telegram_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
+                        {user.telegram_id
+                          ? user.telegram_notifications
+                            ? locale === "en"
+                              ? "Active"
+                              : "Aktif"
+                            : locale === "en"
+                              ? "Inactive"
+                              : "Nonaktif"
+                          : locale === "en"
+                            ? "Not set"
+                            : "Belum diatur"}
                       </span>
                     </div>
                     <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
-                      {user.telegram_id ? (user.telegram_notifications ? "Aktif" : "Nonaktif") : "Belum diatur"}
+                      {user.telegram_id
+                        ? user.telegram_notifications
+                          ? locale === "en"
+                            ? "Active"
+                            : "Aktif"
+                          : locale === "en"
+                            ? "Inactive"
+                            : "Nonaktif"
+                        : locale === "en"
+                          ? "Not set"
+                          : "Belum diatur"}
                     </div>
                   </div>
                 </div>
@@ -380,12 +427,16 @@ export function ProfileTab({ user }: ProfileTabProps) {
               <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10">
                 <div className="bg-white p-4 rounded-lg border-2 border-amber-200 shadow-lg text-center max-w-xs">
                   <Lock className="h-8 w-8 mx-auto text-amber-500 mb-2" />
-                  <h3 className="font-bold text-lg mb-1">Fitur Premium</h3>
-                  <p className="text-sm text-gray-600 mb-3">Upgrade ke premium untuk mengakses semua fitur profil</p>
+                  <h3 className="font-bold text-lg mb-1">{locale === "en" ? "Premium Features" : "Fitur Premium"}</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {locale === "en"
+                      ? "Upgrade to premium to access all profile features"
+                      : "Upgrade ke premium untuk mengakses semua fitur profil"}
+                  </p>
                   <Button asChild className="neo-btn w-full">
                     <Link href="/premium">
                       <Crown className="h-4 w-4 mr-2" />
-                      Upgrade Sekarang
+                      {locale === "en" ? "Upgrade Now" : "Upgrade Sekarang"}
                     </Link>
                   </Button>
                 </div>
@@ -397,7 +448,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <div className="flex items-center justify-center bg-amber-100 text-amber-600 p-1.5 rounded-lg">
                       <User className="h-4 w-4" />
                     </div>
-                    <span>Foto Profil</span>
+                    <span>{locale === "en" ? "Profile Photo" : "Foto Profil"}</span>
                   </h3>
                   <div className="h-32 w-full bg-gray-100 rounded-lg border border-gray-200 mb-4"></div>
                 </div>
@@ -407,7 +458,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <div className="flex items-center justify-center bg-blue-100 text-blue-600 p-1.5 rounded-lg">
                       <AtSign className="h-4 w-4" />
                     </div>
-                    <span>Username Kustom</span>
+                    <span>{locale === "en" ? "Custom Username" : "Username Kustom"}</span>
                   </h3>
                   <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200 mb-4"></div>
                 </div>
@@ -417,7 +468,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg">
                       <FileText className="h-4 w-4" />
                     </div>
-                    <span>Bio / Deskripsi Singkat</span>
+                    <span>{locale === "en" ? "Bio / Short Description" : "Bio / Deskripsi Singkat"}</span>
                   </h3>
                   <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
                 </div>
@@ -427,7 +478,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <div className="flex items-center justify-center bg-purple-100 text-purple-600 p-1.5 rounded-lg">
                       <Link2 className="h-4 w-4" />
                     </div>
-                    <span>Link Sosial Media</span>
+                    <span>{locale === "en" ? "Social Media Links" : "Link Sosial Media"}</span>
                   </h3>
                   <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
                 </div>
@@ -437,7 +488,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <div className="flex items-center justify-center bg-cyan-100 text-cyan-600 p-1.5 rounded-lg">
                       <Send className="h-4 w-4" />
                     </div>
-                    <span>Notifikasi Telegram</span>
+                    <span>{locale === "en" ? "Telegram Notifications" : "Notifikasi Telegram"}</span>
                   </h3>
                   <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
                 </div>
@@ -447,7 +498,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <div className="flex items-center justify-center bg-green-100 text-green-600 p-1.5 rounded-lg">
                       <MessageSquare className="h-4 w-4" />
                     </div>
-                    <span>Notifikasi WhatsApp</span>
+                    <span>{locale === "en" ? "WhatsApp Notifications" : "Notifikasi WhatsApp"}</span>
                   </h3>
                   <div className="h-24 w-full bg-gray-100 rounded-lg border border-gray-200"></div>
                 </div>
@@ -458,7 +509,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
             <div className="bg-[rgb(250,204,21)]/10 p-6 rounded-lg border-2 border-[rgb(250,204,21)] mt-8">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                 <Crown className="h-5 w-5 text-amber-500" />
-                <span>Keuntungan Premium</span>
+                <span>{locale === "en" ? "Premium Benefits" : "Keuntungan Premium"}</span>
               </h3>
 
               <ul className="space-y-3">
@@ -467,8 +518,14 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Username Kustom Permanen</span>
-                    <p className="text-sm text-gray-600">Pilih username unik untuk link profil Anda selamanya</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "Permanent Custom Username" : "Username Kustom Permanen"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Choose a unique username for your profile link forever"
+                        : "Pilih username unik untuk link profil Anda selamanya"}
+                    </p>
                   </div>
                 </li>
 
@@ -477,8 +534,14 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Foto Profil Kustom</span>
-                    <p className="text-sm text-gray-600">Upload foto profil untuk personalisasi halaman Anda</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "Custom Profile Photo" : "Foto Profil Kustom"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Upload a profile photo to personalize your page"
+                        : "Upload foto profil untuk personalisasi halaman Anda"}
+                    </p>
                   </div>
                 </li>
 
@@ -487,8 +550,12 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Bio Profil Lengkap</span>
-                    <p className="text-sm text-gray-600">Tambahkan deskripsi tentang diri Anda</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "Complete Profile Bio" : "Bio Profil Lengkap"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en" ? "Add a description about yourself" : "Tambahkan deskripsi tentang diri Anda"}
+                    </p>
                   </div>
                 </li>
 
@@ -497,8 +564,12 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Link Sosial Media</span>
-                    <p className="text-sm text-gray-600">Tambahkan link Instagram, Facebook, LinkedIn, dan TikTok</p>
+                    <span className="font-medium">{locale === "en" ? "Social Media Links" : "Link Sosial Media"}</span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Add links to Instagram, Facebook, LinkedIn, and TikTok"
+                        : "Tambahkan link Instagram, Facebook, LinkedIn, dan TikTok"}
+                    </p>
                   </div>
                 </li>
 
@@ -507,8 +578,14 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Notifikasi WhatsApp & Telegram</span>
-                    <p className="text-sm text-gray-600">Dapatkan notifikasi langsung saat ada pesan baru</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "WhatsApp & Telegram Notifications" : "Notifikasi WhatsApp & Telegram"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Get instant notifications when you receive new messages"
+                        : "Dapatkan notifikasi langsung saat ada pesan baru"}
+                    </p>
                   </div>
                 </li>
 
@@ -517,8 +594,12 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Statistik Lengkap</span>
-                    <p className="text-sm text-gray-600">Lihat statistik kunjungan dan pesan profil Anda</p>
+                    <span className="font-medium">{locale === "en" ? "Complete Statistics" : "Statistik Lengkap"}</span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "View visit and message statistics for your profile"
+                        : "Lihat statistik kunjungan dan pesan profil Anda"}
+                    </p>
                   </div>
                 </li>
 
@@ -527,8 +608,14 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Manajemen Balasan Publik</span>
-                    <p className="text-sm text-gray-600">Aktifkan balasan publik untuk pesan Anda</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "Public Reply Management" : "Manajemen Balasan Publik"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Enable public replies for your messages"
+                        : "Aktifkan balasan publik untuk pesan Anda"}
+                    </p>
                   </div>
                 </li>
 
@@ -537,8 +624,14 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Tema Profil Kustom</span>
-                    <p className="text-sm text-gray-600">Personalisasi tampilan profil dan kartu pesan Anda</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "Custom Profile Themes" : "Tema Profil Kustom"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Personalize your profile and message card appearance"
+                        : "Personalisasi tampilan profil dan kartu pesan Anda"}
+                    </p>
                   </div>
                 </li>
 
@@ -547,8 +640,10 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Hapus Pesan</span>
-                    <p className="text-sm text-gray-600">Hapus pesan yang tidak diinginkan</p>
+                    <span className="font-medium">{locale === "en" ? "Delete Messages" : "Hapus Pesan"}</span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en" ? "Delete unwanted messages" : "Hapus pesan yang tidak diinginkan"}
+                    </p>
                   </div>
                 </li>
 
@@ -557,8 +652,14 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Berbagi Profil dengan QR Code</span>
-                    <p className="text-sm text-gray-600">Bagikan profil Anda dengan mudah menggunakan QR code</p>
+                    <span className="font-medium">
+                      {locale === "en" ? "Share Profile with QR Code" : "Berbagi Profil dengan QR Code"}
+                    </span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Easily share your profile using QR code"
+                        : "Bagikan profil Anda dengan mudah menggunakan QR code"}
+                    </p>
                   </div>
                 </li>
 
@@ -567,8 +668,12 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Tanpa Iklan</span>
-                    <p className="text-sm text-gray-600">Pengalaman tanpa iklan dan prioritas dukungan</p>
+                    <span className="font-medium">{locale === "en" ? "Ad-Free Experience" : "Tanpa Iklan"}</span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en"
+                        ? "Ad-free experience and priority support"
+                        : "Pengalaman tanpa iklan dan prioritas dukungan"}
+                    </p>
                   </div>
                 </li>
 
@@ -577,8 +682,10 @@ export function ProfileTab({ user }: ProfileTabProps) {
                     <Check className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-medium">Akses Selamanya</span>
-                    <p className="text-sm text-gray-600">Bayar sekali, akses premium selamanya</p>
+                    <span className="font-medium">{locale === "en" ? "Lifetime Access" : "Akses Selamanya"}</span>
+                    <p className="text-sm text-gray-600">
+                      {locale === "en" ? "Pay once, access premium forever" : "Bayar sekali, akses premium selamanya"}
+                    </p>
                   </div>
                 </li>
               </ul>
@@ -586,7 +693,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
               <Button asChild className="neo-btn w-full mt-6">
                 <Link href="/premium">
                   <Crown className="h-4 w-4 mr-2" />
-                  Upgrade ke Premium
+                  {locale === "en" ? "Upgrade to Premium" : "Upgrade ke Premium"}
                 </Link>
               </Button>
             </div>

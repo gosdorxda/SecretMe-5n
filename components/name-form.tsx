@@ -9,9 +9,7 @@ import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-
-// Tambahkan konstanta untuk batas maksimum panjang nama
-const MAX_NAME_LENGTH = 50
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface NameFormProps {
   userId: string
@@ -19,38 +17,28 @@ interface NameFormProps {
 }
 
 export function NameForm({ userId, currentName }: NameFormProps) {
-  // Ubah state untuk menyimpan nama
-  const [name, setName] = useState(currentName || "")
+  const [name, setName] = useState(currentName)
   const [isLoading, setIsLoading] = useState(false)
   const supabase = createClient()
   const { toast } = useToast()
   const router = useRouter()
+  const { locale } = useLanguage()
 
-  // Modifikasi fungsi handleChange untuk membatasi panjang input
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value
-    if (value.length <= MAX_NAME_LENGTH) {
-      setName(value)
-    }
-  }
-
-  // Modifikasi validasi di handleSubmit
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     if (!name.trim()) {
       toast({
-        title: "Nama tidak boleh kosong",
+        title: locale === "en" ? "Name cannot be empty" : "Nama tidak boleh kosong",
         variant: "destructive",
       })
       return
     }
 
-    if (name.length > MAX_NAME_LENGTH) {
+    if (name.trim() === currentName) {
       toast({
-        title: "Nama terlalu panjang",
-        description: `Nama tidak boleh lebih dari ${MAX_NAME_LENGTH} karakter`,
-        variant: "destructive",
+        title: locale === "en" ? "No changes to save" : "Tidak ada perubahan untuk disimpan",
+        description: locale === "en" ? "The name is the same as the current one" : "Nama sama dengan yang saat ini",
       })
       return
     }
@@ -58,10 +46,9 @@ export function NameForm({ userId, currentName }: NameFormProps) {
     setIsLoading(true)
 
     try {
-      // Update nama
       const { error } = await supabase
         .from("users")
-        .update({ name, updated_at: new Date().toISOString() })
+        .update({ name: name.trim(), updated_at: new Date().toISOString() })
         .eq("id", userId)
 
       if (error) {
@@ -69,16 +56,21 @@ export function NameForm({ userId, currentName }: NameFormProps) {
       }
 
       toast({
-        title: "Nama berhasil diperbarui",
-        description: "Nama profil Anda telah diperbarui",
+        title: locale === "en" ? "Name updated" : "Nama berhasil diperbarui",
+        description:
+          locale === "en"
+            ? "Your profile has been updated with the new name"
+            : "Profil Anda telah diperbarui dengan nama baru",
       })
 
       router.refresh()
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Gagal memperbarui nama",
-        description: error.message || "Terjadi kesalahan saat memperbarui nama",
+        title: locale === "en" ? "Failed to update name" : "Gagal memperbarui nama",
+        description:
+          error.message ||
+          (locale === "en" ? "An error occurred while updating name" : "Terjadi kesalahan saat memperbarui nama"),
         variant: "destructive",
       })
     } finally {
@@ -90,36 +82,24 @@ export function NameForm({ userId, currentName }: NameFormProps) {
     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
       <div className="space-y-1 sm:space-y-2">
         <Label htmlFor="name" className="text-xs sm:text-sm">
-          Nama
+          {locale === "en" ? "Name" : "Nama"}
         </Label>
         <div className="flex flex-col xs:flex-row gap-2">
-          <div className="relative flex-1">
-            <Input
-              id="name"
-              value={name}
-              onChange={handleChange}
-              placeholder="Nama Anda"
-              required
-              maxLength={MAX_NAME_LENGTH}
-              className="text-xs sm:text-sm h-8 sm:h-10"
-            />
-          </div>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={locale === "en" ? "Your name" : "Nama Anda"}
+            required
+            className="text-xs sm:text-sm h-8 sm:h-10"
+          />
           <Button
             type="submit"
-            disabled={isLoading || name === currentName || !name.trim()}
+            disabled={isLoading || !name.trim() || name.trim() === currentName}
             className="h-8 sm:h-10 text-xs sm:text-sm"
           >
-            {isLoading ? "Menyimpan..." : "Simpan"}
+            {isLoading ? (locale === "en" ? "Saving..." : "Menyimpan...") : locale === "en" ? "Save" : "Simpan"}
           </Button>
-        </div>
-        {/* Tambahkan counter karakter di bawah input */}
-        <div className="text-[10px] xs:text-xs flex justify-between">
-          <p className="text-muted-foreground">
-            Nama akan ditampilkan di profil publik Anda dan dapat diubah kapan saja.
-          </p>
-          <p className={`${name.length > MAX_NAME_LENGTH * 0.8 ? "text-amber-500" : "text-muted-foreground"}`}>
-            {name.length}/{MAX_NAME_LENGTH}
-          </p>
         </div>
       </div>
     </form>

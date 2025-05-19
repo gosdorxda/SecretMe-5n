@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Instagram, Facebook, Linkedin, InstagramIcon as BrandTiktok } from "lucide-react"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface SocialMediaFormProps {
   userId: string
@@ -28,6 +29,7 @@ export function SocialMediaForm({ userId, instagramUrl, facebookUrl, linkedinUrl
   const [isLoading, setIsLoading] = useState(false)
   const supabase = createClient()
   const { toast } = useToast()
+  const { locale } = useLanguage()
 
   function handleChange(platform: keyof typeof urls, value: string) {
     setUrls((prev) => ({ ...prev, [platform]: value }))
@@ -54,14 +56,21 @@ export function SocialMediaForm({ userId, instagramUrl, facebookUrl, linkedinUrl
       }
 
       toast({
-        title: "Link sosial media berhasil disimpan",
-        description: "Profil Anda telah diperbarui dengan link sosial media",
+        title: locale === "en" ? "Social media links saved" : "Link sosial media berhasil disimpan",
+        description:
+          locale === "en"
+            ? "Your profile has been updated with social media links"
+            : "Profil Anda telah diperbarui dengan link sosial media",
       })
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Gagal menyimpan link sosial media",
-        description: error.message || "Terjadi kesalahan saat menyimpan link sosial media",
+        title: locale === "en" ? "Failed to save social media links" : "Gagal menyimpan link sosial media",
+        description:
+          error.message ||
+          (locale === "en"
+            ? "An error occurred while saving social media links"
+            : "Terjadi kesalahan saat menyimpan link sosial media"),
         variant: "destructive",
       })
     } finally {
@@ -138,7 +147,13 @@ export function SocialMediaForm({ userId, instagramUrl, facebookUrl, linkedinUrl
       </div>
 
       <Button type="submit" className="w-full h-8 sm:h-10 text-xs sm:text-sm" disabled={isLoading}>
-        {isLoading ? "Menyimpan..." : "Simpan Link Sosial Media"}
+        {isLoading
+          ? locale === "en"
+            ? "Saving..."
+            : "Menyimpan..."
+          : locale === "en"
+            ? "Save Social Media Links"
+            : "Simpan Link Sosial Media"}
       </Button>
     </form>
   )

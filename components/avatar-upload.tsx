@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, LinkIcon, Upload, X, ImageIcon } from "lucide-react"
 import Image from "next/image"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface AvatarUploadProps {
   userId: string
@@ -25,6 +26,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
   const supabase = createClient()
   const { toast } = useToast()
   const isMobile = useIsMobile()
+  const { locale } = useLanguage()
 
   useEffect(() => {
     if (avatarUrl) {
@@ -40,19 +42,21 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
       // Ambil file dari input file
       const files = event.target.files
       if (!files || files.length === 0) {
-        throw new Error("Pilih file gambar terlebih dahulu")
+        throw new Error(locale === "en" ? "Please select an image file first" : "Pilih file gambar terlebih dahulu")
       }
 
       const file = files[0]
 
       // Validasi tipe file
       if (!file.type.includes("image")) {
-        throw new Error("File harus berupa gambar (JPG, PNG, GIF)")
+        throw new Error(
+          locale === "en" ? "File must be an image (JPG, PNG, GIF)" : "File harus berupa gambar (JPG, PNG, GIF)",
+        )
       }
 
       // Validasi ukuran file (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        throw new Error("Ukuran file maksimal 2MB")
+        throw new Error(locale === "en" ? "Maximum file size is 2MB" : "Ukuran file maksimal 2MB")
       }
 
       // Buat nama file unik berdasarkan userId
@@ -69,7 +73,11 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
 
       if (uploadError) {
         console.error("Upload error:", uploadError)
-        throw new Error(`Gagal mengupload file: ${uploadError.message}`)
+        throw new Error(
+          locale === "en"
+            ? `Failed to upload file: ${uploadError.message}`
+            : `Gagal mengupload file: ${uploadError.message}`,
+        )
       }
 
       // Dapatkan URL publik gambar
@@ -105,15 +113,22 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
 
       if (updateError) {
         console.error("Update error:", updateError)
-        throw new Error(`Gagal memperbarui profil: ${updateError.message}`)
+        throw new Error(
+          locale === "en"
+            ? `Failed to update profile: ${updateError.message}`
+            : `Gagal memperbarui profil: ${updateError.message}`,
+        )
       }
 
       // Update UI
       setAvatar(publicUrl)
 
       toast({
-        title: "Avatar berhasil diperbarui",
-        description: "Foto profil Anda telah diperbarui dengan gambar yang diupload",
+        title: locale === "en" ? "Avatar updated" : "Avatar berhasil diperbarui",
+        description:
+          locale === "en"
+            ? "Your profile photo has been updated with the uploaded image"
+            : "Foto profil Anda telah diperbarui dengan gambar yang diupload",
       })
 
       // Reset file input
@@ -123,8 +138,10 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
     } catch (error: any) {
       console.error("Error full stack:", error)
       toast({
-        title: "Gagal mengupload avatar",
-        description: error.message || "Terjadi kesalahan saat mengupload avatar",
+        title: locale === "en" ? "Failed to upload avatar" : "Gagal mengupload avatar",
+        description:
+          error.message ||
+          (locale === "en" ? "An error occurred while uploading avatar" : "Terjadi kesalahan saat mengupload avatar"),
         variant: "destructive",
       })
     } finally {
@@ -137,7 +154,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
 
     if (!externalUrl.trim()) {
       toast({
-        title: "URL tidak boleh kosong",
+        title: locale === "en" ? "URL cannot be empty" : "URL tidak boleh kosong",
         variant: "destructive",
       })
       return
@@ -148,8 +165,11 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
       new URL(externalUrl)
     } catch (error) {
       toast({
-        title: "URL tidak valid",
-        description: "Masukkan URL gambar yang valid (contoh: https://example.com/image.jpg)",
+        title: locale === "en" ? "Invalid URL" : "URL tidak valid",
+        description:
+          locale === "en"
+            ? "Enter a valid image URL (example: https://example.com/image.jpg)"
+            : "Masukkan URL gambar yang valid (contoh: https://example.com/image.jpg)",
         variant: "destructive",
       })
       return
@@ -174,14 +194,19 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
       setAvatar(externalUrl)
 
       toast({
-        title: "Avatar berhasil diperbarui",
-        description: "Foto profil Anda telah diperbarui dengan URL gambar eksternal",
+        title: locale === "en" ? "Avatar updated" : "Avatar berhasil diperbarui",
+        description:
+          locale === "en"
+            ? "Your profile photo has been updated with the external image URL"
+            : "Foto profil Anda telah diperbarui dengan URL gambar eksternal",
       })
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Gagal memperbarui avatar",
-        description: error.message || "Terjadi kesalahan saat memperbarui avatar",
+        title: locale === "en" ? "Failed to update avatar" : "Gagal memperbarui avatar",
+        description:
+          error.message ||
+          (locale === "en" ? "An error occurred while updating avatar" : "Terjadi kesalahan saat memperbarui avatar"),
         variant: "destructive",
       })
     } finally {
@@ -231,14 +256,16 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
       setExternalUrl("")
 
       toast({
-        title: "Avatar berhasil dihapus",
-        description: "Foto profil Anda telah dihapus",
+        title: locale === "en" ? "Avatar removed" : "Avatar berhasil dihapus",
+        description: locale === "en" ? "Your profile photo has been removed" : "Foto profil Anda telah dihapus",
       })
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Gagal menghapus avatar",
-        description: error.message || "Terjadi kesalahan saat menghapus avatar",
+        title: locale === "en" ? "Failed to remove avatar" : "Gagal menghapus avatar",
+        description:
+          error.message ||
+          (locale === "en" ? "An error occurred while removing avatar" : "Terjadi kesalahan saat menghapus avatar"),
         variant: "destructive",
       })
     } finally {
@@ -270,7 +297,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
           onClick={() => setUploadMethod("file")}
         >
           <Upload className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-          Upload File
+          {locale === "en" ? "Upload File" : "Upload File"}
         </Button>
         <Button
           type="button"
@@ -280,7 +307,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
           onClick={() => setUploadMethod("url")}
         >
           <LinkIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-          URL Eksternal
+          {locale === "en" ? "External URL" : "URL Eksternal"}
         </Button>
       </div>
 
@@ -288,16 +315,22 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
       {uploadMethod === "file" && (
         <div className="flex flex-col gap-2">
           <div className="mb-1 sm:mb-2">
-            <h4 className="text-xs sm:text-sm font-medium text-amber-700 mb-0.5 sm:mb-1">Upload Gambar</h4>
+            <h4 className="text-xs sm:text-sm font-medium text-amber-700 mb-0.5 sm:mb-1">
+              {locale === "en" ? "Upload Image" : "Upload Gambar"}
+            </h4>
             <p className="text-[10px] sm:text-xs text-gray-500 mb-1 sm:mb-2">
-              Upload gambar dari perangkat Anda (JPG, PNG, GIF, maks 2MB)
+              {locale === "en"
+                ? "Upload an image from your device (JPG, PNG, GIF, max 2MB)"
+                : "Upload gambar dari perangkat Anda (JPG, PNG, GIF, maks 2MB)"}
             </p>
           </div>
 
           <div className="border-2 border-dashed border-amber-200 rounded-md p-4 text-center hover:bg-amber-50/50 transition-colors">
             <label htmlFor="avatar-file" className="cursor-pointer flex flex-col items-center justify-center gap-2">
               <ImageIcon className="h-6 w-6 text-amber-500" />
-              <span className="text-xs text-amber-700">Klik untuk memilih gambar</span>
+              <span className="text-xs text-amber-700">
+                {locale === "en" ? "Click to select an image" : "Klik untuk memilih gambar"}
+              </span>
               <input
                 ref={fileInputRef}
                 id="avatar-file"
@@ -319,12 +352,12 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
             {uploading ? (
               <>
                 <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                <span>Mengupload...</span>
+                <span>{locale === "en" ? "Uploading..." : "Mengupload..."}</span>
               </>
             ) : (
               <>
                 <Upload className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                <span>Pilih & Upload Gambar</span>
+                <span>{locale === "en" ? "Select & Upload Image" : "Pilih & Upload Gambar"}</span>
               </>
             )}
           </Button>
@@ -335,9 +368,13 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
       {uploadMethod === "url" && (
         <div className="flex flex-col gap-2">
           <div className="mb-1 sm:mb-2">
-            <h4 className="text-xs sm:text-sm font-medium text-amber-700 mb-0.5 sm:mb-1">URL Gambar Eksternal</h4>
+            <h4 className="text-xs sm:text-sm font-medium text-amber-700 mb-0.5 sm:mb-1">
+              {locale === "en" ? "External Image URL" : "URL Gambar Eksternal"}
+            </h4>
             <p className="text-[10px] sm:text-xs text-gray-500 mb-1 sm:mb-2">
-              Masukkan URL gambar dari internet (JPG, PNG, GIF)
+              {locale === "en"
+                ? "Enter an image URL from the internet (JPG, PNG, GIF)"
+                : "Masukkan URL gambar dari internet (JPG, PNG, GIF)"}
             </p>
           </div>
 
@@ -345,7 +382,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
             <Input
               id="avatar-url"
               type="url"
-              placeholder="https://example.com/avatar.jpg"
+              placeholder={locale === "en" ? "https://example.com/avatar.jpg" : "https://example.com/avatar.jpg"}
               value={externalUrl}
               onChange={(e) => setExternalUrl(e.target.value)}
               disabled={uploading}
@@ -359,12 +396,12 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
               {uploading ? (
                 <>
                   <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                  <span>Menyimpan...</span>
+                  <span>{locale === "en" ? "Saving..." : "Menyimpan..."}</span>
                 </>
               ) : (
                 <>
                   <LinkIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>Perbarui Foto Profil</span>
+                  <span>{locale === "en" ? "Update Profile Photo" : "Perbarui Foto Profil"}</span>
                 </>
               )}
             </Button>
@@ -381,7 +418,7 @@ export function AvatarUpload({ userId, avatarUrl }: AvatarUploadProps) {
           className="w-full mt-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs sm:text-sm"
         >
           <X className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-          Hapus Foto Profil
+          {locale === "en" ? "Remove Profile Photo" : "Hapus Foto Profil"}
         </Button>
       )}
     </div>

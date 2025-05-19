@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation"
 import { Check, X, Loader2 } from "lucide-react"
 // Tambahkan import untuk isReservedUsername
 import { isReservedUsername } from "@/lib/reserved-usernames"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface UsernameFormProps {
   userId: string
@@ -27,6 +28,7 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
   const supabase = createClient()
   const { toast } = useToast()
   const router = useRouter()
+  const { locale } = useLanguage()
 
   // Validasi username saat input berubah
   useEffect(() => {
@@ -92,7 +94,7 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
 
     if (!username.trim()) {
       toast({
-        title: "Username tidak boleh kosong",
+        title: locale === "en" ? "Username cannot be empty" : "Username tidak boleh kosong",
         variant: "destructive",
       })
       return
@@ -102,8 +104,11 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
     const usernameRegex = /^[a-z0-9_-]+$/
     if (!usernameRegex.test(username)) {
       toast({
-        title: "Format username tidak valid",
-        description: "Username hanya boleh berisi huruf kecil, angka, underscore (_) dan dash (-)",
+        title: locale === "en" ? "Invalid username format" : "Format username tidak valid",
+        description:
+          locale === "en"
+            ? "Username can only contain lowercase letters, numbers, underscores (_) and dashes (-)"
+            : "Username hanya boleh berisi huruf kecil, angka, underscore (_) dan dash (-)",
         variant: "destructive",
       })
       return
@@ -112,8 +117,11 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
     // Tambahkan validasi reserved username
     if (isReservedUsername(username)) {
       toast({
-        title: "Username tidak tersedia",
-        description: "Username ini dicadangkan untuk sistem dan tidak dapat digunakan",
+        title: locale === "en" ? "Username not available" : "Username tidak tersedia",
+        description:
+          locale === "en"
+            ? "This username is reserved for the system and cannot be used"
+            : "Username ini dicadangkan untuk sistem dan tidak dapat digunakan",
         variant: "destructive",
       })
       return
@@ -122,8 +130,8 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
     // Jika username tidak tersedia, jangan lanjutkan
     if (isAvailable === false) {
       toast({
-        title: "Username sudah digunakan",
-        description: "Silakan pilih username lain",
+        title: locale === "en" ? "Username already taken" : "Username sudah digunakan",
+        description: locale === "en" ? "Please choose another username" : "Silakan pilih username lain",
         variant: "destructive",
       })
       return
@@ -142,8 +150,8 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
 
       if (existingUser) {
         toast({
-          title: "Username sudah digunakan",
-          description: "Silakan pilih username lain",
+          title: locale === "en" ? "Username already taken" : "Username sudah digunakan",
+          description: locale === "en" ? "Please choose another username" : "Silakan pilih username lain",
           variant: "destructive",
         })
         setIsLoading(false)
@@ -161,16 +169,23 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
       }
 
       toast({
-        title: "Username berhasil diperbarui",
-        description: "Link profil Anda telah diperbarui dengan username baru",
+        title: locale === "en" ? "Username updated" : "Username berhasil diperbarui",
+        description:
+          locale === "en"
+            ? "Your profile link has been updated with the new username"
+            : "Link profil Anda telah diperbarui dengan username baru",
       })
 
       router.refresh()
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Gagal memperbarui username",
-        description: error.message || "Terjadi kesalahan saat memperbarui username",
+        title: locale === "en" ? "Failed to update username" : "Gagal memperbarui username",
+        description:
+          error.message ||
+          (locale === "en"
+            ? "An error occurred while updating username"
+            : "Terjadi kesalahan saat memperbarui username"),
         variant: "destructive",
       })
     } finally {
@@ -182,7 +197,7 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
       <div className="space-y-1 sm:space-y-2">
         <Label htmlFor="username" className="text-xs sm:text-sm">
-          Username
+          {locale === "en" ? "Username" : "Username"}
         </Label>
         <div className="flex flex-col xs:flex-row gap-2">
           <div className="relative flex-1">
@@ -190,7 +205,7 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="username-anda"
+              placeholder={locale === "en" ? "your-username" : "username-anda"}
               required
               className={`pr-10 text-xs sm:text-sm h-8 sm:h-10 ${
                 isAvailable === true
@@ -219,22 +234,27 @@ export function UsernameForm({ userId, currentUsername }: UsernameFormProps) {
             disabled={isLoading || username === currentUsername || isAvailable === false || isChecking}
             className="h-8 sm:h-10 text-xs sm:text-sm"
           >
-            {isLoading ? "Menyimpan..." : "Simpan"}
+            {isLoading ? (locale === "en" ? "Saving..." : "Menyimpan...") : locale === "en" ? "Save" : "Simpan"}
           </Button>
         </div>
         <div className="text-[10px] xs:text-xs space-y-1">
           <p className="text-muted-foreground">
-            Username akan digunakan untuk link profil Anda: {window.location.origin}/{username || "username-anda"}
+            {locale === "en"
+              ? `Username will be used for your profile link: ${window.location.origin}/${username || "your-username"}`
+              : `Username akan digunakan untuk link profil Anda: ${window.location.origin}/${username || "username-anda"}`}
           </p>
           {username && username !== currentUsername && (
             <>
               {!isChecking && isAvailable === false && (
                 <p className="text-red-500">
-                  Username sudah digunakan atau tidak valid. Gunakan hanya huruf kecil, angka, underscore (_) dan dash
-                  (-).
+                  {locale === "en"
+                    ? "Username is already taken or invalid. Use only lowercase letters, numbers, underscores (_) and dashes (-)."
+                    : "Username sudah digunakan atau tidak valid. Gunakan hanya huruf kecil, angka, underscore (_) dan dash (-)."}
                 </p>
               )}
-              {!isChecking && isAvailable === true && <p className="text-green-500">Username tersedia!</p>}
+              {!isChecking && isAvailable === true && (
+                <p className="text-green-500">{locale === "en" ? "Username is available!" : "Username tersedia!"}</p>
+              )}
             </>
           )}
         </div>

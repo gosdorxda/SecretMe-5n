@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, ExternalLink } from "lucide-react"
 import Image from "next/image"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface ProfilePreviewProps {
   user: {
@@ -23,6 +24,8 @@ interface ProfilePreviewProps {
 }
 
 export function ProfilePreview({ user }: ProfilePreviewProps) {
+  const { locale } = useLanguage()
+
   // Menghitung apakah pengguna memiliki link sosial media
   const hasSocialLinks = user.instagram_url || user.facebook_url || user.linkedin_url || user.tiktok_url
 
@@ -37,9 +40,11 @@ export function ProfilePreview({ user }: ProfilePreviewProps) {
   return (
     <div className="w-full">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium">Pratinjau Profil Publik</h3>
+        <h3 className="text-sm font-medium">
+          {locale === "en" ? "Public Profile Preview" : "Pratinjau Profil Publik"}
+        </h3>
         <Badge variant="outline" className="text-xs">
-          Tampilan Pengunjung
+          {locale === "en" ? "Visitor View" : "Tampilan Pengunjung"}
         </Badge>
       </div>
 
@@ -169,7 +174,7 @@ export function ProfilePreview({ user }: ProfilePreviewProps) {
                 size="sm"
               >
                 <ExternalLink className="h-4 w-4" />
-                Buka Link Profil Saya
+                {locale === "en" ? "Open My Profile Link" : "Buka Link Profil Saya"}
               </Button>
             </div>
           </div>
@@ -177,11 +182,13 @@ export function ProfilePreview({ user }: ProfilePreviewProps) {
           {/* Message Form Preview */}
           <div className="border-t border-gray-200 p-4">
             <div className="bg-white p-4 rounded-lg border-2 border-[var(--border)] shadow-[var(--shadow)]">
-              <h3 className="text-base font-semibold mb-3">Kirim Pesan Anonim</h3>
+              <h3 className="text-base font-semibold mb-3">
+                {locale === "en" ? "Send Anonymous Message" : "Kirim Pesan Anonim"}
+              </h3>
               <div className="h-24 bg-gray-100 rounded-md border-2 border-gray-200 mb-3"></div>
               <Button disabled className="w-full neo-btn opacity-70">
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Kirim Pesan
+                {locale === "en" ? "Send Message" : "Kirim Pesan"}
               </Button>
             </div>
           </div>
@@ -189,7 +196,9 @@ export function ProfilePreview({ user }: ProfilePreviewProps) {
       </Card>
 
       <div className="mt-3 text-xs text-center text-muted-foreground">
-        Ini adalah pratinjau bagaimana profil Anda terlihat bagi pengunjung.
+        {locale === "en"
+          ? "This is a preview of how your profile appears to visitors."
+          : "Ini adalah pratinjau bagaimana profil Anda terlihat bagi pengunjung."}
       </div>
     </div>
   )
