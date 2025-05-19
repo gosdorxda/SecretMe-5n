@@ -1,12 +1,20 @@
 export type Locale = "id" | "en"
 
-export type Translation = {
+type Translation = {
+  common: {
+    popular: string
+    login: string
+    register: string
+    logout: string
+    dashboard: string
+    language: string
+  }
   home: {
     hero: {
+      userCount: string
       title: string
       subtitle: string
       cta: string
-      userCount: string
     }
     testimonials: {
       title: string
@@ -41,6 +49,7 @@ export type Translation = {
       discount: string
       savePercent: string
       oneTimePayment: string
+      guarantee: string
       features: {
         username: string
         profilePhoto: string
@@ -54,30 +63,53 @@ export type Translation = {
         noAds: string
         futureUpdates: string
       }
-      guarantee: string
     }
   }
-  common: {
-    getStarted: string
-    dashboard: string
-    login: string
-    register: string
-    popular: string
-  }
-  nav: {
-    language: string
+  login: {
+    title: string
+    subtitle: string
+    emailLabel: string
+    emailPlaceholder: string
+    passwordLabel: string
+    passwordPlaceholder: string
+    forgotPassword: string
+    loginButton: string
+    processingButton: string
+    googleButton: string
+    googleProcessingButton: string
+    orDivider: string
+    forgotPasswordLink: string
+    noAccount: string
+    registerLink: string
+    loginSuccess: string
+    loginSuccessMessage: string
+    loginError: string
+    invalidCredentials: string
+    rateLimitError: string
+    networkError: string
+    attemptCount: string
+    googleDisabled: string
+    googleDisabledMessage: string
   }
 }
 
 export const translations: Record<Locale, Translation> = {
   id: {
+    common: {
+      popular: "Populer",
+      login: "Masuk",
+      register: "Daftar",
+      logout: "Keluar",
+      dashboard: "Dashboard",
+      language: "Bahasa",
+    },
     home: {
       hero: {
+        userCount: "30.000+ pengguna sudah bergabung!",
         title: "Terima Pesan Anonim dari Siapapun",
         subtitle:
           "Platform untuk menerima pesan dan umpan balik secara anonim. Dapatkan kejujuran dari teman dan rekan kerja Anda.",
         cta: "Buat!",
-        userCount: "30.000+ pengguna sudah bergabung!",
       },
       testimonials: {
         title: "Ulasan Pengguna",
@@ -113,6 +145,7 @@ export const translations: Record<Locale, Translation> = {
         discount: "Rp 49.000",
         savePercent: "Hemat 38%",
         oneTimePayment: "Pembayaran sekali, akses seumur hidup ke semua fitur premium",
+        guarantee: "Garansi 30 hari uang kembali. Tanpa risiko!",
         features: {
           username: "Username kustom permanen selamanya",
           profilePhoto: "Foto profil kustom & bio lengkap",
@@ -126,32 +159,56 @@ export const translations: Record<Locale, Translation> = {
           noAds: "Tanpa iklan & prioritas dukungan seumur hidup",
           futureUpdates: "Semua update fitur premium di masa depan",
         },
-        guarantee: "Garansi 30 hari uang kembali. Tanpa risiko!",
       },
     },
-    common: {
-      getStarted: "Mulai Sekarang",
-      dashboard: "Dashboard",
-      login: "Masuk",
-      register: "Daftar",
-      popular: "Populer",
-    },
-    nav: {
-      language: "Bahasa",
+    login: {
+      title: "Masuk untuk melanjutkan",
+      subtitle: "Lanjutkan perjalanan komunikasi anonim Anda",
+      emailLabel: "Email",
+      emailPlaceholder: "email@example.com",
+      passwordLabel: "Password",
+      passwordPlaceholder: "••••••••",
+      forgotPassword: "Lupa password?",
+      loginButton: "Login",
+      processingButton: "Memproses...",
+      googleButton: "Masuk dengan Google",
+      googleProcessingButton: "Memproses...",
+      orDivider: "ATAU",
+      forgotPasswordLink: "Lupa Password?",
+      noAccount: "Belum punya akun?",
+      registerLink: "Daftar",
+      loginSuccess: "Login berhasil",
+      loginSuccessMessage: "Selamat datang kembali!",
+      loginError: "Login gagal",
+      invalidCredentials: "Email atau password salah",
+      rateLimitError: "Terlalu banyak percobaan login. Silakan coba lagi nanti.",
+      networkError: "Masalah koneksi internet. Periksa koneksi Anda dan coba lagi.",
+      attemptCount: "Percobaan ke-",
+      googleDisabled: "Karena limit API, pendaftaran via Google dimatikan sementara, silahkan daftar secara manual.",
+      googleDisabledMessage:
+        "Karena limit API, pendaftaran via Google dimatikan sementara, silahkan daftar secara manual.",
     },
   },
   en: {
+    common: {
+      popular: "Popular",
+      login: "Login",
+      register: "Register",
+      logout: "Logout",
+      dashboard: "Dashboard",
+      language: "Language",
+    },
     home: {
       hero: {
+        userCount: "30,000+ users have joined!",
         title: "Receive Anonymous Messages from Anyone",
         subtitle:
           "A platform to receive anonymous messages and feedback. Get honest opinions from your friends and colleagues.",
         cta: "Create!",
-        userCount: "30,000+ users have joined!",
       },
       testimonials: {
         title: "User Reviews",
-        subtitle: "See what users are saying about their experience with Secretme",
+        subtitle: "See what users say about their experience using Secretme",
         testimonial1: {
           name: "Dian Pratama",
           role: "Influencer",
@@ -165,7 +222,7 @@ export const translations: Record<Locale, Translation> = {
         testimonial3: {
           name: "Fajar Aditya",
           role: "Content Creator",
-          text: '"Game changer for my content! I get new ideas from anonymous messages and the social media link features really help with cross-promotion."',
+          text: '"Game changer for my content! I get new ideas from anonymous messages and the social media link feature helps with cross-promotion."',
         },
       },
       stats: {
@@ -177,11 +234,12 @@ export const translations: Record<Locale, Translation> = {
       premium: {
         badge: "SPECIAL OFFER",
         title: "Pay Once, Premium Access Forever!",
-        subtitle: "Get access to all premium Secretme features with a one-time payment. No monthly subscription fees!",
+        subtitle: "Get access to all Secretme premium features with a one-time payment. No monthly subscription fees!",
         price: "Rp 16,500",
         discount: "Rp 49,000",
         savePercent: "Save 38%",
         oneTimePayment: "One-time payment, lifetime access to all premium features",
+        guarantee: "30-day money-back guarantee. No risk!",
         features: {
           username: "Permanent custom username forever",
           profilePhoto: "Custom profile photo & complete bio",
@@ -195,18 +253,36 @@ export const translations: Record<Locale, Translation> = {
           noAds: "No ads & lifetime priority support",
           futureUpdates: "All future premium feature updates",
         },
-        guarantee: "30-day money-back guarantee. No risk!",
       },
     },
-    common: {
-      getStarted: "Get Started",
-      dashboard: "Dashboard",
-      login: "Login",
-      register: "Register",
-      popular: "Popular",
-    },
-    nav: {
-      language: "Language",
+    login: {
+      title: "Login to continue",
+      subtitle: "Continue your anonymous communication journey",
+      emailLabel: "Email",
+      emailPlaceholder: "email@example.com",
+      passwordLabel: "Password",
+      passwordPlaceholder: "••••••••",
+      forgotPassword: "Forgot password?",
+      loginButton: "Login",
+      processingButton: "Processing...",
+      googleButton: "Login with Google",
+      googleProcessingButton: "Processing...",
+      orDivider: "OR",
+      forgotPasswordLink: "Forgot Password?",
+      noAccount: "Don't have an account?",
+      registerLink: "Register",
+      loginSuccess: "Login successful",
+      loginSuccessMessage: "Welcome back!",
+      loginError: "Login failed",
+      invalidCredentials: "Email or password is incorrect",
+      rateLimitError: "Too many login attempts. Please try again later.",
+      networkError: "Internet connection issue. Check your connection and try again.",
+      attemptCount: "Attempt #",
+      googleDisabled: "Due to API limits, Google registration is temporarily disabled, please register manually.",
+      googleDisabledMessage:
+        "Due to API limits, Google registration is temporarily disabled, please register manually.",
     },
   },
 }
+
+export type Translations = typeof translations.id

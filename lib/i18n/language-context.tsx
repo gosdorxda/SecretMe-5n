@@ -1,8 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { type Locale, translations, type Translation } from "./translations"
 import { usePathname, useRouter } from "next/navigation"
+import { translations, type Locale, type Translation } from "./translations"
 
 type LanguageContextType = {
   locale: Locale
@@ -10,65 +10,63 @@ type LanguageContextType = {
   changeLocale: (locale: Locale) => void
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
+// Create a default context value to avoid undefined errors
+const defaultContextValue: LanguageContextType = {
+  locale: "id",
+  t: translations.id,
+  changeLocale: () => {},
+}
+
+const LanguageContext = createContext<LanguageContextType>(defaultContextValue)
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [locale, setLocale] = useState<Locale>("id")
 
-  // Determine initial locale from URL
-  const initialLocale: Locale = pathname.startsWith("/en") ? "en" : "id"
-  const [locale, setLocale] = useState<Locale>(initialLocale)
-
-  // Get translations for current locale
-  const t = translations[locale]
-
-  // Function to change locale
-  const changeLocale = (newLocale: Locale) => {
-    setLocale(newLocale)
-
-    // Update URL to reflect new locale
-    if (newLocale === "en") {
-      // If current path is root or already has /en/, handle accordingly
-      if (pathname === "/") {
-        router.push("/en")
-      } else if (pathname.startsWith("/en/")) {
-        // Already in English path
-        return
-      } else if (pathname.startsWith("/en")) {
-        // Already in English path
-        return
-      } else {
-        // Replace with English path
-        router.push(`/en${pathname}`)
-      }
+  // Detect locale from URL on initial load and when pathname changes
+  useEffect(() => {
+    if (pathname.startsWith("/en")) {
+      setLocale("en")
     } else {
-      // If switching to Indonesian, remove /en/ prefix
-      if (pathname.startsWith("/en/")) {
-        router.push(pathname.substring(3))
-      } else if (pathname === "/en") {
-        router.push("/")
-      } else if (pathname.startsWith("/en")) {
-        router.push(pathname.substring(3))
-      }
+      setLocale("id")
     }
+  }, [pathname])
+
+  const changeLocale = (newLocale: Locale) => {
+    if (newLocale === locale) return
+
+    // Get the current path without the language prefix
+    let newPath = pathname
+    if (pathname.startsWith("/en")) {
+      newPath = pathname.replace(/^\/en/, "")
+      if (newPath === "") newPath = "/"
+    }
+
+    // Add the new language prefix if needed
+    if (newLocale === "en") {
+      newPath = `/en${newPath === "/" ? "" : newPath}`
+    }
+
+    // Navigate to the new path
+    router.push(newPath)
+    setLocale(newLocale)
   }
 
-  // Update locale if URL changes
-  useEffect(() => {
-    const newLocale: Locale = pathname.startsWith("/en") ? "en" : "id"
-    if (newLocale !== locale) {
-      setLocale(newLocale)
-    }
-  }, [pathname, locale])
-
-  return <LanguageContext.Provider value={{ locale, t, changeLocale }}>{children}</LanguageContext.Provider>
+  return (
+    <LanguageContext.Provider
+      value={{
+        locale,
+        t: translations[locale],
+        changeLocale,
+      }}
+    >
+      {children}
+    </LanguageContext.Provider>
+  )
 }
 
 export function useLanguage() {
   const context = useContext(LanguageContext)
-  if (context === undefined) {
-    throw new Error("useLanguage must be used within a LanguageProvider")
-  }
   return context
 }

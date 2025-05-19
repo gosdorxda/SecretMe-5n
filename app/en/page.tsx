@@ -1,3 +1,5 @@
-import Home from "../page"
+import Home from "../home"
 
-export default Home
+export default function EnglishPage() {
+  return <Home />
+}

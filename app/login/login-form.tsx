@@ -9,8 +9,10 @@ import { useToast } from "@/hooks/use-toast"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { logAuthRequest } from "@/lib/auth-logger"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function LoginForm() {
+  const { t } = useLanguage()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [loginAttempts, setLoginAttempts] = useState(0)
@@ -81,7 +83,7 @@ export default function LoginForm() {
       }
 
       toast({
-        title: "Login gagal",
+        title: t.login.loginError,
         description: displayMessage,
         variant: "destructive",
       })
@@ -98,7 +100,7 @@ export default function LoginForm() {
         details: { errorMessage, displayMessage },
       })
     }
-  }, [error, errorMessage, toast])
+  }, [error, errorMessage, toast, t])
 
   // Fungsi untuk menangani error login
   const handleLoginError = (error: any) => {
@@ -125,24 +127,24 @@ export default function LoginForm() {
     })
 
     // Customize error message based on error type
-    let errorMessage = error.message || "Email atau password salah"
+    let errorMessage = error.message || t.login.invalidCredentials
 
     // Handle specific error cases
     if (error.message?.includes("Invalid login credentials")) {
-      errorMessage = "Email atau password salah"
+      errorMessage = t.login.invalidCredentials
     } else if (error.message?.includes("rate limit")) {
-      errorMessage = "Terlalu banyak percobaan login. Silakan coba lagi nanti."
+      errorMessage = t.login.rateLimitError
     } else if (error.message?.includes("network")) {
-      errorMessage = "Masalah koneksi internet. Periksa koneksi Anda dan coba lagi."
+      errorMessage = t.login.networkError
     }
 
     // Add attempt count for multiple failures
     if (newAttempts > 1) {
-      errorMessage += ` (Percobaan ke-${newAttempts})`
+      errorMessage += ` (${t.login.attemptCount}${newAttempts})`
     }
 
     toast({
-      title: "Login gagal",
+      title: t.login.loginError,
       description: errorMessage,
       variant: "destructive",
     })
@@ -338,8 +340,8 @@ export default function LoginForm() {
       }
 
       toast({
-        title: "Login berhasil",
-        description: "Selamat datang kembali!",
+        title: t.login.loginSuccess,
+        description: t.login.loginSuccessMessage,
       })
 
       // Reset login attempts on success
@@ -469,8 +471,8 @@ export default function LoginForm() {
       })
 
       toast({
-        title: "Login dengan Google gagal",
-        description: error.message || "Terjadi kesalahan saat login dengan Google",
+        title: t.login.loginError,
+        description: error.message || t.login.invalidCredentials,
         variant: "destructive",
       })
       setIsGoogleLoading(false)
@@ -481,8 +483,8 @@ export default function LoginForm() {
     <div className="w-full flex items-center justify-center min-h-[calc(100vh-4rem)] py-4 bg-[var(--bg)]">
       <div className="w-full max-w-md mx-auto px-4">
         <div className="text-center mb-4">
-          <h1 className="text-3xl font-bold mb-2">Masuk untuk melanjutkan</h1>
-          <p className="text-gray-600">Lanjutkan perjalanan komunikasi anonim Anda</p>
+          <h1 className="text-3xl font-bold mb-2">{t.login.title}</h1>
+          <p className="text-gray-600">{t.login.subtitle}</p>
         </div>
 
         <div className="bg-white p-4 rounded-md border-2 border-black">
@@ -490,7 +492,7 @@ export default function LoginForm() {
             <div className="mb-6 p-4 bg-red-50 border rounded-md flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-red-800">Terjadi kesalahan saat login</p>
+                <p className="text-sm font-medium text-red-800">{t.login.loginError}</p>
                 <p className="text-xs text-red-700 mt-1">
                   {error === "no_session_after_exchange" && (
                     <>
@@ -514,20 +516,18 @@ export default function LoginForm() {
 
           <form onSubmit={onSubmit} className="space-y-6">
             <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 text-sm mb-4">
-              <AlertDescription>
-                Karena limit API, pendaftaran via Google dimatikan sementara, silahkan daftar secara manual.
-              </AlertDescription>
+              <AlertDescription>{t.login.googleDisabledMessage}</AlertDescription>
             </Alert>
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-2">
-                Email
+                {t.login.emailLabel}
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
-                placeholder="email@example.com"
+                placeholder={t.login.emailPlaceholder}
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
                 autoComplete="email"
               />
@@ -536,10 +536,10 @@ export default function LoginForm() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label htmlFor="password" className="block text-sm font-medium">
-                  Password
+                  {t.login.passwordLabel}
                 </label>
                 <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-gray-900 hover:underline">
-                  Lupa password?
+                  {t.login.forgotPassword}
                 </Link>
               </div>
               <input
@@ -547,22 +547,22 @@ export default function LoginForm() {
                 name="password"
                 type="password"
                 required
-                placeholder="••••••••"
+                placeholder={t.login.passwordPlaceholder}
                 className="w-full px-3 py-2 border-2 border-black rounded-md focus:outline-none"
                 autoComplete="current-password"
               />
             </div>
 
             <button type="submit" disabled={isLoading} className="w-full neo-btn" aria-live="polite">
-              {isLoading ? "Memproses..." : "Login"}
+              {isLoading ? t.login.processingButton : t.login.loginButton}
             </button>
           </form>
 
           <div className="mt-4 pt-4 border-t border-gray-200 text-center">
             <p className="text-sm text-gray-600">
-              Kesulitan masuk?{" "}
+              {t.login.forgotPasswordLink}{" "}
               <Link href="/forgot-password" className="font-medium text-black hover:underline">
-                Reset password Anda
+                {t.login.forgotPassword}
               </Link>
             </p>
           </div>
@@ -572,7 +572,7 @@ export default function LoginForm() {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">ATAU</span>
+              <span className="px-4 bg-white text-gray-500">{t.login.orDivider}</span>
             </div>
           </div>
 
@@ -603,20 +603,20 @@ export default function LoginForm() {
                 />
               </g>
             </svg>
-            {isGoogleLoading ? "Memproses..." : "Masuk dengan Google"}
+            {isGoogleLoading ? t.login.googleProcessingButton : t.login.googleButton}
           </button>
         </div>
 
         <div className="text-center mt-6 space-y-2">
           <p>
             <Link href="/forgot-password" className="text-gray-600 hover:underline">
-              Lupa Password?
+              {t.login.forgotPassword}
             </Link>
           </p>
           <p>
-            Belum punya akun?{" "}
+            {t.login.noAccount}{" "}
             <Link href="/register" className="font-medium text-black hover:underline">
-              Daftar
+              {t.login.registerLink}
             </Link>
           </p>
         </div>

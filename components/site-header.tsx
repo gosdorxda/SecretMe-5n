@@ -1,59 +1,91 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
-import { useAuth } from "./auth-provider"
-import { useRouter } from "next/navigation"
-import { MessageSquare, Globe } from "lucide-react"
+import { useEffect, useState } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { LanguageToggle } from "./language-toggle"
 import { useLanguage } from "@/lib/i18n/language-context"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function SiteHeader() {
+  const { t, locale } = useLanguage()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
-  const { user, session, loading } = useAuth()
-  const router = useRouter()
-  const { locale, changeLocale, t } = useLanguage()
+  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession()
+      setIsLoggedIn(!!data.session)
+    }
+
+    checkAuth()
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session)
+    })
+
+    return () => {
+      authListener.subscription.unsubscribe()
+    }
+  }, [supabase.auth])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   return (
-    <header className="w-full py-4 bg-[var(--bg)]">
-      <div className="w-full max-w-7xl mx-auto flex items-center justify-between px-4">
-        <Link href={locale === "en" ? "/en" : "/"} className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[var(--border-radius)] bg-[var(--main)] border-2 border-[var(--border)] shadow-neo-sm">
-            <MessageSquare className="h-4 w-4 text-[var(--mtext)]" />
-          </div>
-          <span className="font-bold text-lg text-[var(--text)]">SecretMe</span>
-        </Link>
-
-        <div className="flex items-center gap-4">
-          {/* Language Switcher */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Globe className="h-5 w-5" />
-                <span className="sr-only">{t.nav.language}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => changeLocale("id")} className={locale === "id" ? "bg-muted" : ""}>
-                🇮🇩 Indonesia
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => changeLocale("en")} className={locale === "en" ? "bg-muted" : ""}>
-                🇬🇧 English
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {!loading && !session ? (
-            <Button className="rounded-full" size="sm" asChild>
-              <Link href={locale === "en" ? "/en/register" : "/register"}>{t.common.getStarted}</Link>
-            </Button>
-          ) : (
-            <Button className="rounded-full" size="sm" asChild>
-              <Link href={locale === "en" ? "/en/dashboard" : "/dashboard"}>{t.common.dashboard}</Link>
-            </Button>
-          )}
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-200 ${
+        isScrolled ? "bg-white shadow-md" : "bg-transparent"
+      }`}
+    >
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex items-center gap-6">
+          <Link href={locale === "en" ? "/en" : "/"} className="flex items-center gap-2">
+            <span className="font-bold text-xl">SecretMe</span>
+          </Link>
         </div>
+        <nav className="flex items-center gap-4">
+          {/* Language Toggle - Added here */}
+          <LanguageToggle />
+
+          {isLoggedIn ? (
+            <>
+              <Link
+                href={locale === "en" ? "/en/dashboard" : "/dashboard"}
+                className={`text-sm font-medium ${
+                  pathname === "/dashboard" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {t.common.dashboard}
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href={locale === "en" ? "/en/login" : "/login"}
+                className={`text-sm font-medium ${
+                  pathname === "/login" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {t.common.login}
+              </Link>
+              <Link
+                href={locale === "en" ? "/en/register" : "/register"}
+                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                {t.common.register}
+              </Link>
+            </>
+          )}
+        </nav>
       </div>
     </header>
   )

@@ -109,6 +109,15 @@ function recordAuthRequestTimestamp(ip: string) {
 // Modifikasi middleware untuk menerapkan throttling dan menangani rute bahasa
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Handle language-specific routes
+  if (pathname.startsWith("/en")) {
+    // Already has language prefix, no need to modify
+  } else {
+    // Continue with the existing middleware logic
+    // ... (rest of your existing middleware code)
+  }
+
   const userAgent = request.headers.get("user-agent") || ""
   // Tidak perlu deteksi mobile lagi
   const isMobile = false
@@ -324,5 +333,15 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|public).*)",
+  ],
 }
