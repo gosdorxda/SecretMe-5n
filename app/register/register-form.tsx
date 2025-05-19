@@ -7,14 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { PremiumPromoBanner } from "@/components/premium-promo-banner"
 
 // Ganti konstanta hardcoded dengan environment variable
-// Ubah bagian ini:
-// const PREMIUM_VOUCHER_CODE = "SECRETME2024"
-// const PREMIUM_DURATION_DAYS = 365 // Premium selama 1 tahun
-
-// Menjadi:
-const PREMIUM_VOUCHER_CODE = process.env.NEXT_PUBLIC_PREMIUM_VOUCHER_CODE || ""
+const PREMIUM_VOUCHER_CODE = process.env.NEXT_PUBLIC_PREMIUM_VOUCHER_CODE || "SECRETME2025"
 const PREMIUM_DURATION_DAYS = Number.parseInt(process.env.NEXT_PUBLIC_PREMIUM_DURATION_DAYS || "365")
 
 export default function RegisterForm() {
@@ -42,9 +38,6 @@ export default function RegisterForm() {
       return
     }
 
-    // Perbarui penggunaan terjemahan untuk pesan validasi voucher
-    // Ganti kode yang menampilkan pesan validasi dengan kode berikut
-
     // Validasi voucher
     if (value === PREMIUM_VOUCHER_CODE) {
       setVoucherMessage({
@@ -67,6 +60,7 @@ export default function RegisterForm() {
     const name = formData.get("name") as string
     const email = formData.get("email") as string
     const password = formData.get("password") as string
+    const voucher = formData.get("voucher") as string
 
     try {
       // Periksa apakah email sudah terdaftar
@@ -138,7 +132,7 @@ export default function RegisterForm() {
       // Tambahkan user ke tabel users
       if (data.user) {
         // Tambahkan logika untuk mengatur status premium jika voucher valid
-        const isPremium = voucherValue === PREMIUM_VOUCHER_CODE
+        const isPremium = voucher === PREMIUM_VOUCHER_CODE
         const premiumExpiresAt = isPremium
           ? new Date(Date.now() + PREMIUM_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString()
           : null
@@ -305,12 +299,9 @@ export default function RegisterForm() {
                 </p>
               )}
 
-              {/* Tambahkan alert kecil di sini */}
-              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-sm text-blue-700 font-medium">
-                  ✨ Gunakan kode <span className="font-bold">SECRETME2025</span> untuk mendapatkan akses premium secara
-                  gratis!
-                </p>
+              {/* Tambahkan PremiumPromoBanner di sini */}
+              <div className="mt-2">
+                <PremiumPromoBanner variant="compact" />
               </div>
             </div>
 

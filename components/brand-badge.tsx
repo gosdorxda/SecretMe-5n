@@ -1,50 +1,41 @@
-"use client"
-
-import { Badge } from "@/components/ui/badge"
+import React from "react"
 import { cn } from "@/lib/utils"
-import { useLanguage } from "@/lib/i18n/language-context"
-import { type Locale, translations } from "@/lib/i18n/translations"
 
-interface BrandBadgeProps {
+interface BadgeProps {
+  variant?: "default" | "outline" | "premium"
+  size?: "sm" | "default" | "lg"
   className?: string
-  variant?: "default" | "outline" | "prominent"
-  size?: "default" | "sm" | "lg"
 }
 
-export function BrandBadge({ className, variant = "default", size = "default" }: BrandBadgeProps) {
-  const { locale } = useLanguage()
-  const t = translations[locale as Locale]
-
-  // Choose different styles based on variant
-  const getVariantStyles = () => {
-    switch (variant) {
-      case "outline":
-        return "bg-transparent border-2 border-blue-500 text-blue-600"
-      case "prominent":
-        return "bg-gradient-to-r from-blue-600 to-indigo-600 border-none text-white font-bold shadow-md hover:shadow-lg"
+const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
+  ({ className, variant = "default", size = "default", ...props }, ref) => {
+    const variantStyles = {
       default:
-        return "bg-blue-100 text-blue-800 border border-blue-200"
+        "bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/80",
+      outline: "text-foreground border border-border",
+      premium: "bg-primary text-primary-foreground",
     }
-  }
 
-  // Choose different sizing
-  const getSizeStyles = () => {
-    switch (size) {
-      case "sm":
-        return "text-xs px-2 py-0.5"
-      case "lg":
-        return "text-base px-3 py-1"
-      default:
-        return "text-sm px-2.5 py-0.5"
+    const sizeStyles = {
+      sm: "text-xs px-1.5 py-0.5",
+      default: "text-sm px-2.5 py-0.5",
+      lg: "text-base px-3 py-1",
     }
-  }
 
-  return (
-    <Badge
-      className={cn("rounded-md font-medium transition-all", getVariantStyles(), getSizeStyles(), className)}
-      variant="outline"
-    >
-      {t.branding?.appName || "SECRETME2025"}
-    </Badge>
-  )
-}
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center rounded-full font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+          variantStyles[variant],
+          sizeStyles[size],
+          className,
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  },
+)
+Badge.displayName = "Badge"
+
+export { Badge }

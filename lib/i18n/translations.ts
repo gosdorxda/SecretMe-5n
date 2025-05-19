@@ -1,434 +1,420 @@
 export type Locale = "id" | "en"
 
-type Translation = {
+export interface Translation {
   common: {
-    popular: string
-    login: string
-    register: string
-    logout: string
-    dashboard: string
-    language: string
-    getStarted: string
+    popular?: string
+    login?: string
+    register?: string
+    logout?: string
+    dashboard?: string
+    language?: string
+    getStarted?: string
     loading: string
-    save: string
-    saved: string
-    saving: string
-    cancel: string
-    delete: string
-    edit: string
-    update: string
-    confirm: string
-    success: string
-    error: string
-    yes: string
-    no: string
-    or: string
-    and: string
-    back: string
-    next: string
-    close: string
-    showMore: string
-    showLess: string
-    download: string
-    share: string
-    generating: string
-    creatingImage: string
-    failedToCreate: string
+    loadingDescription: string
+    save?: string
+    saved?: string
+    saving?: string
+    cancel?: string
+    delete?: string
+    edit?: string
+    update?: string
+    confirm?: string
+    success?: string
+    error?: string
+    yes?: string
+    no?: string
+    or?: string
+    and?: string
+    back?: string
+    next?: string
+    close?: string
+    showMore?: string
+    showLess?: string
+    download?: string
+    share?: string
+    generating?: string
+    creatingImage?: string
+    failedToCreate?: string
   }
   branding: {
-    appName: string
+    appName?: string
     tagline: string
-    year: string
+    year?: string
   }
-  premiumBanner: {
-    exclusiveFeatures: string
-    demoProfile: string
-    checkFeatures: string
-    upgrade: string
-    closeBanner: string
+  promotions?: {
+    premiumCode?: string
   }
-  loading: {
-    default: string
-    dashboard: string
-    premium: string
-    page: string
-    login: string
-    register: string
+  premiumBanner?: {
+    exclusiveFeatures?: string
+    demoProfile?: string
+    checkFeatures?: string
+    upgrade?: string
+    closeBanner?: string
   }
-  home: {
-    hero: {
-      userCount: string
-      title: string
-      subtitle: string
-      cta: string
+  loading?: {
+    default?: string
+    dashboard?: string
+    premium?: string
+    page?: string
+    login?: string
+    register?: string
+  }
+  home?: {
+    hero?: {
+      userCount?: string
+      title?: string
+      subtitle?: string
+      cta?: string
     }
-    testimonials: {
-      title: string
-      subtitle: string
-      testimonial1: {
-        name: string
-        role: string
-        text: string
+    testimonials?: {
+      title?: string
+      subtitle?: string
+      testimonial1?: {
+        name?: string
+        role?: string
+        text?: string
       }
-      testimonial2: {
-        name: string
-        role: string
-        text: string
+      testimonial2?: {
+        name?: string
+        role?: string
+        text?: string
       }
-      testimonial3: {
-        name: string
-        role: string
-        text: string
+      testimonial3?: {
+        name?: string
+        role?: string
+        text?: string
       }
     }
-    stats: {
-      users: string
-      messages: string
-      satisfaction: string
-      premium: string
+    stats?: {
+      users?: string
+      messages?: string
+      satisfaction?: string
+      premium?: string
     }
-    premium: {
-      badge: string
-      title: string
-      subtitle: string
-      price: string
-      discount: string
-      savePercent: string
-      oneTimePayment: string
-      guarantee: string
-      features: {
-        username: string
-        profilePhoto: string
-        socialLinks: string
-        notifications: string
-        statistics: string
-        publicReplies: string
-        customThemes: string
-        deleteMessages: string
-        shareProfile: string
-        noAds: string
-        futureUpdates: string
+    premium?: {
+      badge?: string
+      title?: string
+      subtitle?: string
+      price?: string
+      discount?: string
+      savePercent?: string
+      oneTimePayment?: string
+      guarantee?: string
+      features?: {
+        username?: string
+        profilePhoto?: string
+        socialLinks?: string
+        notifications?: string
+        statistics?: string
+        publicReplies?: string
+        customThemes?: string
+        deleteMessages?: string
+        shareProfile?: string
+        noAds?: string
+        futureUpdates?: string
       }
     }
   }
-  login: {
-    title: string
-    subtitle: string
-    emailLabel: string
-    emailPlaceholder: string
-    passwordLabel: string
-    passwordPlaceholder: string
-    forgotPassword: string
-    loginButton: string
-    processingButton: string
-    googleButton: string
-    googleProcessingButton: string
-    orDivider: string
-    forgotPasswordLink: string
-    noAccount: string
-    registerLink: string
-    loginSuccess: string
-    loginSuccessMessage: string
-    loginError: string
-    invalidCredentials: string
-    rateLimitError: string
-    networkError: string
-    attemptCount: string
-    googleDisabled: string
-    googleDisabledMessage: string
+  login?: {
+    title?: string
+    subtitle?: string
+    emailLabel?: string
+    emailPlaceholder?: string
+    passwordLabel?: string
+    passwordPlaceholder?: string
+    forgotPassword?: string
+    loginButton?: string
+    processingButton?: string
+    googleButton?: string
+    googleProcessingButton?: string
+    orDivider?: string
+    forgotPasswordLink?: string
+    noAccount?: string
+    registerLink?: string
+    loginSuccess?: string
+    loginSuccessMessage?: string
+    loginError?: string
+    invalidCredentials?: string
+    rateLimitError?: string
+    networkError?: string
+    attemptCount?: string
+    googleDisabled?: string
+    googleDisabledMessage?: string
   }
-  register: {
-    title: string
-    subtitle: string
-    nameLabel: string
-    namePlaceholder: string
-    emailLabel: string
-    emailPlaceholder: string
-    passwordLabel: string
-    passwordPlaceholder: string
-    voucherLabel: string
-    voucherPlaceholder: string
-    voucherValid: string
-    voucherInvalid: string
-    voucherOptional: string
-    registerButton: string
-    processingButton: string
-    googleButton: string
-    googleProcessingButton: string
-    orDivider: string
-    haveAccount: string
-    loginLink: string
-    registerSuccess: string
-    registerSuccessMessage: string
-    registerError: string
-    emailExistsError: string
-    emailExistsAuthError: string
-    networkError: string
-    googleDisabled: string
-    googleDisabledMessage: string
+  register?: {
+    title?: string
+    subtitle?: string
+    nameLabel?: string
+    namePlaceholder?: string
+    emailLabel?: string
+    emailPlaceholder?: string
+    passwordLabel?: string
+    passwordPlaceholder?: string
+    voucherLabel?: string
+    voucherPlaceholder?: string
+    voucherValid?: string
+    voucherInvalid?: string
+    voucherOptional?: string
+    registerButton?: string
+    processingButton?: string
+    googleButton?: string
+    googleProcessingButton?: string
+    orDivider?: string
+    haveAccount?: string
+    loginLink?: string
+    registerSuccess?: string
+    registerSuccessMessage?: string
+    registerError?: string
+    emailExistsError?: string
+    emailExistsAuthError?: string
+    networkError?: string
+    googleDisabled?: string
+    googleDisabledMessage?: string
   }
-  forgotPassword: {
-    title: string
-    subtitle: string
-    emailLabel: string
-    emailPlaceholder: string
-    submitButton: string
-    processingButton: string
-    backToLogin: string
-    successTitle: string
-    successMessage: string
-    checkSpam: string
-    tryAgainButton: string
-    backToLoginButton: string
-    emailRequired: string
-    emailNotRegistered: string
-    resetEmailSent: string
-    resetEmailSentMessage: string
-    resetEmailError: string
-    resetEmailErrorMessage: string
-    infoMessage: string
+  forgotPassword?: {
+    title?: string
+    subtitle?: string
+    emailLabel?: string
+    emailPlaceholder?: string
+    submitButton?: string
+    processingButton?: string
+    backToLogin?: string
+    successTitle?: string
+    successMessage?: string
+    checkSpam?: string
+    tryAgainButton?: string
+    backToLoginButton?: string
+    emailRequired?: string
+    emailNotRegistered?: string
+    resetEmailSent?: string
+    resetEmailSentMessage?: string
+    resetEmailError?: string
+    resetEmailErrorMessage?: string
+    infoMessage?: string
   }
-  dashboard: {
-    header: {
-      greeting: string
-      welcome: string
+  dashboard?: {
+    header?: {
+      greeting?: string
+      welcome?: string
     }
-    tabs: {
-      messages: string
-      profile: string
-      settings: string
+    tabs?: {
+      messages?: string
+      profile?: string
+      settings?: string
     }
-    statistics: {
-      profileViews: string
-      totalMessages: string
-      repliedMessages: string
-      replyRate: string
-      viewsToday: string
-      messagesRecent: string
+    statistics?: {
+      profileViews?: string
+      totalMessages?: string
+      repliedMessages?: string
+      replyRate?: string
+      viewsToday?: string
+      messagesRecent?: string
     }
-    messagesTab: {
-      title: string
-      publicReplies: {
-        title: string
-        active: string
-        inactive: string
-        activeDescription: string
-        inactiveDescription: string
+    messagesTab?: {
+      title?: string
+      publicReplies?: {
+        title?: string
+        active?: string
+        inactive?: string
+        activeDescription?: string
+        inactiveDescription?: string
       }
-      search: string
-      filters: {
-        all: string
-        replied: string
-        unreplied: string
+      search?: string
+      filters?: {
+        all?: string
+        replied?: string
+        unreplied?: string
       }
-      noResults: {
-        title: string
-        description: string
+      noResults?: {
+        title?: string
+        description?: string
       }
-      noMessages: {
-        title: string
-        description: string
-        shareButton: string
+      noMessages?: {
+        title?: string
+        description?: string
+        shareButton?: string
       }
-      messageActions: {
-        reply: string
-        delete: string
-        share: string
+      messageActions?: {
+        reply?: string
+        delete?: string
+        share?: string
       }
     }
-    profileTab: {
-      title: string
-      preview: {
-        title: string
-        viewPublic: string
+    profileTab?: {
+      title?: string
+      preview?: {
+        title?: string
+        viewPublic?: string
       }
-      profilePhoto: {
-        title: string
-        upload: string
-        change: string
-        remove: string
-        dropzone: string
-        sizeLimit: string
-        uploading: string
+      profilePhoto?: {
+        title?: string
+        upload?: string
+        change?: string
+        remove?: string
+        dropzone?: string
+        sizeLimit?: string
+        uploading?: string
       }
-      username: {
-        title: string
-        current: string
-        active: string
-        notSet: string
-        placeholder: string
-        save: string
-        requirements: string
-        availability: {
-          checking: string
-          available: string
-          unavailable: string
-          error: string
+      username?: {
+        title?: string
+        current?: string
+        active?: string
+        notSet?: string
+        placeholder?: string
+        save?: string
+        requirements?: string
+        availability?: {
+          checking?: string
+          available?: string
+          unavailable?: string
+          error?: string
         }
       }
-      name: {
-        title: string
-        current: string
-        active: string
-        placeholder: string
-        save: string
+      name?: {
+        title?: string
+        current?: string
+        active?: string
+        placeholder?: string
+        save?: string
       }
-      bio: {
-        title: string
-        current: string
-        filled: string
-        empty: string
-        placeholder: string
-        save: string
-        charactersLeft: string
+      bio?: {
+        title?: string
+        current?: string
+        filled?: string
+        empty?: string
+        placeholder?: string
+        save?: string
+        charactersLeft?: string
       }
-      socialMedia: {
-        title: string
-        status: string
-        active: string
-        empty: string
-        instagram: string
-        facebook: string
-        linkedin: string
-        tiktok: string
-        placeholders: {
-          instagram: string
-          facebook: string
-          linkedin: string
-          tiktok: string
+      socialMedia?: {
+        title?: string
+        status?: string
+        active?: string
+        empty?: string
+        instagram?: string
+        facebook?: string
+        linkedin?: string
+        tiktok?: string
+        placeholders?: {
+          instagram?: string
+          facebook?: string
+          linkedin?: string
+          tiktok?: string
         }
-        save: string
+        save?: string
       }
-      notifications: {
-        telegram: {
-          title: string
-          status: string
-          active: string
-          inactive: string
-          notSet: string
-          connect: string
-          disconnect: string
-          instructions: string
-          connecting: string
-          connectionCode: string
-          waitingConnection: string
-          connectionSuccess: string
-          connectionError: string
+      notifications?: {
+        telegram?: {
+          title?: string
+          status?: string
+          active?: string
+          inactive?: string
+          notSet?: string
+          connect?: string
+          disconnect?: string
+          instructions?: string
+          connecting?: string
+          connectionCode?: string
+          waitingConnection?: string
+          connectionSuccess?: string
+          connectionError?: string
         }
-        whatsapp: {
-          title: string
-          status: string
-          active: string
-          inactive: string
-          notSet: string
-          phoneLabel: string
-          phonePlaceholder: string
-          save: string
-          instructions: string
+        whatsapp?: {
+          title?: string
+          status?: string
+          active?: string
+          inactive?: string
+          notSet?: string
+          phoneLabel?: string
+          phonePlaceholder?: string
+          save?: string
+          instructions?: string
         }
       }
-      premiumFeatures: {
-        title: string
-        subtitle: string
-        upgradeButton: string
-        features: {
-          username: {
-            title: string
-            description: string
-          }
-          name: {
-            title: string
-            description: string
-          }
-          profilePhoto: {
-            title: string
-            description: string
-          }
-          bio: {
-            title: string
-            description: string
-          }
-          socialMedia: {
-            title: string
-            description: string
-          }
-          deleteMessages: {
-            title: string
-            description: string
-          }
+      premiumFeatures?: {
+        title?: string
+        subtitle?: string
+        upgradeButton?: string
+        features?: {
+          username?: string
+          title?: string
+          description?: string
         }
-        benefits: {
-          title: string
-          items: {
-            username: string
-            profilePhoto: string
-            socialLinks: string
-            notifications: string
-            statistics: string
-            publicReplies: string
-            customThemes: string
-            deleteMessages: string
-            shareProfile: string
-            noAds: string
-            lifetime: string
+        benefits?: {
+          title?: string
+          items?: {
+            username?: string
+            profilePhoto?: string
+            socialLinks?: string
+            notifications?: string
+            statistics?: string
+            publicReplies?: string
+            customThemes?: string
+            deleteMessages?: string
+            shareProfile?: string
+            noAds?: string
+            lifetime?: string
           }
         }
       }
     }
-    settingsTab: {
-      title: string
-      accountInfo: {
-        title: string
-        name: string
-        email: string
-        status: {
-          label: string
-          premium: string
-          free: string
+    settingsTab?: {
+      title?: string
+      accountInfo?: {
+        title?: string
+        name?: string
+        email?: string
+        status?: {
+          label?: string
+          premium?: string
+          free?: string
         }
-        joined: string
+        joined?: string
       }
-      logout: {
-        title: string
-        description: string
-        button: string
-        processing: string
+      logout?: {
+        title?: string
+        description?: string
+        button?: string
+        processing?: string
       }
-      deleteAccount: {
-        title: string
-        description: string
-        button: string
-        processing: string
-        confirmTitle: string
-        confirmDescription: string
-        confirmButton: string
-        cancelButton: string
+      deleteAccount?: {
+        title?: string
+        description?: string
+        button?: string
+        processing?: string
+        confirmTitle?: string
+        confirmDescription?: string
+        confirmButton?: string
+        cancelButton?: string
       }
     }
-    premiumBanner: {
-      title: string
-      description: string
-      upgradeButton: string
-      alreadyPremium: string
-      features: string
+    premiumBanner?: {
+      title?: string
+      description?: string
+      upgradeButton?: string
+      alreadyPremium?: string
+      features?: string
     }
-    profileQuickView: {
-      yourProfile: string
-      copyLink: string
-      viewPublic: string
-      linkCopied: string
+    profileQuickView?: {
+      yourProfile?: string
+      copyLink?: string
+      viewPublic?: string
+      linkCopied?: string
     }
   }
-  shareImage: {
-    title: string
-    description: string
-    shareText: string
-    downloadButton: string
-    shareButton: string
-    successDownload: string
-    successShare: string
-    errorTitle: string
-    errorDescription: string
+  shareImage?: {
+    title?: string
+    description?: string
+    shareText?: string
+    downloadButton?: string
+    shareButton?: string
+    successDownload?: string
+    successShare?: string
+    errorTitle?: string
+    errorDescription?: string
+  }
+  premiumPromo?: {
+    message: string
   }
 }
 
@@ -442,7 +428,8 @@ export const translations: Record<Locale, Translation> = {
       dashboard: "Dashboard",
       language: "Bahasa",
       getStarted: "Mulai Sekarang",
-      loading: "Memuat...",
+      loading: "Memuat",
+      loadingDescription: "Mohon tunggu sebentar...",
       save: "Simpan",
       saved: "Tersimpan",
       saving: "Menyimpan...",
@@ -470,8 +457,11 @@ export const translations: Record<Locale, Translation> = {
     },
     branding: {
       appName: "SECRETME2025",
-      tagline: "Berbagi Pesan Anonim",
+      tagline: "Platform pesan rahasia terbaik",
       year: "2025",
+    },
+    promotions: {
+      premiumCode: "Gunakan kode SECRETME2025 untuk mendapatkan akses premium secara gratis!",
     },
     premiumBanner: {
       exclusiveFeatures: "Fitur Eksklusif",
@@ -871,6 +861,9 @@ export const translations: Record<Locale, Translation> = {
       errorTitle: "Gagal membagikan",
       errorDescription: "Terjadi kesalahan saat membagikan gambar",
     },
+    premiumPromo: {
+      message: "Gunakan kode untuk mendapatkan akses premium secara gratis!",
+    },
   },
   en: {
     common: {
@@ -881,7 +874,8 @@ export const translations: Record<Locale, Translation> = {
       dashboard: "Dashboard",
       language: "Language",
       getStarted: "Get Started",
-      loading: "Loading...",
+      loading: "Loading",
+      loadingDescription: "Please wait a moment...",
       save: "Save",
       saved: "Saved",
       saving: "Saving...",
@@ -909,8 +903,11 @@ export const translations: Record<Locale, Translation> = {
     },
     branding: {
       appName: "SECRETME2025",
-      tagline: "Anonymous Message Sharing",
+      tagline: "The best secret messaging platform",
       year: "2025",
+    },
+    promotions: {
+      premiumCode: "Use code SECRETME2025 to get premium access for free!",
     },
     premiumBanner: {
       exclusiveFeatures: "Exclusive Features",
@@ -1306,6 +1303,9 @@ export const translations: Record<Locale, Translation> = {
       successShare: "Message image successfully shared",
       errorTitle: "Failed to share",
       errorDescription: "An error occurred while sharing the image",
+    },
+    premiumPromo: {
+      message: "Use code to get premium access for free!",
     },
   },
 }

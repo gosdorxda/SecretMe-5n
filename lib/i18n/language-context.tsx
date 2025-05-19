@@ -66,7 +66,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// Original hook - keep for backward compatibility
 export function useLanguage() {
   const context = useContext(LanguageContext)
   return context
+}
+
+// Add the missing useTranslation export that's being referenced elsewhere
+export function useTranslation() {
+  const context = useContext(LanguageContext)
+  return {
+    t: context.t,
+    locale: context.locale,
+    changeLocale: context.changeLocale,
+  }
 }
