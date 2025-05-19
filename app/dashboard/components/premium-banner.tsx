@@ -35,7 +35,9 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               <Crown className="h-3.5 w-3.5 text-white" />
             </div>
             {!isMobile && (
-              <span className="text-xs font-medium text-amber-800">{translations.premiumBanner.exclusiveFeatures}</span>
+              <span className="text-xs font-medium text-amber-800">
+                {translations.common.premiumBanner.exclusiveFeatures}
+              </span>
             )}
           </div>
 
@@ -48,7 +50,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href="https://secretme.site/anitawijaya" target="_blank" rel="noopener noreferrer">
                 <Eye className="h-3 w-3 mr-1" />
-                <span>{translations.premiumBanner.demoProfile}</span>
+                <span>{translations.common.premiumBanner.demoProfile}</span>
               </Link>
             </Button>
 
@@ -60,7 +62,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href={getLocalizedPath("/features")}>
                 <Sparkles className="h-3 w-3 mr-1" />
-                <span>{translations.premiumBanner.checkFeatures}</span>
+                <span>{translations.common.premiumBanner.checkFeatures}</span>
               </Link>
             </Button>
 
@@ -72,14 +74,14 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href={getLocalizedPath("/premium")}>
                 <Zap className="h-3 w-3 mr-1" />
-                <span>{translations.premiumBanner.upgrade}</span>
+                <span>{translations.common.premiumBanner.upgrade}</span>
               </Link>
             </Button>
 
             <button
               onClick={() => setIsDismissed(true)}
               className="p-1 hover:bg-amber-100 rounded-full text-amber-500 transition-colors"
-              aria-label={translations.premiumBanner.closeBanner}
+              aria-label={translations.common.premiumBanner.closeBanner}
             >
               <X className="h-3.5 w-3.5" />
             </button>

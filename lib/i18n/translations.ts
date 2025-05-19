@@ -34,6 +34,13 @@ type Translation = {
     generating: string
     creatingImage: string
     failedToCreate: string
+    premiumBanner: {
+      exclusiveFeatures: string
+      demoProfile: string
+      checkFeatures: string
+      upgrade: string
+      closeBanner: string
+    }
   }
   loading: {
     default: string
@@ -42,13 +49,6 @@ type Translation = {
     page: string
     login: string
     register: string
-  }
-  premiumBanner: {
-    exclusiveFeatures: string
-    demoProfile: string
-    checkFeatures: string
-    upgrade: string
-    closeBanner: string
   }
   home: {
     hero: {
@@ -457,6 +457,13 @@ export const translations: Record<Locale, Translation> = {
       generating: "Membuat gambar...",
       creatingImage: "Membuat gambar...",
       failedToCreate: "Tidak dapat membuat gambar",
+      premiumBanner: {
+        exclusiveFeatures: "Fitur Eksklusif",
+        demoProfile: "Profil Demo",
+        checkFeatures: "Cek Fitur",
+        upgrade: "Upgrade",
+        closeBanner: "Tutup banner",
+      },
     },
     loading: {
       default: "Memuat...",
@@ -465,13 +472,6 @@ export const translations: Record<Locale, Translation> = {
       page: "Memuat halaman",
       login: "Mempersiapkan halaman login",
       register: "Mempersiapkan halaman registrasi",
-    },
-    premiumBanner: {
-      exclusiveFeatures: "Fitur Eksklusif",
-      demoProfile: "Profil Demo",
-      checkFeatures: "Cek Fitur",
-      upgrade: "Upgrade",
-      closeBanner: "Tutup banner",
     },
     home: {
       hero: {
@@ -886,6 +886,13 @@ export const translations: Record<Locale, Translation> = {
       generating: "Generating...",
       creatingImage: "Creating image...",
       failedToCreate: "Failed to create image",
+      premiumBanner: {
+        exclusiveFeatures: "Exclusive Features",
+        demoProfile: "Demo Profile",
+        checkFeatures: "Check Features",
+        upgrade: "Upgrade",
+        closeBanner: "Close banner",
+      },
     },
     loading: {
       default: "Loading...",
@@ -894,13 +901,6 @@ export const translations: Record<Locale, Translation> = {
       page: "Loading page",
       login: "Preparing login page",
       register: "Preparing registration page",
-    },
-    premiumBanner: {
-      exclusiveFeatures: "Exclusive Features",
-      demoProfile: "Demo Profile",
-      checkFeatures: "Check Features",
-      upgrade: "Upgrade",
-      closeBanner: "Close banner",
     },
     home: {
       hero: {
