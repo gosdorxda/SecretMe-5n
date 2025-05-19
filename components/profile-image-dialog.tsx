@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Download, Share2 } from "lucide-react"
 import { generateProfileImage, shareTemplateImage } from "@/lib/template-image-generator"
 import { useToast } from "@/hooks/use-toast"
+import { LoadingAnimation } from "@/components/loading-animation"
 
 interface ProfileImageDialogProps {
   open: boolean
@@ -127,10 +128,10 @@ export function ProfileImageDialog({
         <div className="flex flex-col items-center space-y-4">
           {isLoading ? (
             <div className="w-full h-[400px] bg-gray-100 rounded-md flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 border-4 border-t-transparent border-primary rounded-full animate-spin"></div>
-                <p className="text-gray-500">{locale === "en" ? "Creating image..." : "Membuat gambar..."}</p>
-              </div>
+              <LoadingAnimation
+                variant="pulse"
+                message={locale === "en" ? "Creating your profile image..." : "Membuat gambar profil Anda..."}
+              />
             </div>
           ) : imageUrl ? (
             <div className="relative w-full overflow-hidden border rounded-lg p-2 bg-gray-50 border-black">
