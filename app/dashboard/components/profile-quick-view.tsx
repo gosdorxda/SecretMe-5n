@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Crown, Copy, FileText, Share2 } from "lucide-react"
 import { ProfileImageButton } from "@/components/profile-image-button"
 import type { Database } from "@/lib/supabase/database.types"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 
@@ -16,6 +17,7 @@ interface ProfileQuickViewProps {
 
 export function ProfileQuickView({ user }: ProfileQuickViewProps) {
   const { toast } = useToast()
+  const { locale } = useLanguage()
 
   // Count active social media links
   const socialMediaCount = [
@@ -30,8 +32,11 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
     const profileUrl = `${window.location.origin}/${user.is_premium && user.username ? user.username : user.numeric_id}`
     navigator.clipboard.writeText(profileUrl)
     toast({
-      title: "Link disalin",
-      description: "Link profil Anda telah disalin ke clipboard",
+      title: locale === "en" ? "Link copied" : "Link disalin",
+      description:
+        locale === "en"
+          ? "Your profile link has been copied to clipboard"
+          : "Link profil Anda telah disalin ke clipboard",
     })
   }
 
@@ -64,7 +69,11 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   </div>
                   <p className="text-sm text-muted-foreground">@{user.username || user.numeric_id}</p>
                   {!user.is_premium && (
-                    <p className="text-xs text-amber-500 italic mt-1">Upgrade ke Premium untuk ganti username</p>
+                    <p className="text-xs text-amber-500 italic mt-1">
+                      {locale === "en"
+                        ? "Upgrade to Premium to change username"
+                        : "Upgrade ke Premium untuk ganti username"}
+                    </p>
                   )}
 
                   {/* Bio section - show for premium users or locked for free users */}
@@ -74,7 +83,13 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                     <div className="mt-2 flex items-center gap-1.5 text-muted-foreground/70">
                       <FileText className="h-3.5 w-3.5 text-muted-foreground/50" />
                       <p className="text-xs italic line-clamp-1">
-                        {user.is_premium ? "Tambahkan bio Anda..." : "Bio (fitur premium)"}
+                        {user.is_premium
+                          ? locale === "en"
+                            ? "Add your bio..."
+                            : "Tambahkan bio Anda..."
+                          : locale === "en"
+                            ? "Bio (premium feature)"
+                            : "Bio (fitur premium)"}
                       </p>
                     </div>
                   )}
@@ -199,7 +214,9 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                     </div>
                     {!user.is_premium && (
                       <div className="flex items-center ml-1">
-                        <span className="text-xs text-muted-foreground italic">(Fitur premium)</span>
+                        <span className="text-xs text-muted-foreground italic">
+                          {locale === "en" ? "(Premium feature)" : "(Fitur premium)"}
+                        </span>
                       </div>
                     )}
                   </>
@@ -211,12 +228,12 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
             <div className="bg-gradient-to-br from-[var(--bg)] to-gray-100 md:w-1/3">
               <h3 className="font-medium text-sm mb-3 flex items-center gap-2 p-4 pb-0">
                 <Share2 className="h-4 w-4 text-gray-600" />
-                <span>Bagikan Profil Anda</span>
+                <span>{locale === "en" ? "Share Your Profile" : "Bagikan Profil Anda"}</span>
               </h3>
 
               <div className="bg-white p-2 rounded-md border border-[var(--border)] mb-3 mx-4">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-500">Link:</span>
+                  <span className="text-gray-500">{locale === "en" ? "Link:" : "Link:"}</span>
                   <code className="bg-gray-50 px-2 py-0.5 rounded text-xs flex-1 truncate border border-gray-100">
                     {window.location.origin}/{user.is_premium && user.username ? user.username : user.numeric_id}
                   </code>
@@ -231,7 +248,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   className="flex-1 neo-btn-outline text-xs h-9"
                 >
                   <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Salin Link
+                  {locale === "en" ? "Copy Link" : "Salin Link"}
                 </Button>
                 <Button
                   variant="default"
@@ -240,8 +257,11 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   onClick={() => {
                     if (navigator.share) {
                       navigator.share({
-                        title: "Kirim pesan anonim ke saya",
-                        text: "Kirim pesan anonim ke saya melalui SecretMe",
+                        title: locale === "en" ? "Send me an anonymous message" : "Kirim pesan anonim ke saya",
+                        text:
+                          locale === "en"
+                            ? "Send me an anonymous message via SecretMe"
+                            : "Kirim pesan anonim ke saya melalui SecretMe",
                         url: `${window.location.origin}/${
                           user.is_premium && user.username ? user.username : user.numeric_id
                         }`,
@@ -252,7 +272,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   }}
                 >
                   <Share2 className="h-3.5 w-3.5 mr-1.5" />
-                  Bagikan
+                  {locale === "en" ? "Share" : "Bagikan"}
                 </Button>
               </div>
 
@@ -271,7 +291,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                     className="w-full text-xs h-9 bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
                   >
                     <FileText className="h-3.5 w-3.5 mr-1.5" />
-                    Bagikan Kartu Profil
+                    {locale === "en" ? "Share Profile Card" : "Bagikan Kartu Profil"}
                   </Button>
                 </ProfileImageButton>
               </div>

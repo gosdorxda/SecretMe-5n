@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card"
 import { MessageSquare } from "lucide-react"
 import type { Database } from "@/lib/supabase/database.types"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -12,6 +13,8 @@ interface StatisticsCardsProps {
 }
 
 export function StatisticsCards({ messages, viewCount }: StatisticsCardsProps) {
+  const { locale } = useLanguage()
+
   // Calculate stats
   const totalMessages = messages.length
   const repliedMessages = messages.filter((m) => m.reply).length
@@ -26,7 +29,7 @@ export function StatisticsCards({ messages, viewCount }: StatisticsCardsProps) {
               <MessageSquare className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Pesan</p>
+              <p className="text-sm text-muted-foreground">{locale === "en" ? "Total Messages" : "Total Pesan"}</p>
               <p className="text-xl font-bold">{totalMessages}</p>
             </div>
           </div>
@@ -45,7 +48,7 @@ export function StatisticsCards({ messages, viewCount }: StatisticsCardsProps) {
               </svg>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Dibalas</p>
+              <p className="text-sm text-muted-foreground">{locale === "en" ? "Replied" : "Dibalas"}</p>
               <p className="text-xl font-bold">{repliedMessages}</p>
             </div>
           </div>
@@ -64,7 +67,7 @@ export function StatisticsCards({ messages, viewCount }: StatisticsCardsProps) {
               </svg>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Belum Dibalas</p>
+              <p className="text-sm text-muted-foreground">{locale === "en" ? "Not Replied" : "Belum Dibalas"}</p>
               <p className="text-xl font-bold">{unrepliedMessages}</p>
             </div>
           </div>
@@ -89,7 +92,7 @@ export function StatisticsCards({ messages, viewCount }: StatisticsCardsProps) {
               </svg>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Tayangan</p>
+              <p className="text-sm text-muted-foreground">{locale === "en" ? "Views" : "Tayangan"}</p>
               <p className="text-xl font-bold">{viewCount}</p>
             </div>
           </div>

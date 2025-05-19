@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { MessageSquare, AlertCircle } from "lucide-react"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface PublicRepliesToggleProps {
   userId: string
@@ -24,6 +25,7 @@ export function PublicRepliesToggle({
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
   const { toast } = useToast()
+  const { locale } = useLanguage()
 
   const handleToggleChange = async (checked: boolean) => {
     setIsUpdating(true)
@@ -40,7 +42,11 @@ export function PublicRepliesToggle({
 
         if (checkError && checkError.message?.includes("column") && checkError.message?.includes("does not exist")) {
           // La columna no existe, mostrar mensaje de error
-          setError("Fitur ini memerlukan pembaruan database. Silakan jalankan migrasi database terlebih dahulu.")
+          setError(
+            locale === "en"
+              ? "This feature requires a database update. Please run the database migration first."
+              : "Fitur ini memerlukan pembaruan database. Silakan jalankan migrasi database terlebih dahulu.",
+          )
           console.error("Column allow_public_replies does not exist:", checkError)
           return
         }
@@ -56,7 +62,11 @@ export function PublicRepliesToggle({
 
       if (updateError) {
         if (updateError.message?.includes("column") && updateError.message?.includes("does not exist")) {
-          setError("Fitur ini memerlukan pembaruan database. Silakan jalankan migrasi database terlebih dahulu.")
+          setError(
+            locale === "en"
+              ? "This feature requires a database update. Please run the database migration first."
+              : "Fitur ini memerlukan pembaruan database. Silakan jalankan migrasi database terlebih dahulu.",
+          )
           console.error("Column allow_public_replies does not exist:", updateError)
           return
         } else {
@@ -72,16 +82,30 @@ export function PublicRepliesToggle({
       }
 
       toast({
-        title: checked ? "Balasan publik diaktifkan" : "Balasan publik dinonaktifkan",
+        title: checked
+          ? locale === "en"
+            ? "Public replies enabled"
+            : "Balasan publik diaktifkan"
+          : locale === "en"
+            ? "Public replies disabled"
+            : "Balasan publik dinonaktifkan",
         description: checked
-          ? "Pengunjung dapat membalas pesan yang telah Anda balas"
-          : "Hanya Anda yang dapat membalas pesan",
+          ? locale === "en"
+            ? "Visitors can reply to messages you've replied to"
+            : "Pengunjung dapat membalas pesan yang telah Anda balas"
+          : locale === "en"
+            ? "Only you can reply to messages"
+            : "Hanya Anda yang dapat membalas pesan",
       })
     } catch (error: any) {
       console.error("Error updating public replies setting:", error)
       toast({
-        title: "Gagal memperbarui pengaturan",
-        description: error.message || "Terjadi kesalahan saat memperbarui pengaturan balasan publik",
+        title: locale === "en" ? "Failed to update settings" : "Gagal memperbarui pengaturan",
+        description:
+          error.message ||
+          (locale === "en"
+            ? "An error occurred while updating public replies settings"
+            : "Terjadi kesalahan saat memperbarui pengaturan balasan publik"),
         variant: "destructive",
       })
     } finally {
@@ -105,12 +129,16 @@ export function PublicRepliesToggle({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">Balasan Publik</span>
+                  <span className="text-sm font-medium">{locale === "en" ? "Public Replies" : "Balasan Publik"}</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {enabled
-                    ? "Pengunjung dapat membalas pesan yang telah Anda balas"
-                    : "Hanya Anda yang dapat membalas pesan"}
+                    ? locale === "en"
+                      ? "Visitors can reply to messages you've replied to"
+                      : "Pengunjung dapat membalas pesan yang telah Anda balas"
+                    : locale === "en"
+                      ? "Only you can reply to messages"
+                      : "Hanya Anda yang dapat membalas pesan"}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -130,7 +158,9 @@ export function PublicRepliesToggle({
               <div className="flex-1">
                 <p className="text-xs text-amber-800">{error}</p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Jalankan SQL berikut di database Anda:
+                  {locale === "en"
+                    ? "Run the following SQL in your database:"
+                    : "Jalankan SQL berikut di database Anda:"}
                   <code className="block mt-1 p-2 bg-amber-100 rounded text-amber-900 text-[10px] overflow-x-auto">
                     ALTER TABLE users ADD COLUMN IF NOT EXISTS allow_public_replies BOOLEAN DEFAULT false;
                   </code>
@@ -158,8 +188,9 @@ export function PublicRepliesToggle({
                 <path d="M12 8h.01" />
               </svg>
               <p className="text-xs text-blue-700">
-                Saat diaktifkan, pengunjung dapat membalas pesan yang telah Anda balas. Saat dinonaktifkan, hanya Anda
-                yang dapat membalas pesan.
+                {locale === "en"
+                  ? "When enabled, visitors can reply to messages you've replied to. When disabled, only you can reply to messages."
+                  : "Saat diaktifkan, pengunjung dapat membalas pesan yang telah Anda balas. Saat dinonaktifkan, hanya Anda yang dapat membalas pesan."}
               </p>
             </div>
           </div>
