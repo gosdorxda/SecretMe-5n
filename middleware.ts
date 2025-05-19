@@ -109,227 +109,64 @@ function recordAuthRequestTimestamp(ip: string) {
 // Modifikasi middleware untuk menerapkan throttling dan menangani rute bahasa
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const supabase = createClient()
 
-  // Handle language-specific routes
-  if (pathname.startsWith("/en")) {
-    // Already has language prefix, no need to modify
-  } else {
-    // Continue with the existing middleware logic
-    // ... (rest of your existing middleware code)
-  }
+  // Check if the path is for a language-specific route
+  const isEnglishRoute = pathname.startsWith("/en/")
+  const basePath = isEnglishRoute ? pathname.replace(/^\/en/, "") : pathname
+  const languagePrefix = isEnglishRoute ? "/en" : ""
 
-  const userAgent = request.headers.get("user-agent") || ""
-  // Tidak perlu deteksi mobile lagi
-  const isMobile = false
-
-  // Dapatkan IP pengguna
-  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
-
-  // Skip middleware untuk aset statis
-  if (isStaticAsset(pathname)) {
+  // Skip middleware for static files, API routes, etc.
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/static") ||
+    pathname.includes(".")
+  ) {
     return NextResponse.next()
   }
 
-  // Handle language routes for protected pages
-  const isEnglishRoute = pathname.startsWith("/en")
-
-  // Jika bukan rute yang dilindungi, lanjutkan
-  if (!isProtectedRoute(pathname)) {
-    return NextResponse.next()
-  }
-
-  // Terapkan throttling untuk permintaan auth
-  if (shouldThrottleAuthRequest(ip)) {
-    logAuthRequest({
-      endpoint: pathname,
-      method: request.method,
-      source: "middleware",
-      success: false,
-      duration: 0,
-      cached: false,
-      error: "Auth request throttled",
-      details: { isMobile, reason: "rate_limit" },
-    })
-
-    // Jika throttled, gunakan cache jika ada atau redirect ke login
-    const cacheKey = `auth:${request.cookies.toString()}:${pathname}`
-    const cachedAuth = authCache.get(cacheKey)
-
-    if (cachedAuth && cachedAuth.data.session) {
-      return NextResponse.next()
-    }
-
-    // Redirect to login with appropriate language prefix
-    const loginPath = isEnglishRoute ? "/en/login" : "/login"
-    const redirectUrl = new URL(loginPath, request.url)
-    redirectUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // Catat permintaan auth
-  recordAuthRequestTimestamp(ip)
-
-  // Mulai pengukuran waktu
-  const startTime = Date.now()
-
-  // Cek cache untuk mengurangi permintaan
-  const cacheKey = `auth:${request.cookies.toString()}:${pathname}`
-  const cachedAuth = authCache.get(cacheKey)
-  let isFromCache = false
-
-  if (cachedAuth && Date.now() - cachedAuth.timestamp < AUTH_CACHE_TTL) {
-    isFromCache = true
-    // Jika tidak ada sesi di cache, redirect ke login
-    if (!cachedAuth.data.session) {
-      // Redirect to login with appropriate language prefix
-      const loginPath = isEnglishRoute ? "/en/login" : "/login"
-      const redirectUrl = new URL(loginPath, request.url)
-      redirectUrl.searchParams.set("redirect", pathname)
-
-      logAuthRequest({
-        endpoint: pathname,
-        method: request.method,
-        source: "middleware",
-        success: false,
-        duration: Date.now() - startTime,
-        cached: true,
-        error: "No session in cache",
-        details: { isMobile },
-      })
-
-      return NextResponse.redirect(redirectUrl)
-    }
-
-    // Jika rute admin, periksa apakah pengguna adalah admin
-    if (isAdminRoute(pathname) && !cachedAuth.data.isAdmin) {
-      logAuthRequest({
-        endpoint: pathname,
-        method: request.method,
-        source: "middleware",
-        success: false,
-        duration: Date.now() - startTime,
-        cached: true,
-        userId: cachedAuth.data.session?.user?.id,
-        error: "Not admin",
-        details: { isMobile },
-      })
-
-      // Redirect to dashboard with appropriate language prefix
-      const dashboardPath = isEnglishRoute ? "/en/dashboard" : "/dashboard"
-      return NextResponse.redirect(new URL(dashboardPath, request.url))
-    }
-
-    logAuthRequest({
-      endpoint: pathname,
-      method: request.method,
-      source: "middleware",
-      success: true,
-      duration: Date.now() - startTime,
-      cached: true,
-      userId: cachedAuth.data.session?.user?.id,
-      details: { isMobile },
-    })
-
-    return NextResponse.next()
-  }
-
-  try {
-    // Buat klien Supabase
-    const supabase = createClient()
-
-    // Dapatkan sesi
+  // Handle authentication for protected routes
+  if (basePath.startsWith("/dashboard") || basePath.startsWith("/premium") || basePath.startsWith("/admin")) {
     const {
       data: { session },
     } = await supabase.auth.getSession()
 
-    // Jika tidak ada sesi, redirect ke login
     if (!session) {
-      // Redirect to login with appropriate language prefix
-      const loginPath = isEnglishRoute ? "/en/login" : "/login"
-      const redirectUrl = new URL(loginPath, request.url)
-      redirectUrl.searchParams.set("redirect", pathname)
-
-      logAuthRequest({
-        endpoint: pathname,
-        method: request.method,
-        source: "middleware",
-        success: false,
-        duration: Date.now() - startTime,
-        cached: false,
-        error: "No session",
-        details: { isMobile },
-      })
-
-      return NextResponse.redirect(redirectUrl)
+      // Redirect to login page with the appropriate language prefix
+      return NextResponse.redirect(new URL(`${languagePrefix}/login`, request.url))
     }
 
-    // Jika rute admin, periksa apakah pengguna adalah admin
-    let isAdmin = false
-    if (isAdminRoute(pathname)) {
-      // Dapatkan email pengguna
-      const { data: userData } = await supabase.from("users").select("email").eq("id", session.user.id).single()
+    // For admin routes, check if user has admin role
+    if (basePath.startsWith("/admin")) {
+      const { data: user } = await supabase.from("users").select("role").eq("id", session.user.id).single()
 
-      // Daftar email admin
-      const adminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
-      isAdmin = adminEmails.includes(userData?.email || "")
-
-      if (!isAdmin) {
-        logAuthRequest({
-          endpoint: pathname,
-          method: request.method,
-          source: "middleware",
-          success: false,
-          duration: Date.now() - startTime,
-          cached: false,
-          userId: session.user.id,
-          error: "Not admin",
-          details: { isMobile },
-        })
-
-        // Redirect to dashboard with appropriate language prefix
-        const dashboardPath = isEnglishRoute ? "/en/dashboard" : "/dashboard"
-        return NextResponse.redirect(new URL(dashboardPath, request.url))
+      if (!user || user.role !== "admin") {
+        // Redirect to dashboard with the appropriate language prefix
+        return NextResponse.redirect(new URL(`${languagePrefix}/dashboard`, request.url))
       }
     }
-
-    // Simpan ke cache dengan TTL yang lebih lama
-    authCache.set(cacheKey, {
-      data: { session, isAdmin },
-      timestamp: Date.now(),
-    })
-
-    logAuthRequest({
-      endpoint: pathname,
-      method: request.method,
-      source: "middleware",
-      success: true,
-      duration: Date.now() - startTime,
-      cached: false,
-      userId: session.user.id,
-      details: { isMobile },
-    })
-
-    return NextResponse.next()
-  } catch (error) {
-    console.error("Middleware error:", error)
-
-    logAuthRequest({
-      endpoint: pathname,
-      method: request.method,
-      source: "middleware",
-      success: false,
-      duration: Date.now() - startTime,
-      cached: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-      details: { isMobile, error },
-    })
-
-    // Redirect to login with appropriate language prefix
-    const loginPath = isEnglishRoute ? "/en/login" : "/login"
-    const redirectUrl = new URL(loginPath, request.url)
-    redirectUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(redirectUrl)
   }
+
+  // Handle numeric ID to username redirects for profile pages
+  if ((basePath.match(/^\/\d+$/) || (isEnglishRoute && basePath.match(/^\/\d+$/))) && !basePath.startsWith("/api/")) {
+    const numericId = Number.parseInt(basePath.substring(1), 10)
+
+    if (!isNaN(numericId)) {
+      const { data: user } = await supabase
+        .from("users")
+        .select("username, is_premium")
+        .eq("numeric_id", numericId)
+        .single()
+
+      if (user && user.is_premium && user.username) {
+        // Redirect to username URL with the appropriate language prefix
+        return NextResponse.redirect(new URL(`${languagePrefix}/${user.username}`, request.url))
+      }
+    }
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
@@ -342,6 +179,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|public).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

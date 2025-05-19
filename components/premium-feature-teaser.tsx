@@ -7,83 +7,166 @@ import { Crown, ChevronDown, ChevronUp, Check, X, Lock, Camera, User, FileText, 
 import LinkComponent from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function PremiumFeatureTeaser() {
+interface PremiumFeatureTeaserProps {
+  locale?: string
+}
+
+export function PremiumFeatureTeaser({ locale = "id" }: PremiumFeatureTeaserProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const features = [
-    {
-      name: "Kirim & terima pesan anonim",
-      free: true,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Username kustom permanen selamanya",
-      free: false,
-      premium: true,
-      popular: true,
-    },
-    {
-      name: "Foto profil kustom & bio lengkap",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Link media sosial (Instagram, Twitter, dll)",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Notifikasi WhatsApp & Telegram tanpa batas",
-      free: false,
-      premium: true,
-      popular: true,
-    },
-    {
-      name: "Statistik lengkap kunjungan & pesan",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Manajemen balasan publik",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Tema profil kustom & kartu pesan",
-      free: false,
-      premium: true,
-      popular: true,
-    },
-    {
-      name: "Hapus pesan yang tidak diinginkan",
-      free: false,
-      premium: true,
-      popular: true,
-    },
-    {
-      name: "Berbagi gambar profil dengan QR code",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Tanpa iklan & prioritas dukungan seumur hidup",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-    {
-      name: "Semua update fitur premium di masa depan",
-      free: false,
-      premium: true,
-      popular: false,
-    },
-  ]
+  const features = {
+    id: [
+      {
+        name: "Kirim & terima pesan anonim",
+        free: true,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Username kustom permanen selamanya",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Foto profil kustom & bio lengkap",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Link media sosial (Instagram, Twitter, dll)",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Notifikasi WhatsApp & Telegram tanpa batas",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Statistik lengkap kunjungan & pesan",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Manajemen balasan publik",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Tema profil kustom & kartu pesan",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Hapus pesan yang tidak diinginkan",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Berbagi gambar profil dengan QR code",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Tanpa iklan & prioritas dukungan seumur hidup",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Semua update fitur premium di masa depan",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+    ],
+    en: [
+      {
+        name: "Send & receive anonymous messages",
+        free: true,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Permanent custom username forever",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Custom profile photo & complete bio",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Social media links (Instagram, Twitter, etc)",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Unlimited WhatsApp & Telegram notifications",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Complete visit & message statistics",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Public reply management",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Custom profile theme & message cards",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Delete unwanted messages",
+        free: false,
+        premium: true,
+        popular: true,
+      },
+      {
+        name: "Share profile image with QR code",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "Ad-free & lifetime priority support",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+      {
+        name: "All future premium feature updates",
+        free: false,
+        premium: true,
+        popular: false,
+      },
+    ],
+  }
+
+  // Get the appropriate features based on locale
+  const currentFeatures = locale === "en" ? features.en : features.id
 
   return (
     <div className="w-full mb-4 mt-2">
@@ -94,7 +177,7 @@ export function PremiumFeatureTeaser() {
       >
         <div className="flex items-center gap-1.5">
           <Crown className="h-4 w-4 text-amber-500" />
-          <span>Fitur Premium Tersedia</span>
+          <span>{locale === "en" ? "Premium Features Available" : "Fitur Premium Tersedia"}</span>
         </div>
         <div className="text-amber-500">
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -120,29 +203,39 @@ export function PremiumFeatureTeaser() {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-medium text-amber-800 flex items-center">
                       <Crown className="h-4 w-4 mr-1.5 text-amber-500" />
-                      Fitur Premium Terkunci
+                      {locale === "en" ? "Locked Premium Features" : "Fitur Premium Terkunci"}
                     </h3>
-                    <Badge className="bg-amber-500 hover:bg-amber-600">Upgrade Sekarang</Badge>
+                    <Badge className="bg-amber-500 hover:bg-amber-600">
+                      {locale === "en" ? "Upgrade Now" : "Upgrade Sekarang"}
+                    </Badge>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
                       <Camera className="h-5 w-5 text-amber-500 mb-1" />
-                      <span className="text-xs text-center text-amber-800">Foto Profil Kustom</span>
+                      <span className="text-xs text-center text-amber-800">
+                        {locale === "en" ? "Custom Profile Photo" : "Foto Profil Kustom"}
+                      </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
                       <User className="h-5 w-5 text-amber-500 mb-1" />
-                      <span className="text-xs text-center text-amber-800">Username Kustom</span>
+                      <span className="text-xs text-center text-amber-800">
+                        {locale === "en" ? "Custom Username" : "Username Kustom"}
+                      </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
                       <FileText className="h-5 w-5 text-amber-500 mb-1" />
-                      <span className="text-xs text-center text-amber-800">Bio Lengkap</span>
+                      <span className="text-xs text-center text-amber-800">
+                        {locale === "en" ? "Complete Bio" : "Bio Lengkap"}
+                      </span>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
                       <Link className="h-5 w-5 text-amber-500 mb-1" />
-                      <span className="text-xs text-center text-amber-800">Link Sosial Media</span>
+                      <span className="text-xs text-center text-amber-800">
+                        {locale === "en" ? "Social Media Links" : "Link Sosial Media"}
+                      </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
                       <svg
@@ -173,7 +266,9 @@ export function PremiumFeatureTeaser() {
                           strokeLinejoin="round"
                         />
                       </svg>
-                      <span className="text-xs text-center text-amber-800">Notifikasi Telegram</span>
+                      <span className="text-xs text-center text-amber-800">
+                        {locale === "en" ? "Telegram Notifications" : "Notifikasi Telegram"}
+                      </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-white/60 rounded-lg border border-amber-200">
                       <svg
@@ -197,7 +292,9 @@ export function PremiumFeatureTeaser() {
                           strokeLinejoin="round"
                         />
                       </svg>
-                      <span className="text-xs text-center text-amber-800">Notifikasi WhatsApp</span>
+                      <span className="text-xs text-center text-amber-800">
+                        {locale === "en" ? "WhatsApp Notifications" : "Notifikasi WhatsApp"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -210,20 +307,24 @@ export function PremiumFeatureTeaser() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b">
-                  <th className="py-2 px-3 text-left font-medium text-gray-500">Fitur</th>
-                  <th className="py-2 px-3 text-center font-medium text-gray-500">Gratis</th>
+                  <th className="py-2 px-3 text-left font-medium text-gray-500">
+                    {locale === "en" ? "Feature" : "Fitur"}
+                  </th>
+                  <th className="py-2 px-3 text-center font-medium text-gray-500">
+                    {locale === "en" ? "Free" : "Gratis"}
+                  </th>
                   <th className="py-2 px-3 text-center font-medium text-gray-500 bg-amber-50">Premium</th>
                 </tr>
               </thead>
               <tbody>
-                {features.map((feature, index) => (
+                {currentFeatures.map((feature, index) => (
                   <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                     <td className="py-2 px-3 border-b">
                       <div className="flex items-center gap-1.5">
                         {feature.name}
                         {feature.popular && (
                           <Badge className="ml-1.5 bg-orange-500 hover:bg-orange-600 text-[10px] px-1.5 py-0">
-                            Populer
+                            {locale === "en" ? "Popular" : "Populer"}
                           </Badge>
                         )}
                       </div>
@@ -250,9 +351,9 @@ export function PremiumFeatureTeaser() {
             size="sm"
             className="mt-3 w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
           >
-            <LinkComponent href="/premium">
+            <LinkComponent href={locale === "en" ? "/en/premium" : "/premium"}>
               <Crown className="h-3.5 w-3.5 mr-1.5" />
-              Upgrade ke Premium
+              {locale === "en" ? "Upgrade to Premium" : "Upgrade ke Premium"}
             </LinkComponent>
           </Button>
         </div>

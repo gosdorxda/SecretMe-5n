@@ -1,72 +1,73 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { CheckCircle, Mail, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { CheckCircle } from "lucide-react"
 
 interface SuccessAnimationProps {
   onComplete?: () => void
-  message?: string
-  skipSending?: boolean
+  locale?: string
 }
 
-export const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
-  onComplete,
-  message = "Pesan berhasil dikirim!",
-  skipSending = false,
-}) => {
-  const [stage, setStage] = useState<"sending" | "success">(skipSending ? "success" : "sending")
+export function SuccessAnimation({ onComplete, locale = "id" }: SuccessAnimationProps) {
+  const [showCheckmark, setShowCheckmark] = useState(false)
+  const [showText, setShowText] = useState(false)
+  const [showSubtext, setShowSubtext] = useState(false)
 
   useEffect(() => {
-    if (skipSending) {
-      const completeTimer = setTimeout(() => {
-        if (onComplete) onComplete()
-      }, 2500)
-      return () => clearTimeout(completeTimer)
+    // Start animation sequence
+    const checkmarkTimer = setTimeout(() => {
+      setShowCheckmark(true)
+    }, 300)
+
+    const textTimer = setTimeout(() => {
+      setShowText(true)
+    }, 800)
+
+    const subtextTimer = setTimeout(() => {
+      setShowSubtext(true)
+    }, 1200)
+
+    // Complete animation after 3 seconds
+    const completeTimer = setTimeout(() => {
+      if (onComplete) {
+        onComplete()
+      }
+    }, 3000)
+
+    // Clean up timers
+    return () => {
+      clearTimeout(checkmarkTimer)
+      clearTimeout(textTimer)
+      clearTimeout(subtextTimer)
+      clearTimeout(completeTimer)
     }
-
-    const timer = setTimeout(() => {
-      setStage("success")
-
-      // Trigger onComplete callback after animation finishes
-      const completeTimer = setTimeout(() => {
-        if (onComplete) onComplete()
-      }, 2500)
-
-      return () => clearTimeout(completeTimer)
-    }, 1000) // Reduced from 1500ms to 1000ms for faster feedback
-
-    return () => clearTimeout(timer)
-  }, [onComplete, skipSending])
+  }, [onComplete])
 
   return (
-    <div className="success-animation flex flex-col items-center justify-center py-8 px-4 text-center">
-      {stage === "sending" ? (
-        <div className="flex flex-col items-center">
-          <div className="relative mb-4">
-            <Mail className="text-main envelope-bounce h-16 w-16" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 text-gray-400 spin-slow opacity-70" />
-            </div>
-          </div>
-          <p className="text-lg font-medium">Mengirim pesan...</p>
+    <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+      <div className="relative mb-4">
+        <div
+          className={`h-16 w-16 rounded-full bg-green-50 flex items-center justify-center transition-all duration-500 ${
+            showCheckmark ? "scale-100 opacity-100" : "scale-50 opacity-0"
+          }`}
+        >
+          <CheckCircle className="h-10 w-10 text-green-500" />
         </div>
-      ) : (
-        <div className="flex flex-col items-center">
-          <div className="relative mb-4">
-            <div className="success-circle relative">
-              <CheckCircle className="h-16 w-16 text-green-500" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="absolute h-16 w-16 rounded-full bg-green-500 opacity-20 animate-ping-once"></span>
-              </div>
-            </div>
-          </div>
-          <p className="success-message text-lg font-medium">{message}</p>
-          <p className="text-sm text-gray-500 mt-2">Terima kasih atas pesan Anda!</p>
-        </div>
-      )}
+      </div>
+      <p
+        className={`text-lg font-medium transition-all duration-500 ${
+          showText ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+        }`}
+      >
+        {locale === "en" ? "Message Sent Successfully!" : "Pesan Berhasil Terkirim!"}
+      </p>
+      <p
+        className={`text-sm text-gray-500 mt-2 transition-all duration-500 ${
+          showSubtext ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+        }`}
+      >
+        {locale === "en" ? "Your anonymous message has been delivered" : "Pesan anonim Anda telah tersampaikan"}
+      </p>
     </div>
   )
 }
-
-export default SuccessAnimation

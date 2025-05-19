@@ -14,7 +14,8 @@ interface ProfileImageButtonProps {
   avatarUrl?: string | null
   isPremium?: boolean
   children?: React.ReactNode
-  variant?: "default" | "blue" | "ghost" // Mendukung variant ghost
+  variant?: "default" | "blue" | "ghost" // Support ghost variant
+  locale?: string // Add locale prop
 }
 
 export function ProfileImageButton({
@@ -25,20 +26,21 @@ export function ProfileImageButton({
   isPremium,
   children,
   variant = "default",
+  locale = "id",
 }: ProfileImageButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  // Definisikan style berdasarkan variant
+  // Define style based on variant
   let buttonStyle = ""
 
   if (variant === "blue") {
     buttonStyle =
       "h-6 px-2 text-xs bg-blue-500 text-white border-2 border-blue-600 hover:bg-blue-600 hover:border-blue-700 transition-colors"
   } else if (variant === "ghost") {
-    // Style ghost yang lebih jelas - tanpa border, transparan, dengan hover effect
+    // Clearer ghost style - no border, transparent, with hover effect
     buttonStyle = "h-6 px-2 text-xs bg-transparent hover:bg-gray-100 text-gray-700 shadow-none border-none"
   } else {
-    // Style default
+    // Default style
     buttonStyle = "h-6 px-2 text-xs border border-gray-300 bg-white text-gray-700"
   }
 
@@ -48,15 +50,15 @@ export function ProfileImageButton({
         <div onClick={() => setDialogOpen(true)}>{children}</div>
       ) : (
         <Button
-          // Gunakan variant="ghost" langsung dari shadcn jika variant adalah ghost
+          // Use variant="ghost" directly from shadcn if variant is ghost
           variant={variant === "ghost" ? "ghost" : "outline"}
           size="sm"
           className={buttonStyle}
           onClick={() => setDialogOpen(true)}
-          aria-label="Bagikan profil sebagai gambar"
+          aria-label={locale === "en" ? "Share profile as image" : "Bagikan profil sebagai gambar"}
         >
           <FileText className="h-3 w-3 mr-1" />
-          Bagikan
+          {locale === "en" ? "Share" : "Bagikan"}
         </Button>
       )}
 
@@ -68,6 +70,7 @@ export function ProfileImageButton({
         bio={bio}
         avatarUrl={avatarUrl}
         isPremium={isPremium}
+        locale={locale}
       />
     </>
   )

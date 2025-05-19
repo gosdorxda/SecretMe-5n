@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Send, Sparkles, AlertCircle, RefreshCw } from "lucide-react"
 import { SuccessAnimation } from "@/components/success-animation"
 import { SkeletonMessageForm } from "@/components/skeleton-message-form"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface User {
   id: string
@@ -22,19 +23,30 @@ interface User {
 
 interface SendMessageFormProps {
   user: User
+  locale?: string // Add locale prop
 }
 
-// Template pesan yang dapat dipilih pengunjung
-const messageTemplates = [
-  "Hai, saya suka konten yang kamu bagikan!",
-  "Boleh kenalan lebih dekat?",
-  "Kamu inspirasi banget!",
-  "Semangat terus ya!",
-  "Saya punya pertanyaan nih...",
-  "Keren banget profilmu!",
-]
+// Message templates that visitors can choose from
+const messageTemplates = {
+  id: [
+    "Hai, saya suka konten yang kamu bagikan!",
+    "Boleh kenalan lebih dekat?",
+    "Kamu inspirasi banget!",
+    "Semangat terus ya!",
+    "Saya punya pertanyaan nih...",
+    "Keren banget profilmu!",
+  ],
+  en: [
+    "Hi, I like the content you share!",
+    "Can we get to know each other better?",
+    "You're such an inspiration!",
+    "Keep up the good work!",
+    "I have a question...",
+    "Your profile is awesome!",
+  ],
+}
 
-// Cache untuk hasil rate limit check
+// Cache for rate limit check results
 interface RateLimitCache {
   timestamp: number
   result: {
@@ -43,10 +55,11 @@ interface RateLimitCache {
   }
 }
 
-// Durasi cache rate limit dalam milidetik (5 detik)
+// Rate limit cache duration in milliseconds (5 seconds)
 const RATE_LIMIT_CACHE_DURATION = 5000
 
-export function SendMessageForm({ user }: SendMessageFormProps) {
+export function SendMessageForm({ user, locale = "id" }: SendMessageFormProps) {
+  const { t } = useLanguage()
   const [message, setMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
@@ -64,7 +77,10 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
   const { toast } = useToast()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Simulasi loading form untuk mengurangi persepsi waktu tunggu
+  // Get the appropriate templates based on locale
+  const templates = locale === "en" ? messageTemplates.en : messageTemplates.id
+
+  // Simulate form loading to reduce perceived wait time
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsFormLoaded(true)
@@ -109,7 +125,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         console.log("Using cached rate limit result")
 
         if (!rateLimitCache.result.allowed) {
-          setRateLimitError(rateLimitCache.result.reason || "Terlalu banyak permintaan. Coba lagi nanti.")
+          setRateLimitError(
+            rateLimitCache.result.reason ||
+              (locale === "en"
+                ? "Too many requests. Please try again later."
+                : "Terlalu banyak permintaan. Coba lagi nanti."),
+          )
         } else {
           setRateLimitError(null)
         }
@@ -144,7 +165,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       })
 
       if (!response.ok) {
-        setRateLimitError(data.reason || "Terlalu banyak permintaan. Coba lagi nanti.")
+        setRateLimitError(
+          data.reason ||
+            (locale === "en"
+              ? "Too many requests. Please try again later."
+              : "Terlalu banyak permintaan. Coba lagi nanti."),
+        )
         return false
       }
 
@@ -152,12 +178,16 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       return data.allowed
     } catch (error) {
       console.error("Error checking rate limit:", error)
-      setRateLimitError("Terjadi kesalahan saat memeriksa batas pengiriman. Coba lagi nanti.")
+      setRateLimitError(
+        locale === "en"
+          ? "An error occurred while checking the submission limit. Please try again later."
+          : "Terjadi kesalahan saat memeriksa batas pengiriman. Coba lagi nanti.",
+      )
       return false
     }
   }
 
-  // Fungsi untuk memicu notifikasi
+  // Function to trigger notification
   const triggerNotification = async (messageId: string) => {
     try {
       const controller = new AbortController()
@@ -190,7 +220,7 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
 
     if (!message.trim()) {
       toast({
-        title: "Pesan tidak boleh kosong",
+        title: locale === "en" ? "Message cannot be empty" : "Pesan tidak boleh kosong",
         variant: "destructive",
       })
       return
@@ -209,22 +239,26 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     }, 800)
 
     try {
-      // Periksa rate limit sebelum mengirim pesan
+      // Check rate limit before sending message
       const isAllowed = await checkRateLimit()
 
       if (!isAllowed) {
         clearTimeout(optimisticTimer)
         setOptimisticSuccess(false)
         toast({
-          title: "Gagal mengirim pesan",
-          description: rateLimitError || "Anda telah mencapai batas pengiriman pesan. Coba lagi nanti.",
+          title: locale === "en" ? "Failed to send message" : "Gagal mengirim pesan",
+          description:
+            rateLimitError ||
+            (locale === "en"
+              ? "You have reached the message sending limit. Please try again later."
+              : "Anda telah mencapai batas pengiriman pesan. Coba lagi nanti."),
           variant: "destructive",
         })
         setIsSending(false)
         return
       }
 
-      // Kirim pesan ke database
+      // Send message to database
       const { data, error } = await supabase
         .from("messages")
         .insert({
@@ -240,12 +274,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
         throw error
       }
 
-      // Trigger notifikasi jika pesan berhasil dikirim (non-blocking)
+      // Trigger notification if message was sent successfully (non-blocking)
       if (data && data.id) {
         triggerNotification(data.id).catch(console.error)
       }
 
-      // Laporkan rate limit (non-blocking)
+      // Report rate limit (non-blocking)
       fetch("/api/rate-limit/report", {
         method: "POST",
         headers: {
@@ -267,10 +301,15 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
       clearTimeout(optimisticTimer)
       setOptimisticSuccess(false)
       console.error(error)
-      setSendError(error.message || "Terjadi kesalahan saat mengirim pesan")
+      setSendError(
+        error.message ||
+          (locale === "en" ? "An error occurred while sending the message" : "Terjadi kesalahan saat mengirim pesan"),
+      )
       toast({
-        title: "Gagal mengirim pesan",
-        description: error.message || "Terjadi kesalahan saat mengirim pesan",
+        title: locale === "en" ? "Failed to send message" : "Gagal mengirim pesan",
+        description:
+          error.message ||
+          (locale === "en" ? "An error occurred while sending the message" : "Terjadi kesalahan saat mengirim pesan"),
         variant: "destructive",
       })
       setIsSending(false)
@@ -311,8 +350,10 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
                 <div className="h-8 w-8 rounded-full border-2 border-gray-300 border-t-transparent animate-spin"></div>
               </div>
             </div>
-            <p className="text-lg font-medium">Mengirim pesan...</p>
-            <p className="text-sm text-gray-500 mt-2">Pesan Anda sedang diproses</p>
+            <p className="text-lg font-medium">{locale === "en" ? "Sending message..." : "Mengirim pesan..."}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {locale === "en" ? "Your message is being processed" : "Pesan Anda sedang diproses"}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -324,7 +365,7 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
     return (
       <Card className="neo-card">
         <CardContent className="p-6">
-          <SuccessAnimation onComplete={handleAnimationComplete} />
+          <SuccessAnimation onComplete={handleAnimationComplete} locale={locale} />
         </CardContent>
       </Card>
     )
@@ -333,8 +374,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
   return (
     <Card className="neo-card">
       <CardHeader className="pb-3">
-        <CardTitle className="text-xl">Kirim Pesan Anonim</CardTitle>
-        <CardDescription>Kirim pesan anonim ke {user.name || `@${user.username || user.numeric_id}`}</CardDescription>
+        <CardTitle className="text-xl">{locale === "en" ? "Send Anonymous Message" : "Kirim Pesan Anonim"}</CardTitle>
+        <CardDescription>
+          {locale === "en"
+            ? `Send anonymous message to ${user.name || `@${user.username || user.numeric_id}`}`
+            : `Kirim pesan anonim ke ${user.name || `@${user.username || user.numeric_id}`}`}
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -342,7 +387,9 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
             <div className="relative">
               <Textarea
                 ref={textareaRef}
-                placeholder="Tulis pesan anonim Anda di sini..."
+                placeholder={
+                  locale === "en" ? "Write your anonymous message here..." : "Tulis pesan anonim Anda di sini..."
+                }
                 value={message}
                 onChange={handleMessageChange}
                 className="min-h-[120px] resize-none"
@@ -355,7 +402,7 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
                 size="sm"
                 className="absolute top-2 right-2 h-8 w-8 p-0 rounded-full"
                 onClick={() => setShowTemplates(!showTemplates)}
-                title="Gunakan template pesan"
+                title={locale === "en" ? "Use message template" : "Gunakan template pesan"}
                 disabled={isSending}
               >
                 <Sparkles className="h-4 w-4" />
@@ -364,9 +411,11 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
 
             {showTemplates && (
               <div className="bg-white rounded-md shadow-md p-2 border border-gray-200 mt-1 max-h-[200px] overflow-y-auto">
-                <div className="text-sm font-medium mb-2 text-gray-500">Pilih Template Pesan:</div>
+                <div className="text-sm font-medium mb-2 text-gray-500">
+                  {locale === "en" ? "Choose Message Template:" : "Pilih Template Pesan:"}
+                </div>
                 <div className="space-y-1">
-                  {messageTemplates.map((template, index) => (
+                  {templates.map((template, index) => (
                     <button
                       key={index}
                       type="button"
@@ -400,7 +449,7 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
             <div className="text-sm text-red-500 p-3 bg-red-50 rounded-md flex items-start">
               <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium">Gagal mengirim pesan</p>
+                <p className="font-medium">{locale === "en" ? "Failed to send message" : "Gagal mengirim pesan"}</p>
                 <p className="mt-1">{sendError}</p>
                 <Button
                   type="button"
@@ -413,12 +462,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
                   {isRetrying ? (
                     <>
                       <div className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                      Mencoba ulang...
+                      {locale === "en" ? "Retrying..." : "Mencoba ulang..."}
                     </>
                   ) : (
                     <>
                       <RefreshCw className="mr-1 h-3 w-3" />
-                      Coba lagi
+                      {locale === "en" ? "Try again" : "Coba lagi"}
                     </>
                   )}
                 </Button>
@@ -435,12 +484,12 @@ export function SendMessageForm({ user }: SendMessageFormProps) {
               <>
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                Mengirim...
+                {locale === "en" ? "Sending..." : "Mengirim..."}
               </>
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />
-                Kirim Pesan
+                {locale === "en" ? "Send Message" : "Kirim Pesan"}
               </>
             )}
           </Button>
