@@ -432,7 +432,7 @@ export function TelegramForm({
             {isConnected
               ? locale === "en"
                 ? "Receive new message notifications directly to your Telegram account."
-                : "Terima notifikasi pesan baru langsung ke Telegram Anda"
+                : "Terima notifikasi pesan baru langsung ke Telegram Andas"
               : locale === "en"
                 ? "Connect Telegram to receive instant notifications for new messages."
                 : "Hubungkan Telegram untuk menerima notifikasi pesan baru secara instan."}
