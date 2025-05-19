@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface MessageReplyFormProps {
   messageId: string
@@ -18,6 +19,7 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
   const [isReplying, setIsReplying] = useState(false)
   const supabase = createClient()
   const { toast } = useToast()
+  const { locale } = useLanguage()
 
   async function handleSubmitReply() {
     if (!reply.trim()) return
@@ -41,16 +43,34 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
       }
 
       toast({
-        title: existingReply ? "Balasan diperbarui" : "Balasan terkirim",
-        description: existingReply ? "Balasan Anda telah berhasil diperbarui" : "Balasan Anda telah berhasil disimpan",
+        title: existingReply
+          ? locale === "en"
+            ? "Reply updated"
+            : "Balasan diperbarui"
+          : locale === "en"
+            ? "Reply sent"
+            : "Balasan terkirim",
+        description: existingReply
+          ? locale === "en"
+            ? "Your reply has been successfully updated"
+            : "Balasan Anda telah berhasil diperbarui"
+          : locale === "en"
+            ? "Your reply has been successfully saved"
+            : "Balasan Anda telah berhasil disimpan",
       })
 
       onReplySuccess()
     } catch (error: any) {
       console.error(error)
       toast({
-        title: existingReply ? "Gagal memperbarui balasan" : "Gagal mengirim balasan",
-        description: error.message || "Terjadi kesalahan",
+        title: existingReply
+          ? locale === "en"
+            ? "Failed to update reply"
+            : "Gagal memperbarui balasan"
+          : locale === "en"
+            ? "Failed to send reply"
+            : "Gagal mengirim balasan",
+        description: error.message || (locale === "en" ? "An error occurred" : "Terjadi kesalahan"),
         variant: "destructive",
       })
     } finally {
@@ -69,8 +89,20 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
   return (
     <div className="space-y-3 bg-green-50/50 p-4 rounded-lg border-2 border-green-200/60 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-green-700">{existingReply ? "Edit balasan:" : "Balas pesan ini:"}</p>
-        <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600" aria-label="Tutup form balasan">
+        <p className="text-sm font-medium text-green-700">
+          {existingReply
+            ? locale === "en"
+              ? "Edit reply:"
+              : "Edit balasan:"
+            : locale === "en"
+              ? "Reply to this message:"
+              : "Balas pesan ini:"}
+        </p>
+        <button
+          onClick={handleCancel}
+          className="text-gray-400 hover:text-gray-600"
+          aria-label={locale === "en" ? "Close reply form" : "Tutup form balasan"}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="16"
@@ -88,7 +120,7 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
         </button>
       </div>
       <Textarea
-        placeholder="Tulis balasan Anda..."
+        placeholder={locale === "en" ? "Write your reply..." : "Tulis balasan Anda..."}
         value={reply}
         onChange={(e) => setReply(e.target.value)}
         rows={3}
@@ -96,7 +128,7 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
       />
       <div className="flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={handleCancel} className="text-xs neo-btn-outline">
-          Batal
+          {locale === "en" ? "Cancel" : "Batal"}
         </Button>
         <Button
           size="sm"
@@ -107,10 +139,16 @@ export function MessageReplyForm({ messageId, existingReply, onReplySuccess, onC
           {isReplying ? (
             <>
               <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-              Mengirim...
+              {locale === "en" ? "Sending..." : "Mengirim..."}
             </>
           ) : existingReply ? (
-            "Perbarui"
+            locale === "en" ? (
+              "Update"
+            ) : (
+              "Perbarui"
+            )
+          ) : locale === "en" ? (
+            "Send Reply"
           ) : (
             "Kirim Balasan"
           )}

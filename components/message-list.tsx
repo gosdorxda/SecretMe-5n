@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns"
 import id from "date-fns/locale/id"
+import enUS from "date-fns/locale/en-US"
 import type { Database } from "@/lib/supabase/database.types"
 import { MessageReplyForm } from "./message-reply-form"
 import { MessageSquare, Trash2, Share } from "lucide-react"
@@ -14,6 +15,7 @@ import { ShareImageDialog } from "./share-image-dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DeleteMessageDrawer } from "./delete-message-drawer"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 type Message = Database["public"]["Tables"]["messages"]["Row"]
 
@@ -49,6 +51,7 @@ export function MessageList({
   numericId,
   displayName,
 }: MessageListProps) {
+  const { t, locale } = useLanguage()
   const [editingReply, setEditingReply] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -142,8 +145,8 @@ export function MessageList({
     return (
       <div className="neo-card p-6 text-center">
         <MessageSquare className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-        <p className="text-base text-text">Belum ada pesan yang diterima</p>
-        <p className="text-sm text-muted-foreground mt-1">Bagikan link profil Anda untuk mulai menerima pesan</p>
+        <p className="text-base text-text">{t.dashboard.messagesTab.noMessages.title}</p>
+        <p className="text-sm text-muted-foreground mt-1">{t.dashboard.messagesTab.noMessages.description}</p>
       </div>
     )
   }
@@ -158,8 +161,8 @@ export function MessageList({
       }
 
       toast({
-        title: "Pesan dihapus",
-        description: "Pesan berhasil dihapus",
+        title: locale === "en" ? "Message deleted" : "Pesan dihapus",
+        description: locale === "en" ? "Message has been successfully deleted" : "Pesan berhasil dihapus",
       })
 
       if (onDeleteSuccess) {
@@ -168,8 +171,10 @@ export function MessageList({
     } catch (error: any) {
       console.error(error)
       toast({
-        title: "Gagal menghapus pesan",
-        description: error.message || "Terjadi kesalahan saat menghapus pesan",
+        title: locale === "en" ? "Failed to delete message" : "Gagal menghapus pesan",
+        description:
+          error.message ||
+          (locale === "en" ? "An error occurred while deleting the message" : "Terjadi kesalahan saat menghapus pesan"),
         variant: "destructive",
       })
     } finally {
@@ -227,10 +232,15 @@ export function MessageList({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex items-baseline">
-                      <span className="text-sm font-semibold text-[var(--text)]">Anonim</span>
+                      <span className="text-sm font-semibold text-[var(--text)]">
+                        {locale === "en" ? "Anonymous" : "Anonim"}
+                      </span>
                       <span className="mx-1.5 text-xs text-[var(--text)]/50">·</span>
                       <span className="text-[0.65rem] text-[var(--text)]/50">
-                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true, locale: id })}
+                        {formatDistanceToNow(new Date(message.created_at), {
+                          addSuffix: true,
+                          locale: locale === "en" ? enUS : id,
+                        })}
                       </span>
                     </div>
                   </div>
@@ -242,6 +252,7 @@ export function MessageList({
                         className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-red-500 hover:text-red-700 shadow-none"
                         onClick={() => confirmDelete(message.id)}
                         disabled={isDeleting === message.id}
+                        aria-label={locale === "en" ? "Delete message" : "Hapus pesan"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -252,9 +263,10 @@ export function MessageList({
                       <button
                         className="inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 disabled:pointer-events-none disabled:opacity-50 bg-transparent hover:text-accent-foreground border border-gray-200 rounded-[var(--border-radius)] h-7 px-2 text-xs text-gray-600 hover:bg-transparent shadow-none"
                         onClick={() => openShareDialog(message)}
+                        aria-label={locale === "en" ? "Share message" : "Bagikan pesan"}
                       >
                         <Share className="h-3.5 w-3.5 mr-1" />
-                        Bagikan
+                        {locale === "en" ? "Share" : "Bagikan"}
                       </button>
                     )}
                   </div>
@@ -272,11 +284,14 @@ export function MessageList({
                         <div className="flex items-center gap-1.5">
                           {/* Replace Badge with a custom div to avoid any hover/focus effects */}
                           <div className="inline-flex items-center px-2.5 py-0.5 bg-gradient-to-r from-amber-100 to-amber-200 border border-orange-200 rounded-[var(--border-radius)] text-black font-medium text-xs">
-                            @{username || numericId || "pemilik"}
+                            @{username || numericId || (locale === "en" ? "owner" : "pemilik")}
                           </div>
-                          <span className="text-xs text-gray-600">Membalas</span>
+                          <span className="text-xs text-gray-600">{locale === "en" ? "Replying" : "Membalas"}</span>
                           <span className="text-[0.65rem] text-[var(--text)]/50">
-                            {formatDistanceToNow(new Date(message.updated_at), { addSuffix: true, locale: id })}
+                            {formatDistanceToNow(new Date(message.updated_at), {
+                              addSuffix: true,
+                              locale: locale === "en" ? enUS : id,
+                            })}
                           </span>
                         </div>
 
@@ -285,7 +300,7 @@ export function MessageList({
                             onClick={() => setEditingReply(message.id)}
                             className="text-xs text-green-600 hover:text-green-800 hover:underline bg-transparent border-none p-0"
                           >
-                            Edit Balasan
+                            {locale === "en" ? "Edit Reply" : "Edit Balasan"}
                           </button>
                         )}
                       </div>
@@ -318,7 +333,7 @@ export function MessageList({
                           onClick={() => setReplyingTo(message.id)}
                           className="text-xs text-green-600 hover:text-green-800 hover:underline bg-transparent border-none p-0"
                         >
-                          Balas Pesan
+                          {locale === "en" ? "Reply to Message" : "Balas Pesan"}
                         </button>
                       </div>
                     )}
@@ -360,7 +375,13 @@ export function MessageList({
               onClick={loadMoreMessages}
               disabled={isLoadingMore}
             >
-              {isLoadingMore ? "Memuat pesan..." : "Muat lebih banyak pesan"}
+              {isLoadingMore
+                ? locale === "en"
+                  ? "Loading messages..."
+                  : "Memuat pesan..."
+                : locale === "en"
+                  ? "Load more messages"
+                  : "Muat lebih banyak pesan"}
             </button>
           </div>
         )}
@@ -383,7 +404,10 @@ export function MessageList({
           onOpenChange={setShareDialogOpen}
           username={username || `user${numericId}` || "anonymous"}
           message={messageToShare.content}
-          date={formatDistanceToNow(new Date(messageToShare.created_at), { addSuffix: true, locale: id })}
+          date={formatDistanceToNow(new Date(messageToShare.created_at), {
+            addSuffix: true,
+            locale: locale === "en" ? enUS : id,
+          })}
           avatarUrl={null} // Bisa ditambahkan avatar URL jika tersedia
           displayName={displayName} // Tambahkan displayName ke dialog
         />
