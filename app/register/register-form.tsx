@@ -112,6 +112,9 @@ export default function RegisterForm() {
         }
       }
 
+      // Tambahkan setelah pendaftaran berhasil dan sebelum login
+      console.log("Pendaftaran berhasil, mencoba login otomatis")
+
       // Langsung login setelah pendaftaran berhasil
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -126,6 +129,9 @@ export default function RegisterForm() {
         title: t.register.registerSuccess,
         description: t.register.registerSuccessMessage,
       })
+
+      // Tambahkan setelah login berhasil
+      console.log("Login otomatis berhasil, redirect ke:", redirect)
 
       // Redirect ke halaman dashboard
       router.push(redirect)
