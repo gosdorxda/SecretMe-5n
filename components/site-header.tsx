@@ -7,10 +7,10 @@ import { MessageSquare } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useLanguage } from "@/lib/i18n/language-context"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { LanguageToggle } from "@/components/language-toggle"
 
 export function SiteHeader() {
-  const { t, locale, changeLocale } = useLanguage()
+  const { t, locale } = useLanguage()
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
   const pathname = usePathname()
@@ -45,28 +45,8 @@ export function SiteHeader() {
         </Link>
 
         <div className="flex items-center gap-4">
-          {/* Language Toggle Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center gap-2 rounded-full">
-                <span className="text-sm font-medium">{locale === "id" ? "🇮🇩 ID" : "🇬🇧 EN"}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => changeLocale("id")} className={locale === "id" ? "bg-gray-100" : ""}>
-                <span className="flex items-center gap-2">
-                  <span>🇮🇩</span>
-                  <span>Bahasa Indonesia</span>
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => changeLocale("en")} className={locale === "en" ? "bg-gray-100" : ""}>
-                <span className="flex items-center gap-2">
-                  <span>🇬🇧</span>
-                  <span>English</span>
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Language Toggle */}
+          <LanguageToggle />
 
           {!loading && !session ? (
             <Button className="rounded-full" size="sm" asChild>
@@ -76,7 +56,9 @@ export function SiteHeader() {
             </Button>
           ) : (
             <Button className="rounded-full" size="sm" asChild>
-              <Link href={locale === "en" ? "/en/dashboard" : "/dashboard"}>{t.common.dashboard}</Link>
+              <Link href={locale === "en" ? "/en/dashboard" : "/dashboard"}>
+                {locale === "en" ? t.common.dashboard : "Dashboard"}
+              </Link>
             </Button>
           )}
         </div>
