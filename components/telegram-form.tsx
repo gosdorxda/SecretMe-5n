@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 interface TelegramFormProps {
   userId: string
@@ -36,6 +37,7 @@ export function TelegramForm({
   initialTelegramNotifications,
   locale = "id",
 }: TelegramFormProps) {
+  const { t, locale: currentLocale } = useLanguage()
   const [telegramId, setTelegramId] = useState(initialTelegramId || "")
   const [telegramNotifications, setTelegramNotifications] = useState(initialTelegramNotifications)
   const [isGeneratingCode, setIsGeneratingCode] = useState(false)
@@ -85,24 +87,26 @@ export function TelegramForm({
         setCodeExpiry(new Date(data.expiresAt))
         setConnectionStep(2)
         toast({
-          title: locale === "en" ? "Connection code created" : "Kode koneksi berhasil dibuat",
+          title: currentLocale === "en" ? "Connection code created" : "Kode koneksi berhasil dibuat",
           description:
-            locale === "en"
+            currentLocale === "en"
               ? "Use this code to connect your Telegram account"
               : "Gunakan kode ini untuk menghubungkan akun Telegram Anda",
         })
       } else {
         throw new Error(
-          data.error || (locale === "en" ? "Failed to create connection code" : "Gagal membuat kode koneksi"),
+          data.error || (currentLocale === "en" ? "Failed to create connection code" : "Gagal membuat kode koneksi"),
         )
       }
     } catch (error: any) {
       console.error("Error generating code:", error)
-      setError(error.message || (locale === "en" ? "Failed to create connection code" : "Gagal membuat kode koneksi"))
+      setError(
+        error.message || (currentLocale === "en" ? "Failed to create connection code" : "Gagal membuat kode koneksi"),
+      )
       toast({
-        title: locale === "en" ? "Error" : "Error",
+        title: currentLocale === "en" ? "Error" : "Error",
         description:
-          error.message || (locale === "en" ? "Failed to create connection code" : "Gagal membuat kode koneksi"),
+          error.message || (currentLocale === "en" ? "Failed to create connection code" : "Gagal membuat kode koneksi"),
         variant: "destructive",
       })
       setConnectionStep(0)
@@ -127,7 +131,7 @@ export function TelegramForm({
       })
 
       if (!response.ok) {
-        throw new Error(locale === "en" ? "Failed to check connection status" : "Gagal memeriksa status koneksi")
+        throw new Error(currentLocale === "en" ? "Failed to check connection status" : "Gagal memeriksa status koneksi")
       }
 
       const data = await response.json()
@@ -142,18 +146,18 @@ export function TelegramForm({
         setConnectionStep(3)
 
         toast({
-          title: locale === "en" ? "Success" : "Berhasil",
+          title: currentLocale === "en" ? "Success" : "Berhasil",
           description:
-            locale === "en"
+            currentLocale === "en"
               ? "Your Telegram account has been successfully connected and notifications enabled"
               : "Akun Telegram Anda berhasil terhubung dan notifikasi diaktifkan",
         })
       } else {
         // Koneksi belum berhasil
         toast({
-          title: locale === "en" ? "Not connected yet" : "Belum terhubung",
+          title: currentLocale === "en" ? "Not connected yet" : "Belum terhubung",
           description:
-            locale === "en"
+            currentLocale === "en"
               ? "Telegram bot hasn't received your code yet. Make sure you've sent the code correctly."
               : "Bot Telegram belum menerima kode Anda. Pastikan Anda telah mengirim kode dengan benar.",
           variant: "default",
@@ -161,10 +165,13 @@ export function TelegramForm({
       }
     } catch (error: any) {
       console.error("Verification error:", error)
-      setError(error.message || (locale === "en" ? "Failed to verify connection" : "Gagal memverifikasi koneksi"))
+      setError(
+        error.message || (currentLocale === "en" ? "Failed to verify connection" : "Gagal memverifikasi koneksi"),
+      )
       toast({
-        title: locale === "en" ? "Error" : "Error",
-        description: error.message || (locale === "en" ? "Failed to verify connection" : "Gagal memverifikasi koneksi"),
+        title: currentLocale === "en" ? "Error" : "Error",
+        description:
+          error.message || (currentLocale === "en" ? "Failed to verify connection" : "Gagal memverifikasi koneksi"),
         variant: "destructive",
       })
     } finally {
@@ -199,19 +206,21 @@ export function TelegramForm({
         setConnectionStep(0)
 
         toast({
-          title: locale === "en" ? "Success" : "Berhasil",
+          title: currentLocale === "en" ? "Success" : "Berhasil",
           description:
-            locale === "en" ? "Your Telegram account has been disconnected" : "Akun Telegram Anda berhasil diputuskan",
+            currentLocale === "en"
+              ? "Your Telegram account has been disconnected"
+              : "Akun Telegram Anda berhasil diputuskan",
         })
       } else {
-        throw new Error(data.error || (locale === "en" ? "Failed to disconnect" : "Gagal memutuskan koneksi"))
+        throw new Error(data.error || (currentLocale === "en" ? "Failed to disconnect" : "Gagal memutuskan koneksi"))
       }
     } catch (error: any) {
       console.error("Error disconnecting:", error)
-      setError(error.message || (locale === "en" ? "Failed to disconnect" : "Gagal memutuskan koneksi"))
+      setError(error.message || (currentLocale === "en" ? "Failed to disconnect" : "Gagal memutuskan koneksi"))
       toast({
-        title: locale === "en" ? "Error" : "Error",
-        description: error.message || (locale === "en" ? "Failed to disconnect" : "Gagal memutuskan koneksi"),
+        title: currentLocale === "en" ? "Error" : "Error",
+        description: error.message || (currentLocale === "en" ? "Failed to disconnect" : "Gagal memutuskan koneksi"),
         variant: "destructive",
       })
     } finally {
@@ -244,12 +253,12 @@ export function TelegramForm({
       setTelegramNotifications(enabled)
 
       toast({
-        title: locale === "en" ? "Success" : "Berhasil",
+        title: currentLocale === "en" ? "Success" : "Berhasil",
         description: enabled
-          ? locale === "en"
+          ? currentLocale === "en"
             ? "Telegram notifications have been enabled"
             : "Notifikasi Telegram telah diaktifkan"
-          : locale === "en"
+          : currentLocale === "en"
             ? "Telegram notifications have been disabled"
             : "Notifikasi Telegram telah dinonaktifkan",
       })
@@ -257,13 +266,17 @@ export function TelegramForm({
       console.error("Error updating notifications:", error)
       setError(
         error.message ||
-          (locale === "en" ? "Failed to update notification settings" : "Gagal memperbarui pengaturan notifikasi"),
+          (currentLocale === "en"
+            ? "Failed to update notification settings"
+            : "Gagal memperbarui pengaturan notifikasi"),
       )
       toast({
-        title: locale === "en" ? "Error" : "Error",
+        title: currentLocale === "en" ? "Error" : "Error",
         description:
           error.message ||
-          (locale === "en" ? "Failed to update notification settings" : "Gagal memperbarui pengaturan notifikasi"),
+          (currentLocale === "en"
+            ? "Failed to update notification settings"
+            : "Gagal memperbarui pengaturan notifikasi"),
         variant: "destructive",
       })
     }
@@ -290,21 +303,24 @@ export function TelegramForm({
       const data = await response.json()
       if (data.success) {
         toast({
-          title: locale === "en" ? "Success" : "Berhasil",
+          title: currentLocale === "en" ? "Success" : "Berhasil",
           description:
-            locale === "en"
+            currentLocale === "en"
               ? "Test message has been sent to your Telegram"
               : "Pesan uji telah dikirim ke Telegram Anda",
         })
       } else {
-        throw new Error(data.error || (locale === "en" ? "Failed to send test message" : "Gagal mengirim pesan uji"))
+        throw new Error(
+          data.error || (currentLocale === "en" ? "Failed to send test message" : "Gagal mengirim pesan uji"),
+        )
       }
     } catch (error: any) {
       console.error("Error sending test message:", error)
-      setError(error.message || (locale === "en" ? "Failed to send test message" : "Gagal mengirim pesan uji"))
+      setError(error.message || (currentLocale === "en" ? "Failed to send test message" : "Gagal mengirim pesan uji"))
       toast({
-        title: locale === "en" ? "Error" : "Error",
-        description: error.message || (locale === "en" ? "Failed to send test message" : "Gagal mengirim pesan uji"),
+        title: currentLocale === "en" ? "Error" : "Error",
+        description:
+          error.message || (currentLocale === "en" ? "Failed to send test message" : "Gagal mengirim pesan uji"),
         variant: "destructive",
       })
     } finally {
@@ -318,21 +334,17 @@ export function TelegramForm({
       return (
         <Alert className="p-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{locale === "en" ? "Not Connected" : "Belum Terhubung"}</AlertTitle>
-          <AlertDescription>
-            {locale === "en"
-              ? "Connect your Telegram account to receive new message notifications."
-              : "Hubungkan akun Telegram Anda untuk menerima notifikasi pesan baru."}
-          </AlertDescription>
+          <AlertTitle>{t.dashboard.profileTab.notifications.telegram.notSet}</AlertTitle>
+          <AlertDescription>{t.dashboard.profileTab.notifications.telegram.instructions}</AlertDescription>
         </Alert>
       )
     } else if (connectionStep === 1) {
       return (
         <Alert className="p-4">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <AlertTitle>{locale === "en" ? "Creating Connection Code" : "Membuat Kode Koneksi"}</AlertTitle>
+          <AlertTitle>{currentLocale === "en" ? "Creating Connection Code" : "Membuat Kode Koneksi"}</AlertTitle>
           <AlertDescription>
-            {locale === "en" ? "Please wait a moment..." : "Mohon tunggu sebentar..."}
+            {currentLocale === "en" ? "Please wait a moment..." : "Mohon tunggu sebentar..."}
           </AlertDescription>
         </Alert>
       )
@@ -341,10 +353,10 @@ export function TelegramForm({
         <Alert className="bg-blue-50 border-blue-200 p-4">
           <RefreshCw className="h-4 w-4 text-blue-600" />
           <AlertTitle className="text-blue-800">
-            {locale === "en" ? "Waiting for Verification" : "Menunggu Verifikasi"}
+            {currentLocale === "en" ? "Waiting for Verification" : "Menunggu Verifikasi"}
           </AlertTitle>
           <AlertDescription className="text-blue-700">
-            {locale === "en"
+            {currentLocale === "en"
               ? 'Please send the code to the Telegram bot, then click the "Verify Connection" button.'
               : 'Silakan kirim kode ke bot Telegram, lalu klik tombol "Verifikasi Koneksi".'}
           </AlertDescription>
@@ -354,9 +366,9 @@ export function TelegramForm({
       return (
         <Alert className="bg-green-50 border-green-200 p-4">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-800">{locale === "en" ? "Connected" : "Terhubung"}</AlertTitle>
+          <AlertTitle className="text-green-800">{t.dashboard.profileTab.notifications.telegram.active}</AlertTitle>
           <AlertDescription className="text-green-700">
-            {locale === "en"
+            {currentLocale === "en"
               ? "Your Telegram account has been successfully connected."
               : "Akun Telegram Anda terhubung dan siap menerima notifikasi."}
           </AlertDescription>
@@ -368,19 +380,19 @@ export function TelegramForm({
   // Fungsi untuk menampilkan pesan bantuan berdasarkan jumlah percobaan verifikasi
   const getVerificationHelpMessage = () => {
     if (verificationAttempts === 0) {
-      return locale === "en"
+      return currentLocale === "en"
         ? "Click the verification button after sending the code to the bot."
         : "Klik tombol verifikasi setelah mengirim kode ke bot."
     } else if (verificationAttempts === 1) {
-      return locale === "en"
+      return currentLocale === "en"
         ? "Make sure you've sent the code correctly to the bot."
         : "Pastikan Anda telah mengirim kode dengan benar ke bot."
     } else if (verificationAttempts === 2) {
-      return locale === "en"
+      return currentLocale === "en"
         ? "Try starting the bot by sending /start first."
         : "Coba mulai bot dengan mengirim /start terlebih dahulu."
     } else if (verificationAttempts >= 3) {
-      return locale === "en"
+      return currentLocale === "en"
         ? "Make sure you're using the correct bot: @SecretMe_Alert_bot"
         : "Pastikan Anda menggunakan bot yang benar: @SecretMe_Alert_bot"
     }
@@ -391,7 +403,7 @@ export function TelegramForm({
       {error && (
         <Alert variant="destructive" className="p-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{locale === "en" ? "Error" : "Error"}</AlertTitle>
+          <AlertTitle>{currentLocale === "en" ? "Error" : "Error"}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -417,23 +429,23 @@ export function TelegramForm({
                 </svg>
               </div>
               <CardTitle className="text-lg font-medium">
-                {locale === "en" ? "Telegram Notifications" : "Notifikasi Telegram"}
+                {t.dashboard.profileTab.notifications.telegram.title}
               </CardTitle>
             </div>
 
             {isConnected && (
               <div className="bg-green-50 text-green-600 text-xs px-2 py-0.5 rounded-full flex items-center gap-1 border border-green-100">
                 <CheckCircle2 className="h-3 w-3" />
-                <span>{locale === "en" ? "Connected" : "Terhubung"}</span>
+                <span>{t.dashboard.profileTab.notifications.telegram.active}</span>
               </div>
             )}
           </div>
           <CardDescription className="mt-1">
             {isConnected
-              ? locale === "en"
+              ? currentLocale === "en"
                 ? "Receive new message notifications directly to your Telegram account."
-                : "Terima notifikasi pesan baru langsung ke Telegram Andas"
-              : locale === "en"
+                : "Terima notifikasi pesan baru langsung ke Telegram Anda"
+              : currentLocale === "en"
                 ? "Connect Telegram to receive instant notifications for new messages."
                 : "Hubungkan Telegram untuk menerima notifikasi pesan baru secara instan."}
           </CardDescription>
@@ -446,14 +458,14 @@ export function TelegramForm({
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                 <div className="space-y-0.5">
                   <Label htmlFor="telegram-notifications" className="text-sm font-medium">
-                    {locale === "en" ? "Telegram Notifications" : "Aktifkan Notifikasi"}
+                    {currentLocale === "en" ? "Telegram Notifications" : "Aktifkan Notifikasi"}
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     {telegramNotifications
-                      ? locale === "en"
+                      ? currentLocale === "en"
                         ? "You will receive new message notifications via Telegram"
                         : "Dapatkan pemberitahuan saat ada pesan baru"
-                      : locale === "en"
+                      : currentLocale === "en"
                         ? "Telegram notifications are currently disabled"
                         : "Notifikasi Telegram saat ini dinonaktifkan"}
                   </p>
@@ -478,12 +490,12 @@ export function TelegramForm({
                   {isSendingTest ? (
                     <>
                       <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                      <span>{locale === "en" ? "Sending..." : "Mengirim..."}</span>
+                      <span>{currentLocale === "en" ? "Sending..." : "Mengirim..."}</span>
                     </>
                   ) : (
                     <>
                       <Send className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
-                      <span>{locale === "en" ? "Send Test Message" : "Kirim Pesan Uji"}</span>
+                      <span>{currentLocale === "en" ? "Send Test Message" : "Kirim Pesan Uji"}</span>
                     </>
                   )}
                 </Button>
@@ -497,12 +509,12 @@ export function TelegramForm({
                   {isDisconnecting ? (
                     <>
                       <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      {locale === "en" ? "Disconnecting..." : "Memutuskan..."}
+                      {currentLocale === "en" ? "Disconnecting..." : "Memutuskan..."}
                     </>
                   ) : (
                     <>
                       <Link className="mr-1.5 h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
-                      {locale === "en" ? "Disconnect" : "Putuskan Koneksi"}
+                      {t.dashboard.profileTab.notifications.telegram.disconnect}
                     </>
                   )}
                 </Button>
@@ -532,9 +544,7 @@ export function TelegramForm({
                     </svg>
                   </div>
                   <p className="text-sm text-center mb-4">
-                    {locale === "en"
-                      ? "Connect your Telegram account to receive instant notifications for new messages."
-                      : "Hubungkan akun Telegram Anda untuk menerima notifikasi pesan baru secara instan."}
+                    {t.dashboard.profileTab.notifications.telegram.instructions}
                   </p>
                   <Button
                     variant="default"
@@ -545,11 +555,11 @@ export function TelegramForm({
                     {isGeneratingCode ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        {locale === "en" ? "Creating Code..." : "Membuat Kode..."}
+                        {currentLocale === "en" ? "Creating Code..." : "Membuat Kode..."}
                       </>
                     ) : (
                       <>
-                        {locale === "en" ? "Connect Telegram" : "Hubungkan Telegram"}
+                        {t.dashboard.profileTab.notifications.telegram.connect}
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </>
                     )}
@@ -559,9 +569,7 @@ export function TelegramForm({
                 // Loading state
                 <div className="flex flex-col items-center py-6">
                   <Loader2 className="h-8 w-8 animate-spin text-main mb-3" />
-                  <p className="text-sm">
-                    {locale === "en" ? "Creating connection code..." : "Membuat kode koneksi..."}
-                  </p>
+                  <p className="text-sm">{t.dashboard.profileTab.notifications.telegram.connecting}</p>
                 </div>
               ) : connectionStep === 2 ? (
                 // Connection code step with manual verification
@@ -583,10 +591,10 @@ export function TelegramForm({
                         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                         <path d="m9 12 2 2 4-4" />
                       </svg>
-                      {locale === "en" ? "Step 1: Send Code to Bot" : "Langkah 1: Kirim Kode ke Bot"}
+                      {currentLocale === "en" ? "Step 1: Send Code to Bot" : "Langkah 1: Kirim Kode ke Bot"}
                     </h3>
                     <p className="text-xs text-blue-700">
-                      {locale === "en"
+                      {currentLocale === "en"
                         ? 'Send the code below to the Telegram bot, then click the "Verify Connection" button.'
                         : 'Kirim kode di bawah ke bot Telegram, lalu klik tombol "Verifikasi Koneksi".'}
                     </p>
@@ -595,12 +603,12 @@ export function TelegramForm({
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <Label htmlFor="connection-code" className="text-sm">
-                        {locale === "en" ? "Connection Code" : "Kode Koneksi"}
+                        {t.dashboard.profileTab.notifications.telegram.connectionCode}
                       </Label>
                       {codeExpiry && (
                         <span className="text-xs text-muted-foreground">
-                          {locale === "en" ? "Valid until: " : "Berlaku hingga: "}
-                          {codeExpiry.toLocaleTimeString(locale === "en" ? "en-US" : "id-ID", {
+                          {currentLocale === "en" ? "Valid until: " : "Berlaku hingga: "}
+                          {codeExpiry.toLocaleTimeString(currentLocale === "en" ? "en-US" : "id-ID", {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -638,7 +646,7 @@ export function TelegramForm({
                         <path d="M12 8v4" />
                         <path d="M12 16h.01" />
                       </svg>
-                      {locale === "en" ? "Step 2: Verify Connection" : "Langkah 2: Verifikasi Koneksi"}
+                      {currentLocale === "en" ? "Step 2: Verify Connection" : "Langkah 2: Verifikasi Koneksi"}
                     </h3>
                     <p className="text-xs text-amber-700 mb-3">{getVerificationHelpMessage()}</p>
                     <Button
@@ -650,11 +658,11 @@ export function TelegramForm({
                       {isVerifying ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {locale === "en" ? "Verifying..." : "Memverifikasi..."}
+                          {currentLocale === "en" ? "Verifying..." : "Memverifikasi..."}
                         </>
                       ) : (
                         <>
-                          {locale === "en" ? "Verify Connection" : "Verifikasi Koneksi"}
+                          {currentLocale === "en" ? "Verify Connection" : "Verifikasi Koneksi"}
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
@@ -691,7 +699,7 @@ export function TelegramForm({
                         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                         <path d="m9 12 2 2 4-4" />
                       </svg>
-                      {locale === "en" ? "Connection Instructions:" : "Petunjuk Koneksi:"}
+                      {currentLocale === "en" ? "Connection Instructions:" : "Petunjuk Koneksi:"}
                     </h4>
                     <ol className="text-sm text-muted-foreground space-y-3 list-none pl-0">
                       <li className="pb-2 flex items-start">
@@ -700,7 +708,7 @@ export function TelegramForm({
                         </div>
                         <div>
                           <span className="font-medium block text-black">
-                            {locale === "en" ? "Open our Telegram bot" : "Buka bot Telegram kami"}
+                            {currentLocale === "en" ? "Open our Telegram bot" : "Buka bot Telegram kami"}
                           </span>
                           <div className="mt-1.5">
                             <a
@@ -721,10 +729,10 @@ export function TelegramForm({
                         </div>
                         <div>
                           <span className="font-medium block text-black">
-                            {locale === "en" ? "Send message" : "Kirim pesan"}
+                            {currentLocale === "en" ? "Send message" : "Kirim pesan"}
                           </span>
                           <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">/start</code>
-                          {locale === "en" ? "to the bot" : "ke bot"}
+                          {currentLocale === "en" ? "to the bot" : "ke bot"}
                         </div>
                       </li>
                       <li className="pb-2 flex items-start">
@@ -733,9 +741,9 @@ export function TelegramForm({
                         </div>
                         <div>
                           <span className="font-medium block text-black">
-                            {locale === "en" ? "Send the connection code" : "Kirim kode koneksi"}
+                            {currentLocale === "en" ? "Send the connection code" : "Kirim kode koneksi"}
                           </span>
-                          {locale === "en" ? "above to the bot" : "di atas ke bot"}
+                          {currentLocale === "en" ? "above to the bot" : "di atas ke bot"}
                         </div>
                       </li>
                       <li className="flex items-start">
@@ -744,11 +752,11 @@ export function TelegramForm({
                         </div>
                         <div>
                           <span className="font-medium block text-black">
-                            {locale === "en"
+                            {currentLocale === "en"
                               ? 'Click the "Verify Connection" button'
                               : 'Klik tombol "Verifikasi Koneksi"'}
                           </span>
-                          {locale === "en" ? "to complete the process" : "untuk menyelesaikan proses"}
+                          {currentLocale === "en" ? "to complete the process" : "untuk menyelesaikan proses"}
                         </div>
                       </li>
                     </ol>
@@ -761,10 +769,10 @@ export function TelegramForm({
                     <CheckCircle2 className="h-8 w-8 text-green-500" />
                   </div>
                   <h3 className="text-lg font-medium text-green-700 mb-1">
-                    {locale === "en" ? "Successfully Connected!" : "Berhasil Terhubung!"}
+                    {t.dashboard.profileTab.notifications.telegram.connectionSuccess}
                   </h3>
                   <p className="text-sm text-center text-green-600 mb-4">
-                    {locale === "en"
+                    {currentLocale === "en"
                       ? "Your Telegram account has been successfully connected and is ready to receive notifications."
                       : "Akun Telegram Anda berhasil terhubung dan siap menerima notifikasi."}
                   </p>
