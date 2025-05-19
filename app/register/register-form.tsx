@@ -304,6 +304,14 @@ export default function RegisterForm() {
                   {voucherMessage.message}
                 </p>
               )}
+
+              {/* Tambahkan alert kecil di sini */}
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-700 font-medium">
+                  ✨ Gunakan kode <span className="font-bold">SECRETME2025</span> untuk mendapatkan akses premium secara
+                  gratis!
+                </p>
+              </div>
             </div>
 
             <button type="submit" disabled={isLoading} className="w-full neo-btn">

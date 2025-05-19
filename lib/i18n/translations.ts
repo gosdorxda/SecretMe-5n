@@ -35,6 +35,11 @@ type Translation = {
     creatingImage: string
     failedToCreate: string
   }
+  branding: {
+    appName: string
+    tagline: string
+    year: string
+  }
   premiumBanner: {
     exclusiveFeatures: string
     demoProfile: string
@@ -462,6 +467,11 @@ export const translations: Record<Locale, Translation> = {
       generating: "Membuat gambar...",
       creatingImage: "Membuat gambar...",
       failedToCreate: "Tidak dapat membuat gambar",
+    },
+    branding: {
+      appName: "SECRETME2025",
+      tagline: "Berbagi Pesan Anonim",
+      year: "2025",
     },
     premiumBanner: {
       exclusiveFeatures: "Fitur Eksklusif",
@@ -896,6 +906,11 @@ export const translations: Record<Locale, Translation> = {
       generating: "Generating...",
       creatingImage: "Creating image...",
       failedToCreate: "Failed to create image",
+    },
+    branding: {
+      appName: "SECRETME2025",
+      tagline: "Anonymous Message Sharing",
+      year: "2025",
     },
     premiumBanner: {
       exclusiveFeatures: "Exclusive Features",
