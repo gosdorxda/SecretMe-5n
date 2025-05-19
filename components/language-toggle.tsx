@@ -21,7 +21,7 @@ export function LanguageToggle() {
     >
       <div className="relative w-6 h-6">
         <Image
-          src={locale === "id" ? "/flags/EN.png" : "/flags/ID.svg"}
+          src={locale === "id" ? "/flags/US.svg" : "/flags/ID.svg"}
           alt={locale === "id" ? "English" : "Indonesia"}
           fill
           className="object-cover"
