@@ -33,17 +33,23 @@ function logAuthRequest(data: {
 
 // Fungsi untuk memeriksa apakah rute memerlukan autentikasi
 function isProtectedRoute(pathname: string): boolean {
+  // Remove language prefix for checking protected routes
+  const pathWithoutLang = pathname.replace(/^\/en/, "")
+
   return (
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/premium") ||
-    pathname.startsWith("/settings")
+    pathWithoutLang.startsWith("/dashboard") ||
+    pathWithoutLang.startsWith("/admin") ||
+    pathWithoutLang.startsWith("/premium") ||
+    pathWithoutLang.startsWith("/settings")
   )
 }
 
 // Fungsi untuk memeriksa apakah rute adalah rute admin
 function isAdminRoute(pathname: string): boolean {
-  return pathname.startsWith("/admin")
+  // Remove language prefix for checking admin routes
+  const pathWithoutLang = pathname.replace(/^\/en/, "")
+
+  return pathWithoutLang.startsWith("/admin")
 }
 
 // Fungsi untuk memeriksa apakah rute adalah aset statis
@@ -100,7 +106,7 @@ function recordAuthRequestTimestamp(ip: string) {
   authRequestTimestamps.set(ip, timestamps)
 }
 
-// Modifikasi middleware untuk menerapkan throttling
+// Modifikasi middleware untuk menerapkan throttling dan menangani rute bahasa
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const userAgent = request.headers.get("user-agent") || ""
@@ -114,6 +120,9 @@ export async function middleware(request: NextRequest) {
   if (isStaticAsset(pathname)) {
     return NextResponse.next()
   }
+
+  // Handle language routes for protected pages
+  const isEnglishRoute = pathname.startsWith("/en")
 
   // Jika bukan rute yang dilindungi, lanjutkan
   if (!isProtectedRoute(pathname)) {
@@ -141,7 +150,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next()
     }
 
-    const redirectUrl = new URL("/login", request.url)
+    // Redirect to login with appropriate language prefix
+    const loginPath = isEnglishRoute ? "/en/login" : "/login"
+    const redirectUrl = new URL(loginPath, request.url)
     redirectUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(redirectUrl)
   }
@@ -161,7 +172,9 @@ export async function middleware(request: NextRequest) {
     isFromCache = true
     // Jika tidak ada sesi di cache, redirect ke login
     if (!cachedAuth.data.session) {
-      const redirectUrl = new URL("/login", request.url)
+      // Redirect to login with appropriate language prefix
+      const loginPath = isEnglishRoute ? "/en/login" : "/login"
+      const redirectUrl = new URL(loginPath, request.url)
       redirectUrl.searchParams.set("redirect", pathname)
 
       logAuthRequest({
@@ -192,7 +205,9 @@ export async function middleware(request: NextRequest) {
         details: { isMobile },
       })
 
-      return NextResponse.redirect(new URL("/dashboard", request.url))
+      // Redirect to dashboard with appropriate language prefix
+      const dashboardPath = isEnglishRoute ? "/en/dashboard" : "/dashboard"
+      return NextResponse.redirect(new URL(dashboardPath, request.url))
     }
 
     logAuthRequest({
@@ -220,7 +235,9 @@ export async function middleware(request: NextRequest) {
 
     // Jika tidak ada sesi, redirect ke login
     if (!session) {
-      const redirectUrl = new URL("/login", request.url)
+      // Redirect to login with appropriate language prefix
+      const loginPath = isEnglishRoute ? "/en/login" : "/login"
+      const redirectUrl = new URL(loginPath, request.url)
       redirectUrl.searchParams.set("redirect", pathname)
 
       logAuthRequest({
@@ -260,7 +277,9 @@ export async function middleware(request: NextRequest) {
           details: { isMobile },
         })
 
-        return NextResponse.redirect(new URL("/dashboard", request.url))
+        // Redirect to dashboard with appropriate language prefix
+        const dashboardPath = isEnglishRoute ? "/en/dashboard" : "/dashboard"
+        return NextResponse.redirect(new URL(dashboardPath, request.url))
       }
     }
 
@@ -296,8 +315,9 @@ export async function middleware(request: NextRequest) {
       details: { isMobile, error },
     })
 
-    // Jika terjadi error, redirect ke login
-    const redirectUrl = new URL("/login", request.url)
+    // Redirect to login with appropriate language prefix
+    const loginPath = isEnglishRoute ? "/en/login" : "/login"
+    const redirectUrl = new URL(loginPath, request.url)
     redirectUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(redirectUrl)
   }
