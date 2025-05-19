@@ -34,13 +34,13 @@ type Translation = {
     generating: string
     creatingImage: string
     failedToCreate: string
-    premiumBanner: {
-      exclusiveFeatures: string
-      demoProfile: string
-      checkFeatures: string
-      upgrade: string
-      closeBanner: string
-    }
+  }
+  premiumBanner: {
+    exclusiveFeatures: string
+    demoProfile: string
+    checkFeatures: string
+    upgrade: string
+    closeBanner: string
   }
   loading: {
     default: string
@@ -457,13 +457,13 @@ export const translations: Record<Locale, Translation> = {
       generating: "Membuat gambar...",
       creatingImage: "Membuat gambar...",
       failedToCreate: "Tidak dapat membuat gambar",
-      premiumBanner: {
-        exclusiveFeatures: "Fitur Eksklusif",
-        demoProfile: "Profil Demo",
-        checkFeatures: "Cek Fitur",
-        upgrade: "Upgrade",
-        closeBanner: "Tutup banner",
-      },
+    },
+    premiumBanner: {
+      exclusiveFeatures: "Fitur Eksklusif",
+      demoProfile: "Profil Demo",
+      checkFeatures: "Cek Fitur",
+      upgrade: "Upgrade",
+      closeBanner: "Tutup banner",
     },
     loading: {
       default: "Memuat...",
@@ -886,13 +886,13 @@ export const translations: Record<Locale, Translation> = {
       generating: "Generating...",
       creatingImage: "Creating image...",
       failedToCreate: "Failed to create image",
-      premiumBanner: {
-        exclusiveFeatures: "Exclusive Features",
-        demoProfile: "Demo Profile",
-        checkFeatures: "Check Features",
-        upgrade: "Upgrade",
-        closeBanner: "Close banner",
-      },
+    },
+    premiumBanner: {
+      exclusiveFeatures: "Exclusive Features",
+      demoProfile: "Demo Profile",
+      checkFeatures: "Check Features",
+      upgrade: "Upgrade",
+      closeBanner: "Close banner",
     },
     loading: {
       default: "Loading...",

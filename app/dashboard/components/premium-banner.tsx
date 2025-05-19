@@ -26,6 +26,27 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
     return locale === "en" ? `/en${path}` : path
   }
 
+  // Fallback texts in case translations are not available
+  const fallbackTexts = {
+    exclusiveFeatures: "Fitur Eksklusif",
+    demoProfile: "Profil Demo",
+    checkFeatures: "Cek Fitur",
+    upgrade: "Upgrade",
+    closeBanner: "Tutup banner",
+  }
+
+  // Safely access translations or use fallbacks
+  const getText = (key: keyof typeof fallbackTexts) => {
+    try {
+      if (translations?.premiumBanner?.[key]) {
+        return translations.premiumBanner[key]
+      }
+      return fallbackTexts[key]
+    } catch (error) {
+      return fallbackTexts[key]
+    }
+  }
+
   return (
     <div className="w-full mb-6">
       <div className="relative bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-lg p-3">
@@ -34,11 +55,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             <div className="flex-shrink-0 bg-amber-400 p-1.5 rounded-full">
               <Crown className="h-3.5 w-3.5 text-white" />
             </div>
-            {!isMobile && (
-              <span className="text-xs font-medium text-amber-800">
-                {translations.common.premiumBanner.exclusiveFeatures}
-              </span>
-            )}
+            {!isMobile && <span className="text-xs font-medium text-amber-800">{getText("exclusiveFeatures")}</span>}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -50,7 +67,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href="https://secretme.site/anitawijaya" target="_blank" rel="noopener noreferrer">
                 <Eye className="h-3 w-3 mr-1" />
-                <span>{translations.common.premiumBanner.demoProfile}</span>
+                <span>{getText("demoProfile")}</span>
               </Link>
             </Button>
 
@@ -62,7 +79,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href={getLocalizedPath("/features")}>
                 <Sparkles className="h-3 w-3 mr-1" />
-                <span>{translations.common.premiumBanner.checkFeatures}</span>
+                <span>{getText("checkFeatures")}</span>
               </Link>
             </Button>
 
@@ -74,14 +91,14 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href={getLocalizedPath("/premium")}>
                 <Zap className="h-3 w-3 mr-1" />
-                <span>{translations.common.premiumBanner.upgrade}</span>
+                <span>{getText("upgrade")}</span>
               </Link>
             </Button>
 
             <button
               onClick={() => setIsDismissed(true)}
               className="p-1 hover:bg-amber-100 rounded-full text-amber-500 transition-colors"
-              aria-label={translations.common.premiumBanner.closeBanner}
+              aria-label={getText("closeBanner")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
