@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { MessagesTab } from "./tabs/messages-tab"
 import { ProfileTab } from "./tabs/profile-tab"
 import { SettingsTab } from "./tabs/settings-tab"
+import { useLanguage } from "@/lib/i18n/language-context"
 import type { Database } from "@/lib/supabase/database.types"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
@@ -24,6 +25,7 @@ export function DashboardTabs({ user, messages, viewCount }: DashboardTabsProps)
   const tabParam = searchParams.get("tab")
   const [activeTab, setActiveTab] = useState("messages")
   const { toast } = useToast()
+  const { t, locale } = useLanguage()
 
   // Set active tab based on URL parameter
   useEffect(() => {
@@ -35,15 +37,15 @@ export function DashboardTabs({ user, messages, viewCount }: DashboardTabsProps)
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value)
-    router.push(`/dashboard?tab=${value}`, { scroll: false })
+    router.push(`/${locale === "en" ? "en/" : ""}dashboard?tab=${value}`, { scroll: false })
   }
 
   function copyProfileLink() {
     const profileUrl = `${window.location.origin}/${user.is_premium && user.username ? user.username : user.numeric_id}`
     navigator.clipboard.writeText(profileUrl)
     toast({
-      title: "Link disalin",
-      description: "Link profil Anda telah disalin ke clipboard",
+      title: t.dashboard.profileQuickView.linkCopied,
+      description: t.dashboard.profileQuickView.linkCopied,
     })
   }
 
@@ -51,13 +53,13 @@ export function DashboardTabs({ user, messages, viewCount }: DashboardTabsProps)
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
       <TabsList className="grid w-full grid-cols-3 mb-6 p-0.5 h-10 gap-1">
         <TabsTrigger value="messages" className="rounded-md text-xs">
-          <span>Pesan</span>
+          <span>{t.dashboard.tabs.messages}</span>
         </TabsTrigger>
         <TabsTrigger value="profile" className="rounded-md text-xs">
-          <span>Profil</span>
+          <span>{t.dashboard.tabs.profile}</span>
         </TabsTrigger>
         <TabsTrigger value="settings" className="rounded-md text-xs">
-          <span>Pengaturan</span>
+          <span>{t.dashboard.tabs.settings}</span>
         </TabsTrigger>
       </TabsList>
 
