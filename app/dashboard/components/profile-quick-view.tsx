@@ -17,7 +17,7 @@ interface ProfileQuickViewProps {
 
 export function ProfileQuickView({ user }: ProfileQuickViewProps) {
   const { toast } = useToast()
-  const { locale } = useLanguage()
+  const { locale, t } = useLanguage()
 
   // Count active social media links
   const socialMediaCount = [
@@ -285,6 +285,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                   avatarUrl={user.avatar_url}
                   isPremium={user.is_premium}
                   variant="blue"
+                  locale={locale}
                 >
                   <Button
                     variant="outline"
