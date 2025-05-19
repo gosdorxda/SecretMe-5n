@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { logAuthRequest } from "@/lib/auth-logger"
 import { useLanguage } from "@/lib/i18n/language-context"
 
@@ -515,9 +514,6 @@ export default function LoginForm() {
           )}
 
           <form onSubmit={onSubmit} className="space-y-6">
-            <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 text-sm mb-4">
-              <AlertDescription>{t.login.googleDisabledMessage}</AlertDescription>
-            </Alert>
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-2">
                 {t.login.emailLabel}

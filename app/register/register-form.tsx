@@ -6,7 +6,6 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function RegisterForm() {
@@ -191,9 +190,6 @@ export default function RegisterForm() {
 
         <div className="bg-white p-4 rounded-md border-2 border-black">
           <form onSubmit={onSubmit} className="space-y-6">
-            <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 text-sm mb-4">
-              <AlertDescription>{t.register.googleDisabledMessage}</AlertDescription>
-            </Alert>
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2">
                 {t.register.nameLabel}
