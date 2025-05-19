@@ -14,9 +14,10 @@ type UserType = Database["public"]["Tables"]["users"]["Row"]
 
 interface SettingsTabProps {
   user: UserType
+  locale?: "id" | "en"
 }
 
-export function SettingsTab({ user }: SettingsTabProps) {
+export function SettingsTab({ user, locale = "id" }: SettingsTabProps) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
@@ -30,8 +31,11 @@ export function SettingsTab({ user }: SettingsTabProps) {
       router.refresh()
     } catch (error: any) {
       toast({
-        title: "Logout gagal",
-        description: error.message || "Terjadi kesalahan saat logout",
+        title: locale === "en" ? "Logout failed" : "Logout gagal",
+        description:
+          locale === "en"
+            ? error.message || "An error occurred during logout"
+            : error.message || "Terjadi kesalahan saat logout",
         variant: "destructive",
       })
     } finally {
@@ -46,42 +50,44 @@ export function SettingsTab({ user }: SettingsTabProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-lg flex items-center gap-2">
               <Settings className="h-5 w-5 text-blue-500" />
-              Pengaturan Akun
+              {locale === "en" ? "Account Settings" : "Pengaturan Akun"}
             </CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <div className="space-y-4">
             <div className="rounded-lg border border-gray-200 p-4">
-              <h3 className="font-medium mb-3 text-sm sm:text-base">Informasi Akun</h3>
+              <h3 className="font-medium mb-3 text-sm sm:text-base">
+                {locale === "en" ? "Account Information" : "Informasi Akun"}
+              </h3>
               <div className="space-y-3">
                 <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
-                  <span className="text-xs text-gray-500 w-20">Nama:</span>
+                  <span className="text-xs text-gray-500 w-20">{locale === "en" ? "Name:" : "Nama:"}</span>
                   <span className="text-sm font-medium">{user.name}</span>
                 </div>
                 <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
-                  <span className="text-xs text-gray-500 w-20">Email:</span>
+                  <span className="text-xs text-gray-500 w-20">{locale === "en" ? "Email:" : "Email:"}</span>
                   <span className="text-sm font-medium">{user.email}</span>
                 </div>
                 <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
-                  <span className="text-xs text-gray-500 w-20">Status:</span>
+                  <span className="text-xs text-gray-500 w-20">{locale === "en" ? "Status:" : "Status:"}</span>
                   <span className="text-sm">
                     {user.is_premium ? (
                       <Badge className="bg-[rgb(250,204,21)] text-black border border-amber-500 rounded-[var(--border-radius)] text-[10px] font-normal">
                         <Crown className="h-2.5 w-2.5 mr-1" />
-                        <span>Premium</span>
+                        <span>{locale === "en" ? "Premium" : "Premium"}</span>
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-[10px] font-normal">
-                        Gratis
+                        {locale === "en" ? "Free" : "Gratis"}
                       </Badge>
                     )}
                   </span>
                 </div>
                 <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2">
-                  <span className="text-xs text-gray-500 w-20">Bergabung:</span>
+                  <span className="text-xs text-gray-500 w-20">{locale === "en" ? "Joined:" : "Bergabung:"}</span>
                   <span className="text-xs text-gray-600">
-                    {new Date(user.created_at).toLocaleDateString("id-ID", {
+                    {new Date(user.created_at).toLocaleDateString(locale === "en" ? "en-US" : "id-ID", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
@@ -92,9 +98,11 @@ export function SettingsTab({ user }: SettingsTabProps) {
             </div>
 
             <div className="rounded-lg border border-gray-200 p-4">
-              <h3 className="font-medium mb-3 text-sm sm:text-base">Keluar Akun</h3>
+              <h3 className="font-medium mb-3 text-sm sm:text-base">{locale === "en" ? "Log Out" : "Keluar Akun"}</h3>
               <p className="text-xs text-gray-500 mb-3">
-                Keluar dari akun Anda pada perangkat ini. Anda dapat masuk kembali kapan saja.
+                {locale === "en"
+                  ? "Log out from your account on this device. You can log back in at any time."
+                  : "Keluar dari akun Anda pada perangkat ini. Anda dapat masuk kembali kapan saja."}
               </p>
               <Button
                 variant="outline"
@@ -107,7 +115,7 @@ export function SettingsTab({ user }: SettingsTabProps) {
                 ) : (
                   <LogOut className="h-4 w-4 mr-2" />
                 )}
-                Keluar
+                {locale === "en" ? "Log Out" : "Keluar"}
               </Button>
             </div>
           </div>
