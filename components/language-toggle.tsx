@@ -36,18 +36,18 @@ export function LanguageToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 px-0">
+        <Button variant="ghost" size="sm" className="flex items-center gap-1.5 px-2.5 h-9">
           <Image
             src={locale === "en" ? "/flags/US.svg" : "/flags/ID.svg"}
             alt={locale === "en" ? "English" : "Indonesia"}
-            width={24}
-            height={24}
+            width={20}
+            height={20}
             className="rounded-sm"
           />
-          <span className="sr-only">Switch language</span>
+          <span className="font-medium text-sm">{locale === "en" ? "EN" : "ID"}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="min-w-[140px]">
         <DropdownMenuItem onClick={() => handleLanguageChange("id")} className="cursor-pointer">
           <div className="flex items-center gap-2">
             <Image src="/flags/ID.svg" alt="Indonesia" width={20} height={20} className="rounded-sm" />
