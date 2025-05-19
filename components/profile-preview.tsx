@@ -30,7 +30,7 @@ export function ProfilePreview({ user }: ProfilePreviewProps) {
   const hasSocialLinks = user.instagram_url || user.facebook_url || user.linkedin_url || user.tiktok_url
 
   // Mendapatkan URL profil publik
-  const profileUrl = `${window.location.origin}/${user.is_premium && user.username ? user.username : user.numeric_id}`
+  const profileUrl = `${window.location.origin}${locale === "en" ? "/en" : ""}/${user.is_premium && user.username ? user.username : user.numeric_id}`
 
   // Fungsi untuk membuka profil di tab baru
   const openProfile = () => {
