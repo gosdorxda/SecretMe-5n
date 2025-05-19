@@ -43,6 +43,13 @@ type Translation = {
     login: string
     register: string
   }
+  premiumBanner: {
+    exclusiveFeatures: string
+    demoProfile: string
+    checkFeatures: string
+    upgrade: string
+    closeBanner: string
+  }
   home: {
     hero: {
       userCount: string
@@ -458,6 +465,13 @@ export const translations: Record<Locale, Translation> = {
       page: "Memuat halaman",
       login: "Mempersiapkan halaman login",
       register: "Mempersiapkan halaman registrasi",
+    },
+    premiumBanner: {
+      exclusiveFeatures: "Fitur Eksklusif",
+      demoProfile: "Profil Demo",
+      checkFeatures: "Cek Fitur",
+      upgrade: "Upgrade",
+      closeBanner: "Tutup banner",
     },
     home: {
       hero: {
@@ -880,6 +894,13 @@ export const translations: Record<Locale, Translation> = {
       page: "Loading page",
       login: "Preparing login page",
       register: "Preparing registration page",
+    },
+    premiumBanner: {
+      exclusiveFeatures: "Exclusive Features",
+      demoProfile: "Demo Profile",
+      checkFeatures: "Check Features",
+      upgrade: "Upgrade",
+      closeBanner: "Close banner",
     },
     home: {
       hero: {

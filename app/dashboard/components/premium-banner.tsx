@@ -6,6 +6,7 @@ import { Crown, Zap, X, Eye, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Database } from "@/lib/supabase/database.types"
 import { useMobile } from "@/hooks/use-mobile"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 type UserType = Database["public"]["Tables"]["users"]["Row"]
 
@@ -16,8 +17,14 @@ interface PremiumBannerProps {
 export function PremiumBanner({ user }: PremiumBannerProps) {
   const [isDismissed, setIsDismissed] = useState(false)
   const isMobile = useMobile()
+  const { locale, translations } = useLanguage()
 
   if (user.is_premium || isDismissed) return null
+
+  // Prefix path with locale for English
+  const getLocalizedPath = (path: string) => {
+    return locale === "en" ? `/en${path}` : path
+  }
 
   return (
     <div className="w-full mb-6">
@@ -27,7 +34,9 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             <div className="flex-shrink-0 bg-amber-400 p-1.5 rounded-full">
               <Crown className="h-3.5 w-3.5 text-white" />
             </div>
-            {!isMobile && <span className="text-xs font-medium text-amber-800">Fitur Eksklusif</span>}
+            {!isMobile && (
+              <span className="text-xs font-medium text-amber-800">{translations.premiumBanner.exclusiveFeatures}</span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -39,7 +48,7 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
             >
               <Link href="https://secretme.site/anitawijaya" target="_blank" rel="noopener noreferrer">
                 <Eye className="h-3 w-3 mr-1" />
-                <span>Profil Demo</span>
+                <span>{translations.premiumBanner.demoProfile}</span>
               </Link>
             </Button>
 
@@ -49,9 +58,9 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               size="sm"
               className="h-7 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 shadow-none"
             >
-              <Link href="/features">
+              <Link href={getLocalizedPath("/features")}>
                 <Sparkles className="h-3 w-3 mr-1" />
-                <span>Cek Fitur</span>
+                <span>{translations.premiumBanner.checkFeatures}</span>
               </Link>
             </Button>
 
@@ -61,16 +70,16 @@ export function PremiumBanner({ user }: PremiumBannerProps) {
               size="sm"
               className="h-7 text-xs bg-amber-500 border-amber-500 text-white hover:bg-amber-600 hover:border-amber-600 shadow-none"
             >
-              <Link href="/premium">
+              <Link href={getLocalizedPath("/premium")}>
                 <Zap className="h-3 w-3 mr-1" />
-                <span>Upgrade</span>
+                <span>{translations.premiumBanner.upgrade}</span>
               </Link>
             </Button>
 
             <button
               onClick={() => setIsDismissed(true)}
               className="p-1 hover:bg-amber-100 rounded-full text-amber-500 transition-colors"
-              aria-label="Tutup banner"
+              aria-label={translations.premiumBanner.closeBanner}
             >
               <X className="h-3.5 w-3.5" />
             </button>
