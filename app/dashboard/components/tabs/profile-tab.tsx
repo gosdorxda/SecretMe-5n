@@ -21,6 +21,7 @@ interface ProfileTabProps {
   user: UserType
 }
 
+// Mengubah dari default export menjadi named export
 export function ProfileTab({ user }: ProfileTabProps) {
   const { locale } = useLanguage()
 
@@ -702,4 +703,9 @@ export function ProfileTab({ user }: ProfileTabProps) {
       </CardContent>
     </Card>
   )
+}
+
+// Tambahkan default export untuk kompatibilitas dengan Next.js App Router
+export default function ProfileTabPage({ user }: ProfileTabProps) {
+  return <ProfileTab user={user} />
 }

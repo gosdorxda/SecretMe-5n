@@ -29,7 +29,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
   ].filter(Boolean).length
 
   function copyProfileLink() {
-    const profileUrl = `${window.location.origin}/${user.is_premium && user.username ? user.username : user.numeric_id}`
+    const profileUrl = `${window.location.origin}${locale === "en" ? "/en" : ""}/${user.is_premium && user.username ? user.username : user.numeric_id}`
     navigator.clipboard.writeText(profileUrl)
     toast({
       title: locale === "en" ? "Link copied" : "Link disalin",
@@ -235,7 +235,8 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-gray-500">{locale === "en" ? "Link:" : "Link:"}</span>
                   <code className="bg-gray-50 px-2 py-0.5 rounded text-xs flex-1 truncate border border-gray-100">
-                    {window.location.origin}/{user.is_premium && user.username ? user.username : user.numeric_id}
+                    {window.location.origin}
+                    {locale === "en" ? "/en" : ""}/{user.is_premium && user.username ? user.username : user.numeric_id}
                   </code>
                 </div>
               </div>
@@ -262,7 +263,7 @@ export function ProfileQuickView({ user }: ProfileQuickViewProps) {
                           locale === "en"
                             ? "Send me an anonymous message via SecretMe"
                             : "Kirim pesan anonim ke saya melalui SecretMe",
-                        url: `${window.location.origin}/${
+                        url: `${window.location.origin}${locale === "en" ? "/en" : ""}/${
                           user.is_premium && user.username ? user.username : user.numeric_id
                         }`,
                       })
