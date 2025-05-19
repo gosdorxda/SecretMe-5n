@@ -1,64 +1,66 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { useLanguage } from "@/lib/i18n/language-context"
+import type { Locale } from "@/lib/i18n/translations"
 
 export function LanguageToggle() {
-  const { locale, setLocale } = useLanguage()
-  const pathname = usePathname()
   const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+  const pathname = usePathname()
+  const { locale, changeLocale } = useLanguage()
 
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  // Function to handle language change
+  const handleLanguageChange = (newLocale: Locale) => {
+    if (newLocale === locale) return
 
-  if (!mounted) return null
-
-  const toggleLanguage = () => {
-    const newLocale = locale === "en" ? "id" : "en"
-    setLocale(newLocale)
-
-    // Handle URL changes for language toggle
+    // Get the current path without the language prefix
     let newPath = pathname
-
-    if (pathname.startsWith("/en/")) {
-      // If currently on English route, switch to Indonesian
+    if (pathname.startsWith("/en")) {
       newPath = pathname.replace(/^\/en/, "")
-    } else if (!pathname.startsWith("/en/") && newLocale === "en") {
-      // If currently on Indonesian route and switching to English
-      newPath = `/en${pathname}`
+      if (newPath === "") newPath = "/"
     }
 
-    // Special case for root path
-    if (pathname === "/" && newLocale === "en") {
-      newPath = "/en"
-    } else if (pathname === "/en" && newLocale === "id") {
-      newPath = "/"
+    // Add the new language prefix if needed
+    if (newLocale === "en") {
+      newPath = `/en${newPath === "/" ? "" : newPath}`
     }
 
+    // Navigate to the new path
     router.push(newPath)
+    changeLocale(newLocale)
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={toggleLanguage}
-      className="h-8 w-8 rounded-full"
-      aria-label={locale === "en" ? "Switch to Indonesian" : "Switch to English"}
-    >
-      <Image
-        src={locale === "en" ? "/flags/ID.svg" : "/flags/US.svg"}
-        alt={locale === "en" ? "Indonesian flag" : "US flag"}
-        width={20}
-        height={20}
-        className="rounded-sm"
-      />
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 px-0">
+          <Image
+            src={locale === "en" ? "/flags/US.svg" : "/flags/ID.svg"}
+            alt={locale === "en" ? "English" : "Indonesia"}
+            width={24}
+            height={24}
+            className="rounded-sm"
+          />
+          <span className="sr-only">Switch language</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => handleLanguageChange("id")} className="cursor-pointer">
+          <div className="flex items-center gap-2">
+            <Image src="/flags/ID.svg" alt="Indonesia" width={20} height={20} className="rounded-sm" />
+            <span>Indonesia</span>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleLanguageChange("en")} className="cursor-pointer">
+          <div className="flex items-center gap-2">
+            <Image src="/flags/US.svg" alt="English" width={20} height={20} className="rounded-sm" />
+            <span>English</span>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
