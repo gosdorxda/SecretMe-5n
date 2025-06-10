@@ -80,13 +80,7 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
     try {
       let query = supabase
         .from("users")
-        .select(
-          `
-        *,
-        messages:messages(count)
-      `,
-          { count: "exact" },
-        )
+        .select("*", { count: "exact" })
         .order(sortField, { ascending: sortDirection === "asc" })
 
       // Apply premium filter if set
@@ -106,17 +100,26 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
       // Get paginated data
       const from = (page - 1) * perPage
       const to = from + perPage - 1
-      const { data, error } = await query.range(from, to)
+      const { data: usersData, error } = await query.range(from, to)
 
       if (error) throw error
 
-      // Transform data to include message count
-      const transformedData = (data || []).map((user) => ({
-        ...user,
-        message_count: user.messages?.[0]?.count || 0,
-      }))
+      // Get message counts for each user
+      const usersWithMessageCount = await Promise.all(
+        (usersData || []).map(async (user) => {
+          const { count: messageCount } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
 
-      setUsers(transformedData)
+          return {
+            ...user,
+            message_count: messageCount || 0,
+          }
+        }),
+      )
+
+      setUsers(usersWithMessageCount)
     } catch (error: any) {
       console.error("Error loading users:", error)
       toast({
@@ -295,6 +298,21 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
 
         if (error) throw error
 
+        // Get message counts for export
+        const usersWithMessageCount = await Promise.all(
+          (data || []).map(async (user) => {
+            const { count: messageCount } = await supabase
+              .from("messages")
+              .select("*", { count: "exact", head: true })
+              .eq("user_id", user.id)
+
+            return {
+              ...user,
+              message_count: messageCount || 0,
+            }
+          }),
+        )
+
         const headers = [
           "ID",
           "Nama",
@@ -307,7 +325,7 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
           "Premium Berakhir",
         ]
 
-        const csvData = (data || []).map((user) => [
+        const csvData = usersWithMessageCount.map((user) => [
           user.id,
           user.name || "-",
           user.username || "-",
@@ -335,7 +353,7 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
 
         toast({
           title: "Export Berhasil",
-          description: `${data?.length || 0} data pengguna berhasil diekspor ke CSV`,
+          description: `${usersWithMessageCount?.length || 0} data pengguna berhasil diekspor ke CSV`,
         })
       } catch (error: any) {
         console.error("Error exporting users:", error)
