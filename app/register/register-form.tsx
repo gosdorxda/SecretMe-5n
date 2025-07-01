@@ -24,8 +24,11 @@ export default function RegisterForm() {
   const { toast } = useToast()
 
   // Tambahkan state untuk menampilkan pesan validasi voucher
-  const [voucherMessage, setVoucherMessage] = useState<{ type: "success" | "error"; message: string } | null>(null)
-  const [voucherValue, setVoucherValue] = useState("")
+  const [voucherMessage, setVoucherMessage] = useState<{ type: "success" | "error"; message: string } | null>({
+    type: "success",
+    message: t.register.voucherValid || "Voucher valid! Anda akan mendapatkan akses premium.",
+  })
+  const [voucherValue, setVoucherValue] = useState(PREMIUM_VOUCHER_CODE)
 
   // Tambahkan fungsi untuk memvalidasi voucher saat input berubah
   const handleVoucherChange = (e: React.ChangeEvent<HTMLInputElement>) => {
