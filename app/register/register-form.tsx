@@ -55,6 +55,25 @@ export default function RegisterForm() {
     }
   }
 
+  // Fungsi untuk menunggu auth state ter-update
+  const waitForAuthState = async (userId: string, maxAttempts = 10): Promise<boolean> => {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (sessionData.session?.user?.id === userId) {
+          console.log(`✅ REGISTER: Auth state confirmed after ${i + 1} attempts`)
+          return true
+        }
+        // Wait 200ms before next attempt
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      } catch (error) {
+        console.error("Error checking auth state:", error)
+      }
+    }
+    console.warn("⚠️ REGISTER: Auth state not confirmed after maximum attempts")
+    return false
+  }
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsLoading(true)
@@ -161,13 +180,21 @@ export default function RegisterForm() {
       console.log("Pendaftaran berhasil, mencoba login otomatis")
 
       // Langsung login setelah pendaftaran berhasil
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (signInError) {
         throw signInError
+      }
+
+      // Wait for auth state to be properly updated
+      console.log("🔍 REGISTER: Waiting for auth state to update...")
+      const authStateConfirmed = await waitForAuthState(signInData.user.id)
+
+      if (!authStateConfirmed) {
+        console.warn("⚠️ REGISTER: Auth state not confirmed, but proceeding with redirect")
       }
 
       toast({
@@ -178,9 +205,17 @@ export default function RegisterForm() {
       // Tambahkan setelah login berhasil
       console.log("Login otomatis berhasil, redirect ke:", redirect)
 
-      // Redirect ke halaman dashboard
-      router.push(redirect)
-      router.refresh()
+      // Add a small delay before redirect to ensure auth state is updated
+      console.log("✅ REGISTER: Redirecting to:", redirect)
+
+      // Use setTimeout to ensure auth state has time to propagate
+      setTimeout(() => {
+        router.push(redirect)
+        // Force a hard refresh to ensure auth state is properly loaded
+        setTimeout(() => {
+          window.location.href = redirect
+        }, 100)
+      }, 500)
     } catch (error: any) {
       console.error(error)
       toast({
