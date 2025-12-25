@@ -4,8 +4,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
 import { MessageSquare } from "lucide-react"
-import { useEffect, useState } from "react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useEffect, useState, useMemo } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { LanguageToggle } from "@/components/language-toggle"
 
@@ -14,7 +14,8 @@ export function SiteHeader() {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
   const pathname = usePathname()
-  const supabase = createClientComponentClient()
+
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const checkAuth = async () => {
