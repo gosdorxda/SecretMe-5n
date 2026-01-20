@@ -1,4 +1,4 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
@@ -6,38 +6,6 @@ import { logAuthRequest } from "@/lib/auth-logger"
 // Server-side Supabase client
 export const createClient = () => {
   try {
-    // Check if we're in a browser environment
-    const isBrowser = typeof window !== "undefined"
-
-    if (isBrowser) {
-      // For client-side, we'll use a different approach
-      console.warn("Server client being called from browser context - this may not work as expected")
-
-      // Return a dummy client that won't make actual requests
-      return {
-        auth: {
-          getSession: async () => ({ data: { session: null }, error: null }),
-          getUser: async () => ({ data: { user: null }, error: null }),
-        },
-        from: () => ({
-          select: () => ({
-            eq: () => ({
-              single: async () => ({ data: null, error: null }),
-              maybeSingle: async () => ({ data: null, error: null }),
-            }),
-            order: () => ({
-              data: [],
-              error: null,
-            }),
-          }),
-          order: () => ({
-            data: [],
-            error: null,
-          }),
-        }),
-      } as any
-    }
-
     // Only import cookies() in server context
     let cookieStore
     try {
@@ -71,9 +39,23 @@ export const createClient = () => {
       } as any
     }
 
-    return createServerComponentClient<Database>({
-      cookies: () => cookieStore,
-    })
+    return createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            cookieStore.set(name, value, options)
+          },
+          remove(name: string, options: any) {
+            cookieStore.delete(name)
+          },
+        },
+      }
+    )
   } catch (error) {
     // Log error saat membuat client
     logAuthRequest({
