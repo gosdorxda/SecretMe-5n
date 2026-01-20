@@ -35,8 +35,6 @@ interface User {
   avatar_url: string | null
   is_premium?: boolean
   premium_expires_at?: string | null
-  numeric_id: number
-  message_count?: number
 }
 
 interface UsersManagementProps {
@@ -100,26 +98,11 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
       // Get paginated data
       const from = (page - 1) * perPage
       const to = from + perPage - 1
-      const { data: usersData, error } = await query.range(from, to)
+      const { data, error } = await query.range(from, to)
 
       if (error) throw error
 
-      // Get message counts for each user
-      const usersWithMessageCount = await Promise.all(
-        (usersData || []).map(async (user) => {
-          const { count: messageCount } = await supabase
-            .from("messages")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id)
-
-          return {
-            ...user,
-            message_count: messageCount || 0,
-          }
-        }),
-      )
-
-      setUsers(usersWithMessageCount)
+      setUsers(data || [])
     } catch (error: any) {
       console.error("Error loading users:", error)
       toast({
@@ -298,40 +281,13 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
 
         if (error) throw error
 
-        // Get message counts for export
-        const usersWithMessageCount = await Promise.all(
-          (data || []).map(async (user) => {
-            const { count: messageCount } = await supabase
-              .from("messages")
-              .select("*", { count: "exact", head: true })
-              .eq("user_id", user.id)
+        const headers = ["ID", "Nama", "Username", "Email", "Tanggal Daftar", "Premium", "Premium Berakhir"]
 
-            return {
-              ...user,
-              message_count: messageCount || 0,
-            }
-          }),
-        )
-
-        const headers = [
-          "ID",
-          "Nama",
-          "Username",
-          "Email",
-          "ID Profil",
-          "Total Pesan",
-          "Tanggal Daftar",
-          "Premium",
-          "Premium Berakhir",
-        ]
-
-        const csvData = usersWithMessageCount.map((user) => [
+        const csvData = (data || []).map((user) => [
           user.id,
           user.name || "-",
           user.username || "-",
           user.email,
-          user.username || user.numeric_id,
-          user.message_count || 0,
           format(new Date(user.created_at), "dd MMMM yyyy HH:mm", { locale: id }),
           user.is_premium ? "Ya" : "Tidak",
           user.premium_expires_at ? format(new Date(user.premium_expires_at), "dd MMMM yyyy", { locale: id }) : "-",
@@ -353,7 +309,7 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
 
         toast({
           title: "Export Berhasil",
-          description: `${usersWithMessageCount?.length || 0} data pengguna berhasil diekspor ke CSV`,
+          description: `${data?.length || 0} data pengguna berhasil diekspor ke CSV`,
         })
       } catch (error: any) {
         console.error("Error exporting users:", error)
@@ -498,8 +454,6 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
                   <TableHead className="w-[250px]">Nama</TableHead>
                   <TableHead>Username</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>ID Profil</TableHead>
-                  <TableHead>Total Pesan</TableHead>
                   <TableHead>Tanggal Daftar</TableHead>
                   <TableHead>Premium</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
@@ -523,12 +477,6 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
                         <Skeleton className="h-4 w-40" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
                         <Skeleton className="h-4 w-32" />
                       </TableCell>
                       <TableCell>
@@ -544,7 +492,7 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
                   ))
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       {searchTerm || filterPremium !== null ? (
                         <>
                           Tidak ada pengguna yang cocok dengan filter yang dipilih
@@ -578,35 +526,6 @@ export default function UsersManagement({ initialUsers, totalUsers }: UsersManag
                         )}
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <a
-                          href={`/${user.username || user.numeric_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 hover:underline font-mono text-sm"
-                        >
-                          {user.username || user.numeric_id}
-                        </a>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-gray-400"
-                          >
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                          </svg>
-                          <span className="text-sm font-medium">{user.message_count || 0}</span>
-                        </div>
-                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-gray-500 text-sm">
                           <Calendar className="h-3.5 w-3.5" />
