@@ -1,11 +1,11 @@
 "use client"
 
-import { createBrowserClient } from "@supabase/auth-helpers-nextjs"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
 
 // Client-side Supabase client - singleton pattern
-let supabaseClient: ReturnType<typeof createBrowserClient<Database>> | null = null
+let supabaseClient: ReturnType<typeof createClientComponentClient<Database>> | null = null
 
 // Modifikasi konstanta untuk mengurangi permintaan auth
 const AUTH_REQUEST_LIMIT = 3 // Maksimum 3 permintaan per menit (lebih ketat)
@@ -89,7 +89,7 @@ function shouldSkipTokenRefresh(): boolean {
 }
 
 // Fungsi untuk memeriksa dan memperbaiki token dari localStorage jika cookie bermasalah
-async function repairSessionIfNeeded(client: ReturnType<typeof createBrowserClient<Database>>) {
+async function repairSessionIfNeeded(client: ReturnType<typeof createClientComponentClient<Database>>) {
   try {
     // Skip jika kita harus melewati refresh token
     if (shouldSkipTokenRefresh()) {
@@ -418,10 +418,7 @@ export const createClient = () => {
     console.warn("Auth request throttled to prevent rate limiting")
 
     // If we're throttling, return a client with modified auth methods
-    const throttledClient = createBrowserClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
+    const throttledClient = createClientComponentClient<Database>()
 
     // Override auth methods to prevent excessive requests
     const originalAuth = throttledClient.auth
@@ -448,10 +445,7 @@ export const createClient = () => {
   recordAuthRequestTimestamp()
 
   // Create and cache the client
-  supabaseClient = createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
+  supabaseClient = createClientComponentClient<Database>()
   return supabaseClient
 }
 

@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
@@ -71,31 +71,9 @@ export const createClient = () => {
       } as any
     }
 
-    return createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options })
-            } catch (error) {
-              // Handle server action/router context issues
-            }
-          },
-          remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: "", ...options })
-            } catch (error) {
-              // Handle server action/router context issues
-            }
-          },
-        },
-      },
-    )
+    return createServerComponentClient<Database>({
+      cookies: () => cookieStore,
+    })
   } catch (error) {
     // Log error saat membuat client
     logAuthRequest({

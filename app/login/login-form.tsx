@@ -149,25 +149,6 @@ export default function LoginForm() {
     })
   }
 
-  // Fungsi untuk menunggu auth state ter-update
-  const waitForAuthState = async (userId: string, maxAttempts = 10): Promise<boolean> => {
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession()
-        if (sessionData.session?.user?.id === userId) {
-          console.log(`✅ LOGIN: Auth state confirmed after ${i + 1} attempts`)
-          return true
-        }
-        // Wait 200ms before next attempt
-        await new Promise((resolve) => setTimeout(resolve, 200))
-      } catch (error) {
-        console.error("Error checking auth state:", error)
-      }
-    }
-    console.warn("⚠️ LOGIN: Auth state not confirmed after maximum attempts")
-    return false
-  }
-
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsLoading(true)
@@ -357,14 +338,6 @@ export default function LoginForm() {
         })
       }
 
-      // Wait for auth state to be properly updated
-      console.log("🔍 LOGIN: Waiting for auth state to update...")
-      const authStateConfirmed = await waitForAuthState(data.user.id)
-
-      if (!authStateConfirmed) {
-        console.warn("⚠️ LOGIN: Auth state not confirmed, but proceeding with redirect")
-      }
-
       toast({
         title: t.login.loginSuccess,
         description: t.login.loginSuccessMessage,
@@ -389,17 +362,10 @@ export default function LoginForm() {
         },
       })
 
-      // Add a small delay before redirect to ensure auth state is updated
+      // Redirect to dashboard or requested page with language preserved
       console.log("✅ LOGIN: Redirecting to:", redirect)
-
-      // Use setTimeout to ensure auth state has time to propagate
-      setTimeout(() => {
-        router.push(redirect)
-        // Force a hard refresh to ensure auth state is properly loaded
-        setTimeout(() => {
-          window.location.href = redirect
-        }, 100)
-      }, 500)
+      router.push(redirect)
+      router.refresh()
     } catch (error: any) {
       handleLoginError(error)
     } finally {
