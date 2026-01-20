@@ -3,7 +3,6 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { logAuthRequest } from "@/lib/auth-logger"
-import { createRouteHandlerClient } from "@/lib/supabase-client" // Assuming the createRouteHandlerClient is declared here
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)

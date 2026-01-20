@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
-import { createRouteHandlerClient } from "@/lib/supabase/server"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs" // Import createRouteHandlerClient
 
 export async function GET() {
   try {
@@ -28,7 +29,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const supabase = createRouteHandlerClient({ cookies }) // Use createRouteHandlerClient
 
   // Cek session dan verifikasi user dengan cara yang lebih aman
   const {
