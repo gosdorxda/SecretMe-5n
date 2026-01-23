@@ -4,8 +4,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
 import { MessageSquare } from "lucide-react"
-import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { useEffect, useState, useMemo } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { LanguageToggle } from "@/components/language-toggle"
 
@@ -14,10 +14,8 @@ export function SiteHeader() {
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
   const pathname = usePathname()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const checkAuth = async () => {

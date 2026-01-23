@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs" // Import createRouteHandlerClient
 
 export async function GET() {
   try {
@@ -29,7 +28,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies }) // Use createRouteHandlerClient
+  const supabase = createRouteHandlerClient({ cookies })
 
   // Cek session dan verifikasi user dengan cara yang lebih aman
   const {
@@ -71,6 +70,27 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const oldSupabase = createClient()
+
+    // Periksa apakah pengguna adalah admin
+    const {
+      data: { session: oldSession },
+    } = await oldSupabase.auth.getSession()
+
+    if (!oldSession) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Periksa apakah pengguna adalah admin
+    const { data: userData } = await oldSupabase.from("users").select("email").eq("id", oldSession.user.id).single()
+
+    // Daftar email admin (dalam implementasi nyata, ini sebaiknya disimpan di database)
+    const oldAdminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
+
+    if (!oldAdminEmails.includes(userData?.email)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+
     const body = await request.json()
     const { maxMessagesPerDay, maxMessagesPerHour, blockDurationHours } = body
 

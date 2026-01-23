@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr"
+import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import type { Database } from "@/lib/supabase/database.types"
 import { logAuthRequest } from "@/lib/auth-logger"
@@ -6,6 +6,38 @@ import { logAuthRequest } from "@/lib/auth-logger"
 // Server-side Supabase client
 export const createClient = () => {
   try {
+    // Check if we're in a browser environment
+    const isBrowser = typeof window !== "undefined"
+
+    if (isBrowser) {
+      // For client-side, we'll use a different approach
+      console.warn("Server client being called from browser context - this may not work as expected")
+
+      // Return a dummy client that won't make actual requests
+      return {
+        auth: {
+          getSession: async () => ({ data: { session: null }, error: null }),
+          getUser: async () => ({ data: { user: null }, error: null }),
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: null, error: null }),
+              maybeSingle: async () => ({ data: null, error: null }),
+            }),
+            order: () => ({
+              data: [],
+              error: null,
+            }),
+          }),
+          order: () => ({
+            data: [],
+            error: null,
+          }),
+        }),
+      } as any
+    }
+
     // Only import cookies() in server context
     let cookieStore
     try {
@@ -47,14 +79,22 @@ export const createClient = () => {
           get(name: string) {
             return cookieStore.get(name)?.value
           },
-          set(name: string, value: string, options: any) {
-            cookieStore.set(name, value, options)
+          set(name: string, value: string, options: CookieOptions) {
+            try {
+              cookieStore.set({ name, value, ...options })
+            } catch (error) {
+              // Handle server action/router context issues
+            }
           },
-          remove(name: string, options: any) {
-            cookieStore.delete(name)
+          remove(name: string, options: CookieOptions) {
+            try {
+              cookieStore.set({ name, value: "", ...options })
+            } catch (error) {
+              // Handle server action/router context issues
+            }
           },
         },
-      }
+      },
     )
   } catch (error) {
     // Log error saat membuat client
