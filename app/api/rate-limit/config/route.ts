@@ -1,11 +1,35 @@
-import { createClient } from "@/lib/supabase/server"
-import { type NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@supabase/ssr"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
+
+const createClient = createServerClient
 
 export async function GET() {
   try {
-    const supabase = createClient()
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // The `setAll` method was called from a Server Component.
+              // This can be ignored if you have middleware refreshing
+              // user sessions.
+            }
+          },
+        },
+      }
+    )
 
     // Ambil konfigurasi rate limit dari database
     const { data, error } = await supabase
@@ -28,36 +52,39 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // The `setAll` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
 
-  // Cek session dan verifikasi user dengan cara yang lebih aman
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession()
-
-  if (sessionError) {
-    console.error("Error getting session:", sessionError)
-    return NextResponse.json({ error: "Authentication error" }, { status: 401 })
-  }
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  // Verifikasi user dengan getUser() yang lebih aman
+  // Verifikasi user dengan getUser()
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError) {
+  if (userError || !user) {
     console.error("Error verifying user:", userError)
     return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
-  }
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 401 })
   }
 
   // Verifikasi apakah user adalah admin
@@ -70,27 +97,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const oldSupabase = createClient()
-
-    // Periksa apakah pengguna adalah admin
-    const {
-      data: { session: oldSession },
-    } = await oldSupabase.auth.getSession()
-
-    if (!oldSession) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Periksa apakah pengguna adalah admin
-    const { data: userData } = await oldSupabase.from("users").select("email").eq("id", oldSession.user.id).single()
-
-    // Daftar email admin (dalam implementasi nyata, ini sebaiknya disimpan di database)
-    const oldAdminEmails = ["gosdorxda@gmail.com"] // Ganti dengan email admin Anda
-
-    if (!oldAdminEmails.includes(userData?.email)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
     const body = await request.json()
     const { maxMessagesPerDay, maxMessagesPerHour, blockDurationHours } = body
 
